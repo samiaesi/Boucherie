@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // L'équipe : un document admins/{uid} par membre, avec son rôle
+    function isMember() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function role() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', 'admin');
+    }
+    function isAdmin() { return isMember() && role() == 'admin'; }
+    function isManager() { return isMember() && role() in ['admin', 'manager']; }
+
+    match /products/{id} {
+      allow read: if true;
+      allow create, delete: if isManager();
+      // Confirmer une commande fait baisser le stock, quel que soit le rôle
+      allow update: if isManager()
+        || (isMember() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
+    }
+    match /offers/{id} { allow read: if true; allow write: if isManager(); }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin()
+        || (id == 'fridge' && isMember())
+        || (id == 'invoiceCounter' && isMember());
+    }
+
+    // Commandes : tout le monde peut en créer une depuis le site, seule l'équipe les lit
+    match /orders/{id} {
+      allow create: if request.resource.data.keys().hasOnly(
+                         ['name', 'tel', 'type', 'typeLabel', 'date', 'details', 'lang', 'status', 'createdAt',
+                          'items', 'address', 'zone', 'delivery', 'total'])
+        && (!('items' in request.resource.data) || (request.resource.data.items is list && request.resource.data.items.size() <= 60))
+        && (!('address' in request.resource.data) || (request.resource.data.address is string && request.resource.data.address.size() <= 300))
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+        && request.resource.data.tel is string && request.resource.data.tel.size() > 0 && request.resource.data.tel.size() <= 30
+        && request.resource.data.typeLabel is string && request.resource.data.typeLabel.size() <= 100
+        && request.resource.data.details is string && request.resource.data.details.size() <= 2000
+        && request.resource.data.status == 'nouveau'
+        && request.resource.data.createdAt == request.time;
+      allow read, update: if isMember();
+      allow delete: if isAdmin();
+    }
+
+    // Factures : lisibles avec leur lien secret, jamais listables par le public, jamais supprimées
+    match /invoices/{id} {
+      allow get: if true;
+      allow list, create, update: if isMember();
+      allow delete: if false;
+    }
+
+    // Suivi public : lisible avec son lien secret, sans nom, téléphone ni adresse
+    match /tracking/{id} {
+      allow get: if true;
+      allow create: if isMember()
+        || (request.resource.data.keys().hasOnly(['status', 'delivery', 'date', 'ref', 'steps'])
+            && request.resource.data.status == 'nouveau');
+      allow update: if isMember();
+    }
+
+    // Clients professionnels : jamais lisibles par le public
+    match /companies/{id} { allow read, write: if isManager(); }
+
+    match /admins/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+  }
+}

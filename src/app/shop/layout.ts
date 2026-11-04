@@ -1,0 +1,171 @@
+import { Component, ElementRef, OnDestroy, OnInit, effect, inject, signal, viewChild } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Cart, lineTotal } from '../core/cart';
+import { I18n } from '../core/i18n';
+import { Shop } from '../core/shop';
+
+@Component({
+  selector: 'app-shop-layout',
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  template: `
+    <div class="progress" #progress></div>
+    <header #header>
+      <div class="wrap nav">
+        <a routerLink="/" class="logo">
+          <img src="logo.svg" alt="Logo">
+          <span><b>{{ i18n.pick(shop.settings(), 'name') }}</b><small>{{ i18n.t('brandSub') }}</small></span>
+        </a>
+        <nav class="menu" [class.open]="menuOpen()" (click)="menuOpen.set(false)">
+          <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">{{ i18n.t('navHome') }}</a>
+          <a routerLink="/boutique" routerLinkActive="on">{{ i18n.t('navShop') }}</a>
+          <a routerLink="/" fragment="formules">{{ i18n.t('navOffers') }}</a>
+          <a routerLink="/" fragment="contact">{{ i18n.t('navContact') }}</a>
+          @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
+        </nav>
+        <div class="nav-actions">
+          <button class="lang" (click)="i18n.toggle()">{{ i18n.t('langBtn') }}</button>
+          <button class="cart-btn" (click)="cart.open.set(true)" [attr.aria-label]="i18n.t('cart')">
+            @for (n of [cart.bump()]; track n) { <span class="cart-ico">🛒</span> }
+            <span class="hide-sm">{{ i18n.t('cart') }}</span>
+            @if (cart.count()) { <b>{{ cart.count() }}</b> }
+          </button>
+          <button class="burger" aria-label="Menu" (click)="menuOpen.set(!menuOpen())">☰</button>
+        </div>
+      </div>
+    </header>
+
+    <main><router-outlet /></main>
+
+    <footer>
+      <div class="wrap footer-grid">
+        <div>
+          <a routerLink="/" class="logo light">
+            <img src="logo.svg" alt="">
+            <span><b>{{ i18n.pick(shop.settings(), 'name') }}</b><small>{{ i18n.t('brandSub') }}</small></span>
+          </a>
+          <p>{{ i18n.t('footerText') }}</p>
+        </div>
+        <div>
+          <h4>{{ i18n.t('navShop') }}</h4>
+          @for (c of shop.categories(); track c.id) {
+            <a routerLink="/boutique" [queryParams]="{ cat: c.id }">{{ i18n.pick(c, 'name') }}</a>
+          }
+        </div>
+        <div>
+          <h4>{{ i18n.t('navContact') }}</h4>
+          <p>{{ i18n.pick(shop.settings(), 'address') }}</p>
+          <p dir="ltr"><a [href]="phoneHref()">{{ shop.settings().phone }}</a></p>
+        </div>
+      </div>
+      <div class="copy"><div class="wrap">© {{ year }} {{ i18n.pick(shop.settings(), 'name') }} · {{ shop.settings().company }} · {{ i18n.t('footer') }}</div></div>
+    </footer>
+
+    <!-- Panier -->
+    <div class="scrim" [class.show]="cart.open()" (click)="cart.open.set(false)"></div>
+    <aside class="drawer" [class.show]="cart.open()" [attr.aria-hidden]="!cart.open()">
+      <div class="drawer-head">
+        <h3>{{ i18n.t('cart') }} ({{ cart.count() }})</h3>
+        <button (click)="cart.open.set(false)" aria-label="Fermer">✕</button>
+      </div>
+      <div class="drawer-body">
+        @for (l of cart.lines(); track l.key) {
+          <div class="line">
+            <div class="line-info">
+              <b>{{ i18n.pick(l, 'name') }}</b>
+              <small>
+                @if (l.grams) { {{ i18n.weight(l.grams) }} }
+                @if (l.option_fr) { · {{ i18n.pick(l, 'option') }} }
+              </small>
+              <div class="qty small">
+                <button (click)="cart.setQty(l.key, l.qty - 1)" aria-label="-">−</button>
+                <span>{{ l.qty }}</span>
+                <button (click)="cart.setQty(l.key, l.qty + 1)" aria-label="+">+</button>
+              </div>
+            </div>
+            <div class="line-side">
+              <b>{{ l.unit === 'order' ? i18n.t('toConfirm') : i18n.money(lineTotal(l)) }}</b>
+              <button class="link" (click)="cart.setQty(l.key, 0)">{{ i18n.t('remove') }}</button>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty">{{ i18n.t('cartEmpty') }}</p>
+          <a routerLink="/boutique" class="btn btn-red block" (click)="cart.open.set(false)">{{ i18n.t('seeAll') }}</a>
+        }
+      </div>
+      @if (cart.lines().length) {
+        <div class="drawer-foot">
+          <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.money(cart.total()) }}</b></div>
+          <p class="pickup">🏪 {{ i18n.t(shop.pickupKey()) }}</p>
+          <p class="note">{{ i18n.t('estimate') }}</p>
+          <a routerLink="/commande" class="btn btn-red block" (click)="cart.open.set(false)">{{ i18n.t('checkout') }}</a>
+          <button class="btn-text" (click)="cart.open.set(false)">{{ i18n.t('keepShopping') }}</button>
+        </div>
+      }
+    </aside>
+
+    <!-- Annonce d'ajout au panier -->
+    <div class="added" [class.show]="cart.justAdded()" role="status">
+      <span>✓</span>
+      <div><b>{{ i18n.t('added') }}</b><small>{{ cart.justAdded() }}</small></div>
+      <button (click)="cart.open.set(true)">{{ i18n.t('stickyCart') }}</button>
+    </div>
+
+    <div class="added warned" [class.show]="cart.warning()" role="alert">
+      <span>!</span>
+      <div><b>{{ i18n.t('soldOut') }}</b><small>{{ cart.warning() }}</small></div>
+    </div>
+
+    <!-- Panier toujours accessible sur mobile -->
+    @if (cart.count() && !cart.open()) {
+      <button class="sticky-cart" (click)="cart.open.set(true)">
+        <span>🛒 {{ i18n.t('stickyCart') }} ({{ cart.count() }})</span><b>{{ i18n.money(cart.total()) }}</b>
+      </button>
+    }
+
+    <a class="wa-float" [href]="waHref()" target="_blank" [attr.aria-label]="i18n.t('waFloat')">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 2s.8 2.3.9 2.5c.1.2 1.6 2.5 4 3.5 1.5.6 2.1.7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.5-.3z"/></svg>
+    </a>
+  `,
+})
+export class ShopLayout implements OnInit, OnDestroy {
+  protected readonly i18n = inject(I18n);
+  protected readonly shop = inject(Shop);
+  protected readonly cart = inject(Cart);
+  protected readonly menuOpen = signal(false);
+  protected readonly year = new Date().getFullYear();
+  protected readonly lineTotal = lineTotal;
+  private readonly progress = viewChild.required<ElementRef<HTMLElement>>('progress');
+  private readonly header = viewChild.required<ElementRef<HTMLElement>>('header');
+
+  // Directement sur le DOM : inutile de redessiner la page à chaque pixel de défilement
+  private readonly onScroll = () => {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    this.progress().nativeElement.style.transform = `scaleX(${max > 0 ? window.scrollY / max : 0})`;
+    this.header().nativeElement.classList.toggle('small', window.scrollY > 60);
+  };
+
+  constructor() {
+    effect(() => {
+      document.title = `${this.i18n.pick(this.shop.settings(), 'name')} — ${this.i18n.t('halal')}`;
+      // En revenant de l'admin (toujours en français), on rétablit le sens de lecture
+      document.documentElement.dir = this.i18n.lang() === 'ar' ? 'rtl' : 'ltr';
+    });
+  }
+
+  ngOnInit() {
+    this.shop.load();
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+  }
+
+  ngOnDestroy() {
+    window.removeEventListener('scroll', this.onScroll);
+  }
+
+  protected phoneHref() {
+    return 'tel:' + this.shop.settings().phone.replace(/\s/g, '');
+  }
+
+  protected waHref() {
+    return `https://wa.me/${this.shop.settings().whatsapp}`;
+  }
+}

@@ -1,0 +1,16 @@
+@import './admin.css';
+@import './shop.css';
+
+:root {
+  --bordeaux: #7a1f2b; --bordeaux-dark: #55141d; --cream: #f7f1e8; --paper: #fffaf3;
+  --ink: #231a17; --muted: #6d625c; --gold: #c9a04a; --line: #e6dccd;
+  --font-body: Inter, system-ui, sans-serif; --font-title: Poppins, Inter, sans-serif;
+}
+html[lang="ar"] { --font-body: Cairo, Tahoma, sans-serif; --font-title: Cairo, Tahoma, sans-serif; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-body); color: var(--ink); background: var(--paper); line-height: 1.6; }
+h1, h2, h3 { font-family: var(--font-title); line-height: 1.2; }
+html[lang="ar"] h1, html[lang="ar"] h2 { font-weight: 800; }
+a { color: inherit; text-decoration: none; }
+dialog { margin: auto; }

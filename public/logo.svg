@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <path id="arcTop" d="M30,100 a70,70 0 0,1 140,0"/>
+    <path id="arcBot" d="M24,100 a76,76 0 0,0 152,0"/>
+  </defs>
+  <circle cx="100" cy="100" r="96" fill="#c41e25"/>
+  <circle cx="100" cy="100" r="86" fill="none" stroke="#ffffff" stroke-width="2"/>
+  
+  <text font-family="Georgia, serif" font-size="15" font-weight="700" fill="#ffffff" letter-spacing="3">
+    <textPath href="#arcTop" startOffset="50%" text-anchor="middle">BOUCHERIE</textPath>
+  </text>
+  <text font-family="Georgia, serif" font-size="16" font-weight="700" fill="#ffffff" letter-spacing="4">
+    <textPath href="#arcBot" startOffset="50%" text-anchor="middle">HALLEM</textPath>
+  </text>
+  <!-- Tête de bélier stylisée -->
+  <g transform="translate(20 8) scale(.8)">
+  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round">
+    <path d="M86,78 c-10,-14 -34,-12 -36,6 c-2,16 18,22 24,10 c4,-8 -4,-14 -10,-10"/>
+    <path d="M114,78 c10,-14 34,-12 36,6 c2,16 -18,22 -24,10 c-4,-8 4,-14 10,-10"/>
+  </g>
+  <path d="M86,76 q14,-8 28,0 l4,26 q-2,22 -18,30 q-16,-8 -18,-30 z" fill="#ffffff"/>
+  <circle cx="93" cy="96" r="3" fill="#c41e25"/>
+  <circle cx="107" cy="96" r="3" fill="#c41e25"/>
+  <path d="M95,121 q5,4 10,0" stroke="#c41e25" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  </g>
+  <text x="100" y="152" text-anchor="middle" font-family="Tahoma, Arial, sans-serif" font-size="17" font-weight="700" fill="#ffffff">حلال</text>
+</svg>
