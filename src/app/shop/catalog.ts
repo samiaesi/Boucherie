@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -18,16 +18,29 @@ import { ProductCard } from './product-card';
 
     <section class="shop">
       <div class="wrap">
-        <div class="pills">
-          <a class="pill" routerLink="/boutique" [class.on]="!cat()">{{ i18n.t('all') }}</a>
+        <div class="shop-layout">
+        <aside class="rayons">
+          <h2>{{ i18n.t('catEyebrow') }}</h2>
+          <a class="rayon" routerLink="/boutique" [class.on]="!cat()">
+            <span>{{ i18n.t('all') }}</span><small>{{ shop.products().length }}</small>
+          </a>
           @for (c of shop.categories(); track c.id) {
-            <a class="pill" routerLink="/boutique" [queryParams]="{ cat: c.id }" [class.on]="cat() === c.id">
-              <span [innerHTML]="c.icon | icon"></span>{{ i18n.pick(c, 'name') }}
+            <a class="rayon" routerLink="/boutique" [queryParams]="{ cat: c.id }" [class.on]="cat() === c.id">
+              <i [innerHTML]="c.icon | icon"></i>
+              <span>{{ i18n.pick(c, 'name') }}</span>
+              <small>{{ countIn(c.id) }}</small>
             </a>
           }
-        </div>
+        </aside>
 
+        <div class="shop-main">
         <div class="filters">
+          <select class="rayon-select" [attr.aria-label]="i18n.t('catEyebrow')" (change)="goTo($any($event.target).value)">
+            <option value="" [selected]="!cat()">{{ i18n.t('all') }} ({{ shop.products().length }})</option>
+            @for (c of shop.categories(); track c.id) {
+              <option [value]="c.id" [selected]="cat() === c.id">{{ i18n.pick(c, 'name') }} ({{ countIn(c.id) }})</option>
+            }
+          </select>
           <input type="search" [placeholder]="i18n.t('search')" [value]="query()" (input)="query.set($any($event.target).value)">
           <select (change)="sort.set($any($event.target).value)">
             <option value="">{{ i18n.t('sortDefault') }}</option>
@@ -45,6 +58,8 @@ import { ProductCard } from './product-card';
             }
           </div>
         }
+        </div>
+        </div>
       </div>
     </section>
   `,
@@ -56,6 +71,16 @@ export class Catalog {
   readonly cat = input<string>();
   protected readonly query = signal('');
   protected readonly sort = signal('');
+
+  private readonly router = inject(Router);
+
+  protected countIn(category: string) {
+    return this.shop.products().filter(p => p.category === category).length;
+  }
+
+  protected goTo(cat: string) {
+    this.router.navigate(['/boutique'], { queryParams: cat ? { cat } : {} });
+  }
 
   protected readonly title = computed(() => {
     const c = this.shop.category(this.cat() ?? '');

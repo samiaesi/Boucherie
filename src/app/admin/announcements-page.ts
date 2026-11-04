@@ -56,6 +56,10 @@ const blank = (): Omit<Announcement, 'id'> => {
         Seuls les clients qui ont coché « recevoir les offres » apparaissent ici.
         Chaque bouton ouvre WhatsApp avec le message prêt : il reste à appuyer sur Envoyer.
       </p>
+      <div class="share">
+        <button class="btn wa" (click)="copy(a)">{{ copied() ? 'Message copié ✓' : 'Copier le message (français et arabe)' }}</button>
+        <small>À coller dans une liste de diffusion ou une chaîne WhatsApp, pour écrire à tout le monde d'un coup.</small>
+      </div>
       <div class="items">
         @for (c of subs(); track c.tel) {
           <div class="item">
@@ -71,6 +75,8 @@ const blank = (): Omit<Announcement, 'id'> => {
   `,
   styles: `
     .section { margin: 22px 0 10px; font-family: Inter, sans-serif; font-size: 1.05rem; }
+    .share { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .share small { color: var(--muted); }
     .hint { margin-bottom: 10px; color: var(--muted); font-size: .88rem; }
   `,
 })
@@ -82,6 +88,7 @@ export class Announcements implements OnInit {
   protected readonly error = signal('');
   protected readonly selected = signal('');
   protected readonly sent = signal(new Set<string>());
+  protected readonly copied = signal(false);
   protected readonly kinds = Object.entries(KIND_LABELS) as [AnnouncementKind, (typeof KIND_LABELS)[AnnouncementKind]][];
   protected draft = blank();
 
@@ -135,6 +142,16 @@ export class Announcements implements OnInit {
     const number = tel.startsWith('0') ? `213${tel.slice(1)}` : tel;
     const text = announcementMessage(a, c.lang, this.data.settings().name_fr, location.origin);
     return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+  }
+
+  /** Pour une liste de diffusion : les deux langues dans un seul message. */
+  protected async copy(a: Announcement) {
+    const shop = this.data.settings();
+    const fr = announcementMessage(a, 'fr', shop.name_fr, '');
+    const ar = announcementMessage(a, 'ar', shop.name_ar, location.origin);
+    await navigator.clipboard.writeText(`${fr}\n\n${ar}`);
+    this.copied.set(true);
+    setTimeout(() => this.copied.set(false), 2500);
   }
 
   protected markSent(c: Subscriber) {

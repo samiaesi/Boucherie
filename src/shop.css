@@ -202,12 +202,20 @@ app-shop-layout {
   .page-head h1 { color: #fff; font-size: clamp(2.1rem, 5vw, 3.2rem); font-weight: 800; animation: fadeUp .6s var(--ease) both; }
   .page-head p { color: #d0c4bc; margin-top: 8px; animation: fadeUp .6s .1s var(--ease) both; }
   .shop { padding: 36px 0 90px; }
-  .pills { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 12px; margin-bottom: 14px; scrollbar-width: none; }
-  .pill { flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 999px; background: #fff; box-shadow: 0 1px 0 var(--border); font-weight: 700; font-size: .92rem; white-space: nowrap; transition: transform .2s var(--ease), background .2s, color .2s; }
-  .pill svg { width: 26px; height: 26px; display: block; }
-  .pill:hover { transform: translateY(-2px); }
-  .pill.on { background: var(--red); color: #fff; }
-  .filters { display: grid; grid-template-columns: 1fr 240px; gap: 12px; margin-bottom: 28px; }
+  .shop-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .rayons { position: sticky; top: 84px; padding: 16px 10px; border-radius: var(--r); background: #fff; box-shadow: 0 1px 0 var(--border); }
+  .rayons h2 { margin: 0 8px 10px; font-size: .95rem; font-weight: 700; }
+  .rayon { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 7px 10px; border-radius: 12px; font-weight: 600; font-size: .93rem; transition: background .2s, color .2s; }
+  .rayon:hover { background: var(--soft); color: var(--red); }
+  .rayon.on { background: var(--red); color: #fff; }
+  .rayon i { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--soft); }
+  .rayon i svg { width: 22px; height: 22px; display: block; }
+  .rayon.on i { background: #fff; }
+  .rayon span { flex: 1; }
+  .rayon small { color: var(--text); font-weight: 500; }
+  .rayon.on small { color: #fff; }
+  .rayon-select { display: none; }
+  .filters { display: grid; grid-template-columns: 1fr 220px; gap: 12px; margin-bottom: 24px; }
 
   /* Fiche produit */
   .detail { padding: 30px 0 70px; }
@@ -402,6 +410,10 @@ app-shop-layout {
     .menu { display: none; position: absolute; top: 100%; inset-inline: 0; flex-direction: column; padding: 12px 20px 18px; background: #fff; box-shadow: 0 20px 30px -20px rgba(0, 0, 0, .3); }
     .menu.open { display: flex; animation: fadeUp .3s var(--ease) both; }
     .burger { display: block; }
+    .shop-layout { grid-template-columns: minmax(0, 1fr); }
+    .rayons { display: none; }
+    .rayon-select { display: block; }
+    .filters { grid-template-columns: 1fr 1fr; }
     .hero { min-height: 560px; }
     .hero-grid, .about-grid, .contact-grid, .footer-grid, .detail-grid, .checkout-grid { grid-template-columns: 1fr; }
     .hero-float { display: none; }
@@ -435,6 +447,7 @@ app-shop-layout {
     .news-panel { position: fixed; top: 76px; inset-inline: 12px; width: auto; }
     .logo img, header.small .logo img { width: 42px; height: 42px; }
     .why, .filters { grid-template-columns: 1fr; }
+    .rayon-select { font-weight: 700; }
     .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .card-img { height: 130px; }
     .card-icon svg { width: 84px; height: 84px; }
