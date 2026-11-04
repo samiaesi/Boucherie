@@ -1,7 +1,9 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { collection, doc, getDoc, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { Announcement, liveAnnouncements } from './announcements';
 import { db } from './firebase';
 import { TKey } from './i18n';
+import { localDay } from './stats';
 import {
   Category, DEFAULT_CATEGORIES, DEFAULT_OFFERS, DEFAULT_PRODUCTS, DEFAULT_SETTINGS, FridgeItem,
   Offer, Order, Product, Settings, applyPools, byOrder, orderRef, readFridge,
@@ -33,7 +35,12 @@ export class Shop {
   /** Dernière commande de ce navigateur, pour le lien de suivi */
   readonly lastOrder = signal(savedLastOrder());
 
+  private readonly announcements = signal<Announcement[]>([]);
+  /** Annonces en ligne aujourd'hui */
+  readonly live = computed(() => liveAnnouncements(this.announcements(), localDay(new Date())));
+
   async load() {
+    this.loadAnnouncements();
     try {
       const [ps, os, ss, cs, fs] = await Promise.all([
         getDocs(collection(db, 'products')),
@@ -52,6 +59,16 @@ export class Shop {
       if (cs.exists()) this.categories.set([...(cs.data()['list'] as Category[])].sort(byOrder));
     } catch (e) {
       console.warn('Firebase indisponible, affichage des données par défaut', e);
+    }
+  }
+
+  /** À part : une erreur sur les annonces ne doit pas empêcher le catalogue de s'afficher. */
+  private async loadAnnouncements() {
+    try {
+      const snap = await getDocs(collection(db, 'announcements'));
+      this.announcements.set(snap.docs.map(d => ({ ...d.data(), id: d.id }) as Announcement));
+    } catch (e) {
+      console.warn('Annonces indisponibles', e);
     }
   }
 

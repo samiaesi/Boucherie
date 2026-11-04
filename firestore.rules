@@ -21,6 +21,7 @@ service cloud.firestore {
         || (isMember() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
     }
     match /offers/{id} { allow read: if true; allow write: if isManager(); }
+    match /announcements/{id} { allow read: if true; allow write: if isManager(); }
 
     match /settings/{id} {
       allow read: if true;
@@ -33,7 +34,7 @@ service cloud.firestore {
     match /orders/{id} {
       allow create: if request.resource.data.keys().hasOnly(
                          ['name', 'tel', 'type', 'typeLabel', 'date', 'details', 'lang', 'status', 'createdAt',
-                          'items', 'address', 'zone', 'delivery', 'total'])
+                          'items', 'address', 'zone', 'delivery', 'total', 'marketing'])
         && (!('items' in request.resource.data) || (request.resource.data.items is list && request.resource.data.items.size() <= 60))
         && (!('address' in request.resource.data) || (request.resource.data.address is string && request.resource.data.address.size() <= 300))
         && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100

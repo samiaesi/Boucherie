@@ -1,8 +1,19 @@
-import { Component, ElementRef, OnDestroy, OnInit, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Announcement, KIND_LABELS } from '../core/announcements';
 import { Cart, lineTotal } from '../core/cart';
 import { I18n } from '../core/i18n';
 import { Shop } from '../core/shop';
+
+const SEEN_KEY = 'newsSeen';
+
+function savedSeen(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]'));
+  } catch {
+    return new Set();
+  }
+}
 
 @Component({
   selector: 'app-shop-layout',
@@ -24,6 +35,22 @@ import { Shop } from '../core/shop';
         </nav>
         <div class="nav-actions">
           <button class="lang" (click)="i18n.toggle()">{{ i18n.t('langBtn') }}</button>
+          <div class="news-wrap">
+            <button class="news-btn" [class.ring]="unseen().length" (click)="toggleNews()" [attr.aria-label]="i18n.t('newsTitle')">
+              🔔 @if (unseen().length) { <b>{{ unseen().length }}</b> }
+            </button>
+            @if (newsOpen()) {
+              <div class="news-panel">
+                <h3>{{ i18n.t('newsTitle') }}</h3>
+                @for (a of shop.live(); track a.id) {
+                  <a class="news-item" routerLink="/boutique" (click)="newsOpen.set(false)">
+                    <span>{{ kind(a).icon }}</span>
+                    <div><small>{{ kindLabel(a) }}</small><b>{{ i18n.pick(a, 'title') }}</b><p>{{ i18n.pick(a, 'text') }}</p></div>
+                  </a>
+                } @empty { <p class="news-empty">{{ i18n.t('newsEmpty') }}</p> }
+              </div>
+            }
+          </div>
           <button class="cart-btn" (click)="cart.open.set(true)" [attr.aria-label]="i18n.t('cart')">
             @for (n of [cart.bump()]; track n) { <span class="cart-ico">🛒</span> }
             <span class="hide-sm">{{ i18n.t('cart') }}</span>
@@ -103,6 +130,20 @@ import { Shop } from '../core/shop';
       }
     </aside>
 
+    <!-- Nouvelle annonce : s'affiche une fois pour ce visiteur -->
+    @if (popup(); as a) {
+      <div class="news-pop" role="status">
+        <button (click)="closePopup(a)" aria-label="Fermer">✕</button>
+        <span>{{ kind(a).icon }}</span>
+        <div>
+          <small>{{ kindLabel(a) }}</small>
+          <b>{{ i18n.pick(a, 'title') }}</b>
+          <p>{{ i18n.pick(a, 'text') }}</p>
+          <a routerLink="/boutique" class="btn btn-red" (click)="closePopup(a)">{{ i18n.t('order') }}</a>
+        </div>
+      </div>
+    }
+
     <!-- Annonce d'ajout au panier -->
     <div class="added" [class.show]="cart.justAdded()" role="status">
       <span>✓</span>
@@ -134,6 +175,11 @@ export class ShopLayout implements OnInit, OnDestroy {
   protected readonly menuOpen = signal(false);
   protected readonly year = new Date().getFullYear();
   protected readonly lineTotal = lineTotal;
+  protected readonly newsOpen = signal(false);
+  private readonly seen = signal(savedSeen());
+  protected readonly unseen = computed(() => this.shop.live().filter(a => !this.seen().has(a.id)));
+  private readonly closed = signal(new Set<string>());
+  protected readonly popup = computed(() => this.unseen().find(a => !this.closed().has(a.id)));
   private readonly progress = viewChild.required<ElementRef<HTMLElement>>('progress');
   private readonly header = viewChild.required<ElementRef<HTMLElement>>('header');
 
@@ -159,6 +205,30 @@ export class ShopLayout implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     window.removeEventListener('scroll', this.onScroll);
+  }
+
+  protected kind(a: Announcement) {
+    return KIND_LABELS[a.kind];
+  }
+
+  protected kindLabel(a: Announcement) {
+    return KIND_LABELS[a.kind][this.i18n.lang()];
+  }
+
+  private markSeen(ids: string[]) {
+    const all = new Set([...this.seen(), ...ids]);
+    this.seen.set(all);
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify([...all])); } catch {}
+  }
+
+  protected toggleNews() {
+    this.newsOpen.update(open => !open);
+    this.markSeen(this.shop.live().map(a => a.id));
+  }
+
+  protected closePopup(a: Announcement) {
+    this.closed.update(all => new Set(all).add(a.id));
+    this.markSeen([a.id]);
   }
 
   protected phoneHref() {

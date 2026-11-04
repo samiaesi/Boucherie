@@ -4,7 +4,7 @@ describe('Menu selon le rôle', () => {
   it('donne tout à l\'administrateur, groupé par thème', () => {
     const menu = menuFor('admin');
     expect(menu.map(g => g.name)).toEqual(['Pilotage', 'Ventes', 'Stock et catalogue', 'Administration']);
-    expect(menu.flatMap(g => g.pages)).toHaveLength(13);
+    expect(menu.flatMap(g => g.pages)).toHaveLength(15);
   });
 
   it('cache l\'administration au manager', () => {
@@ -13,8 +13,8 @@ describe('Menu selon le rôle', () => {
     expect(menuFor('manager').map(g => g.name)).not.toContain('Administration');
   });
 
-  it('limite le suivi aux commandes et factures', () => {
-    expect(pagesFor('commandes').map(p => p.path)).toEqual(['commandes', 'factures']);
+  it('limite le suivi aux commandes, factures et étiquettes', () => {
+    expect(pagesFor('commandes').map(p => p.path)).toEqual(['commandes', 'factures', 'etiquettes']);
   });
 
   it('refuse tout sans rôle', () => {

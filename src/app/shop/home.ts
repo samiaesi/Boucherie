@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
+import { Announcement, KIND_LABELS } from '../core/announcements';
 import { Cart } from '../core/cart';
 import { HERO_PHOTOS, Offer, formatNumber } from '../core/data';
 import { I18n, TKey } from '../core/i18n';
@@ -11,6 +12,7 @@ import { ProductCard } from './product-card';
 import { Reveal } from './reveal';
 
 const SLIDE_MS = 6000;
+const STEP_MS = 2200;
 
 const SLIDES: { a: TKey; b: TKey; t: TKey; link: { cat?: string } }[] = [
   { a: 'slide1a', b: 'slide1b', t: 'slide1t', link: { cat: 'poulet' } },
@@ -63,6 +65,22 @@ const SLIDES: { a: TKey; b: TKey; t: TKey; link: { cat?: string } }[] = [
         }
       </div>
     </div>
+
+    @if (shop.live().length) {
+      <section class="today">
+        <div class="wrap">
+          <div class="section-head" appReveal><h2>{{ i18n.t('newsToday') }}</h2></div>
+          <div class="today-grid">
+            @for (a of shop.live(); track a.id; let i = $index) {
+              <a class="today-card" routerLink="/boutique" appReveal [revealDelay]="i * 90">
+                <span>{{ kind(a).icon }}</span>
+                <div><small>{{ kind(a)[i18n.lang()] }}</small><b>{{ i18n.pick(a, 'title') }}</b><p>{{ i18n.pick(a, 'text') }}</p></div>
+              </a>
+            }
+          </div>
+        </div>
+      </section>
+    }
 
     <section class="cats">
       <div class="wrap">
@@ -118,13 +136,18 @@ const SLIDES: { a: TKey; b: TKey; t: TKey; link: { cat?: string } }[] = [
           <h2>{{ i18n.t('stepsTitle') }}</h2>
           <p>{{ i18n.t(shop.pickupKey()) }}</p>
         </div>
-        <div class="steps-grid">
+        <div class="flow" (mouseleave)="resumeSteps()">
+          <div class="flow-line" aria-hidden="true"><i [style.--fill]="(step() / (steps.length - 1)) * 100 + '%'"></i></div>
           @for (s of steps; track s.t; let i = $index) {
-            <div class="step" appReveal [revealDelay]="i * 120">
-              <span>{{ i + 1 }}</span>
+            <button class="step" [class.on]="i === step()" [class.past]="i < step()" appReveal [revealDelay]="i * 120"
+                    (mouseenter)="holdStep(i)" (focus)="holdStep(i)" (click)="holdStep(i)">
+              <span class="step-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="s.icon" /></svg>
+                <em>{{ i + 1 }}</em>
+              </span>
               <b>{{ i18n.t(s.t) }}</b>
               <p>{{ i18n.t(s.d === 'step4' && shop.settings().deliveryEnabled ? 'stepBoth' : s.d) }}</p>
-            </div>
+            </button>
           }
         </div>
       </div>
@@ -230,9 +253,15 @@ export class Home implements OnInit, OnDestroy {
   protected readonly why: { t: TKey; d: TKey }[] = [
     { t: 'w1t', d: 'w1' }, { t: 'w2t', d: 'w2' }, { t: 'w3t', d: 'w3' }, { t: 'w4t', d: 'w4' },
   ];
-  protected readonly steps: { t: TKey; d: TKey }[] = [
-    { t: 'step1t', d: 'step1' }, { t: 'step2t', d: 'step2' }, { t: 'step3t', d: 'step3' }, { t: 'step4t', d: 'step4' },
+  protected readonly steps: { t: TKey; d: TKey; icon: string }[] = [
+    { t: 'step1t', d: 'step1', icon: 'M6 8h12l-1 12H7zM9 8V6a3 3 0 0 1 6 0v2' },
+    { t: 'step2t', d: 'step2', icon: 'M21 3L3 10.5l7 2.5 2.5 7zM10 13l5-5' },
+    { t: 'step3t', d: 'step3', icon: 'M4 20l1.5-4A8 8 0 1 1 9 19zM9 12l2 2 4-4' },
+    { t: 'step4t', d: 'step4', icon: 'M2 7h12v10H2zM14 10h4l4 4v3h-8zM6.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z' },
   ];
+  /** Étape mise en avant : avance seule, s'arrête sur celle que le visiteur survole */
+  protected readonly step = signal(0);
+  private stepTimer?: ReturnType<typeof setInterval>;
   private timer?: ReturnType<typeof setInterval>;
 
   /** La photo choisie dans l'admin remplace la première image de la bannière. */
@@ -253,10 +282,23 @@ export class Home implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.startTimer();
+    this.resumeSteps();
   }
 
   ngOnDestroy() {
     clearInterval(this.timer);
+    clearInterval(this.stepTimer);
+  }
+
+  protected resumeSteps() {
+    clearInterval(this.stepTimer);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    this.stepTimer = setInterval(() => this.step.update(i => (i + 1) % this.steps.length), STEP_MS);
+  }
+
+  protected holdStep(i: number) {
+    clearInterval(this.stepTimer);
+    this.step.set(i);
   }
 
   private startTimer() {
@@ -280,6 +322,10 @@ export class Home implements OnInit, OnDestroy {
 
   protected countIn(category: string) {
     return this.shop.products().filter(p => p.category === category).length;
+  }
+
+  protected kind(a: Announcement) {
+    return KIND_LABELS[a.kind];
   }
 
   protected items(o: Offer) {

@@ -43,6 +43,8 @@ export const routes: Routes = [
       page('tableau', () => import('./admin/dashboard').then(m => m.Dashboard)),
       page('commandes', () => import('./admin/orders').then(m => m.Orders)),
       page('factures', () => import('./admin/invoices').then(m => m.Invoices)),
+      page('etiquettes', () => import('./admin/labels').then(m => m.Labels)),
+      page('annonces', () => import('./admin/announcements-page').then(m => m.Announcements)),
       page('pro', () => import('./admin/pro').then(m => m.Pro)),
       page('declaration', () => import('./admin/declaration').then(m => m.Declaration)),
       page('equipe', () => import('./admin/team').then(m => m.Team)),

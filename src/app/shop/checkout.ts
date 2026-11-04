@@ -58,6 +58,7 @@ const PHONE = /^0[567]\d{8}$/;
                 <label class="slide-in">{{ i18n.t('address') }}<textarea required name="address" rows="2" [(ngModel)]="form.address"></textarea></label>
               }
               <label>{{ i18n.t(mode() === 'livraison' ? 'deliveryDate' : 'pickupDate') }}<input required name="date" type="date" [min]="today" [(ngModel)]="form.date"></label>
+              <label class="optin"><input type="checkbox" name="marketing" [(ngModel)]="form.marketing"> <span>{{ i18n.t('marketing') }}</span></label>
               <label>{{ i18n.t('notes') }}<textarea name="notes" [(ngModel)]="form.notes"></textarea></label>
               @if (error()) { <div class="form-error" role="alert">{{ error() }}</div> }
               <button class="btn btn-red block" type="submit" [disabled]="f.invalid || sending()">
@@ -98,7 +99,7 @@ export class Checkout {
   protected readonly sending = signal(false);
   protected readonly total = lineTotal;
   protected readonly today = this.localDate();
-  protected form = { name: '', tel: '', zone: '', address: '', date: this.today, notes: '' };
+  protected form = { name: '', tel: '', zone: '', address: '', date: this.today, notes: '', marketing: false };
   protected readonly mode = signal<'retrait' | 'livraison'>('retrait');
 
   /** Frais si le client choisit la livraison */
@@ -166,7 +167,7 @@ export class Checkout {
     try {
       this.ref.set(await this.shop.createOrder({
         name: f.name.trim(), tel, type: this.mode(), date: f.date, details, lang: this.i18n.lang(), items: this.items(),
-        delivery: this.fee(), total: this.grandTotal(), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
+        ...(f.marketing ? { marketing: true } : {}), delivery: this.fee(), total: this.grandTotal(), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
         typeLabel: `${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
       }));
       this.cart.clear();

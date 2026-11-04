@@ -137,6 +137,8 @@ export interface Order {
   address?: string;
   /** Commune ou quartier de livraison */
   zone?: string;
+  /** Le client accepte de recevoir les offres sur WhatsApp */
+  marketing?: boolean;
   /** Frais de livraison en DA */
   delivery?: number;
   /** Montant total en DA */

@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { Order, OrderStatus, STATUSES, orderRef } from '../core/data';
 import { Shop } from '../core/shop';
 import { AdminData } from './admin-data';
@@ -9,7 +10,7 @@ type Filter = 'actives' | 'toutes' | OrderStatus;
 
 @Component({
   selector: 'app-orders',
-  imports: [DatePipe, TitleCasePipe],
+  imports: [DatePipe, RouterLink, TitleCasePipe],
   template: `
     <div class="stats">
       <div class="stat"><b>{{ count('nouveau') }}</b><span>Nouvelles commandes</span></div>
@@ -50,6 +51,7 @@ type Filter = 'actives' | 'toutes' | OrderStatus;
               <button class="btn small" [class.wa]="n.whatsapp" (click)="n.whatsapp ? notifyClient(o, n.status) : setStatus(o, n.status)">{{ n.label }}</button>
             }
             @if (o.invoiceId) { <a class="btn light small" target="_blank" [href]="'/facture/' + o.invoiceId">Voir la facture</a> }
+            @if (o.items?.length) { <a class="btn light small" routerLink="/admin/etiquettes" [queryParams]="{ order: o.id }">Étiquettes</a> }
             <a class="btn light small" target="_blank" [href]="'https://wa.me/' + waNumber(o.tel)">Écrire au client</a>
             @if (auth.role() === 'admin') { <button class="btn danger small" (click)="remove(o.id)">Supprimer</button> }
           </div>

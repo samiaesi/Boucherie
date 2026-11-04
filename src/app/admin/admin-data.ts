@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { deleteApp, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { Announcement } from '../core/announcements';
 import { db, firebaseConfig } from '../core/firebase';
 import { Invoice, buildInvoice, invoiceNumber } from '../core/invoice';
 import { Company, PaymentMode, ProLine, amountInWords, computePro } from '../core/pro-invoice';
@@ -278,6 +279,19 @@ export class AdminData {
 
   removeCompany(id: string) {
     return this.guarded(deleteDoc(doc(db, 'companies', id)));
+  }
+
+  async listAnnouncements(): Promise<Announcement[]> {
+    const snap = await getDocs(collection(db, 'announcements'));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id }) as Announcement).sort((a, b) => b.start.localeCompare(a.start));
+  }
+
+  async addAnnouncement(data: Omit<Announcement, 'id'>): Promise<string> {
+    return (await this.guarded(addDoc(collection(db, 'announcements'), data))).id;
+  }
+
+  removeAnnouncement(id: string) {
+    return this.guarded(deleteDoc(doc(db, 'announcements', id)));
   }
 
   async listInvoices(): Promise<Invoice[]> {
