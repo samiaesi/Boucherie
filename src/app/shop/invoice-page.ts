@@ -1,9 +1,9 @@
 import { Component, ElementRef, OnInit, computed, inject, input, signal, viewChild } from '@angular/core';
 import { doc, getDoc } from 'firebase/firestore';
-import { formatNumber } from '../core/data';
+import { Settings, formatNumber } from '../core/data';
 import { db } from '../core/firebase';
 import { Invoice, InvoiceLine, vatPart } from '../core/invoice';
-import { lineHt } from '../core/pro-invoice';
+import { ProLine, amountInWords, computePro, lineHt } from '../core/pro-invoice';
 import { Shop } from '../core/shop';
 
 const LABELS = {
@@ -25,6 +25,28 @@ const LABELS = {
 
 const A4_WIDTH_PX = 794;
 
+/** Facture d'exemple, entièrement fictive : aucun numéro consommé, rien d'enregistré */
+function exampleInvoice(s: Settings): Invoice {
+  const lines: ProLine[] = [
+    { productId: '', label: 'Poulet entier', qty: 120, unit: 'kg', priceHt: 420, vatRate: 9 },
+    { productId: '', label: "Gigot d'agneau", qty: 40, unit: 'kg', priceHt: 2800, vatRate: 9 },
+    { productId: '', label: 'Viande hachée de bœuf', qty: 60, unit: 'kg', priceHt: 2400, vatRate: 9 },
+    { productId: '', label: 'Merguez maison', qty: 25, unit: 'kg', priceHt: 1700, vatRate: 9 },
+  ];
+  const totals = computePro(lines, 5, 'à terme', s.stampRate);
+  return {
+    id: 'exemple', number: 'FA-EXEMPLE', orderId: '', status: 'émise', date: '2026-11-04', lang: 'fr',
+    customer: { name: 'Hôtel Exemple SARL', tel: '' }, delivery: false, lines: [], subtotal: totals.totalHt,
+    deliveryFee: 0, total: totals.ttc, vatRate: 0,
+    seller: { name: s.name_fr, company: s.company, address: s.address_fr, phone: s.phone, nif: s.nif, nis: s.nis, rc: s.rc, ai: s.ai },
+    pro: {
+      ...totals, lines, discountRate: 5, payment: 'à terme', dueDate: '2026-12-04', paid: 0, stockDeducted: false,
+      amountWords: amountInWords(totals.ttc),
+      client: { name: 'Hôtel Exemple SARL', nif: '000000000000000', nis: '000000000000000', rc: '00/00-0000000', ai: '00000000000', address: 'Adresse du client', tel: '', contact: '' },
+    },
+  };
+}
+
 /** Page publique de la facture : l'identifiant du lien, impossible à deviner, en est la clé. */
 @Component({
   selector: 'app-invoice-page',
@@ -36,6 +58,7 @@ const A4_WIDTH_PX = 794;
       </div>
       @if (error()) { <p class="err">{{ error() }}</p> }
       <article #sheet class="sheet" [attr.dir]="inv.lang === 'ar' ? 'rtl' : 'ltr'">
+        @if (isExample()) { <p class="example">Exemple : facture fictive, sans valeur</p> }
         <header>
           <div class="brand">
             <img src="logo.svg" alt="">
@@ -144,6 +167,7 @@ const A4_WIDTH_PX = 794;
     small { display: block; color: #6b5f58; }
     .title { text-align: end; }
     .title h1 { margin: 0; font-size: 1.7rem; color: #d0102a; }
+    .example { margin: 0 0 14px; padding: 8px; background: #fdf1dc; color: #8a5a00; font-weight: 700; text-align: center; }
     .cancelled { margin: 14px 0 0; padding: 10px; background: #fde8ea; color: #a10c20; font-weight: 700; text-align: center; }
     .client { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; padding: 14px; background: #faf5ef; }
     .client b { display: block; }
@@ -189,8 +213,17 @@ export class InvoicePage implements OnInit {
       .filter(([, v]) => v).map(([k, v]) => `${k} : ${v}`).join(' · ');
   });
 
+  protected isExample() {
+    return this.id() === 'exemple';
+  }
+
   async ngOnInit() {
-    this.shop.load();
+    await this.shop.load();
+    if (this.isExample()) {
+      this.invoice.set(exampleInvoice(this.shop.settings()));
+      this.loaded.set(true);
+      return;
+    }
     try {
       const snap = await getDoc(doc(db, 'invoices', this.id()));
       if (snap.exists()) this.invoice.set({ ...snap.data(), id: snap.id } as Invoice);

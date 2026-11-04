@@ -20,16 +20,21 @@ const today = () => {
       <div class="chips">
         <button class="chip" [class.active]="tab() === 'new'" (click)="tab.set('new')">Nouvelle facture</button>
         <button class="chip" [class.active]="tab() === 'clients'" (click)="tab.set('clients')">Clients ({{ companies().length }})</button>
+        <a class="chip" href="/facture/exemple" target="_blank">Voir un exemple</a>
       </div>
     </div>
 
     @if (tab() === 'new') {
       @if (!companies().length) {
-        <div class="empty">Ajoutez d'abord un client dans l'onglet Clients.</div>
+        <div class="empty">
+          <p>Pour créer une facture, ajoutez d'abord l'entreprise à facturer.</p>
+          <button class="btn" (click)="tab.set('clients')">+ Ajouter un client</button>
+        </div>
       } @else {
         <form class="card-box wide" #f="ngForm" (ngSubmit)="issue(f)">
           <div class="grid2">
             <label>Client
+              <button type="button" class="link" (click)="newCompany()">+ Nouveau client</button>
               <select name="company" required [ngModel]="companyId()" (ngModelChange)="companyId.set($event)">
                 <option value="">Choisir…</option>
                 @for (c of companies(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
@@ -84,6 +89,7 @@ const today = () => {
           </div>
 
           @if (error()) { <div class="msg">{{ error() }}</div> }
+          @if (f.invalid) { <p class="todo">Pour émettre la facture : choisissez le client, puis un article ou une désignation sur chaque ligne.</p> }
           <div><button class="btn" type="submit" [disabled]="f.invalid || busy()">{{ busy() ? 'Création…' : 'Émettre la facture' }}</button></div>
         </form>
       }
@@ -111,12 +117,16 @@ const today = () => {
           <label>Adresse<input name="address" [(ngModel)]="company.address"></label>
           <label>Téléphone<input name="tel" type="tel" [(ngModel)]="company.tel"></label>
         </div>
-        <div><button class="btn" type="submit" [disabled]="cf.invalid">Enregistrer</button></div>
+        @if (companyError()) { <div class="msg">{{ companyError() }}</div> }
+        <div><button class="btn" type="submit" [disabled]="cf.invalid">Enregistrer le client</button></div>
       </form>
     }
   `,
   styles: `
     .wide { max-width: none; }
+    .empty p { margin-bottom: 12px; }
+    .todo { color: var(--orange); font-size: .88rem; font-weight: 600; }
+    .link { justify-self: end; margin-top: -20px; border: 0; background: none; color: var(--bordeaux); font-size: .8rem; text-decoration: underline; }
     .lines { display: grid; gap: 8px; }
     .line { display: grid; grid-template-columns: 2.4fr 90px 80px 110px 70px 110px auto; gap: 8px; align-items: center; }
     .head-line { font-size: .8rem; font-weight: 600; color: var(--muted); }
@@ -146,6 +156,7 @@ export class Pro implements OnInit {
   protected readonly lines = signal<ProLine[]>([blankLine(this.data.settings().vatRate)]);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  protected readonly companyError = signal('');
   protected readonly modes = PAYMENT_MODES;
   protected readonly num = formatNumber;
   protected readonly ht = lineHt;
@@ -228,13 +239,30 @@ export class Pro implements OnInit {
     this.company = rest;
   }
 
-  protected async saveCompany(form: NgForm) {
-    await this.data.saveCompany(this.editingId, this.company);
-    this.data.notify('Client enregistré');
+  protected newCompany() {
     this.editingId = null;
     this.company = blankCompany();
-    form.resetForm(blankCompany());
-    await this.reload();
+    this.tab.set('clients');
+  }
+
+  /** Après un nouveau client, retour à la facture avec ce client déjà choisi. */
+  protected async saveCompany(form: NgForm) {
+    this.companyError.set('');
+    const creating = !this.editingId;
+    try {
+      const id = await this.data.saveCompany(this.editingId, this.company);
+      this.data.notify('Client enregistré');
+      this.editingId = null;
+      this.company = blankCompany();
+      form.resetForm(blankCompany());
+      await this.reload();
+      if (creating) {
+        this.companyId.set(id);
+        this.tab.set('new');
+      }
+    } catch (e) {
+      this.companyError.set((e as Error).message);
+    }
   }
 
   protected async removeCompany(c: Company) {

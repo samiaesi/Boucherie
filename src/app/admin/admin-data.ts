@@ -267,8 +267,13 @@ export class AdminData {
     return snap.docs.map(d => ({ ...d.data(), id: d.id }) as Company).sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  saveCompany(id: string | null, data: Omit<Company, 'id'>) {
-    return this.guarded<unknown>(id ? setDoc(doc(db, 'companies', id), data) : addDoc(collection(db, 'companies'), data));
+  /** Crée ou met à jour un client et renvoie son identifiant. */
+  async saveCompany(id: string | null, data: Omit<Company, 'id'>): Promise<string> {
+    if (id) {
+      await this.guarded(setDoc(doc(db, 'companies', id), data));
+      return id;
+    }
+    return (await this.guarded(addDoc(collection(db, 'companies'), data))).id;
   }
 
   removeCompany(id: string) {
