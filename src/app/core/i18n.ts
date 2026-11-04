@@ -1,5 +1,6 @@
 import { Injectable, effect, signal } from '@angular/core';
 import { Lang, Product, formatNumber, formatWeight } from './data';
+import { DaySchedule, OrderingState, algeriaClock, scheduleLines } from './ordering';
 
 const FR = {
   brandSub: 'VIANDE HALAL', halal: 'Viande halal', langBtn: 'العربية',
@@ -68,7 +69,7 @@ const FR = {
   modeTitle: 'Comment recevoir votre commande ?', modePickup: 'Retrait à la boucherie', modePickupHint: 'Gratuit',
   modeDelivery: 'Livraison', address: 'Adresse de livraison', deliveryDate: 'Date de livraison', subtotal: 'Sous-total',
   delivery: 'Livraison', free: 'Gratuite', freeLeft: 'Plus que {x} pour la livraison gratuite', payDelivery: 'Paiement à la livraison.',
-  pickup: 'Commandez en ligne, récupérez à la boucherie', sendOrder: 'Envoyer ma commande', sending: 'Envoi en cours…', orderRef: 'Numéro de commande', quickAdd: 'Ajouter',
+  pickup: 'Commandez en ligne, récupérez à la boucherie', sendOrder: 'Envoyer ma commande', closedTitle: 'Commandes fermées pour le moment', closedPaused: 'Votre panier est gardé : revenez un peu plus tard.', closedBack: 'Reprise {d} à {t}.', closedToday: "aujourd'hui", closedTomorrow: 'demain', closedBtn: 'Commandes fermées', dayClosed: 'La boucherie est fermée ce jour-là : choisissez une autre date.', closedDay: 'Fermé', sending: 'Envoi en cours…', orderRef: 'Numéro de commande', quickAdd: 'Ajouter',
   telInvalid: 'Entrez un numéro valide : 05, 06 ou 07 suivi de 8 chiffres.',
   orderFail: "La commande n'a pas pu être envoyée. Vérifiez votre connexion et réessayez.",
   statCuts: 'coupes au choix', statCats: 'rayons', statMin: 'grammes minimum', stepsTitle: 'Commander, c’est simple',
@@ -147,7 +148,7 @@ const AR: Record<TKey, string> = {
   modeTitle: 'كيف تريد استلام طلبك؟', modePickup: 'الاستلام من الجزارة', modePickupHint: 'مجاني',
   modeDelivery: 'التوصيل', address: 'عنوان التوصيل', deliveryDate: 'تاريخ التوصيل', subtotal: 'المجموع الفرعي',
   delivery: 'التوصيل', free: 'مجاني', freeLeft: 'بقي {x} للتوصيل المجاني', payDelivery: 'الدفع عند التوصيل.',
-  pickup: 'اطلب عبر الموقع واستلم من الجزارة', sendOrder: 'أرسل طلبي', sending: 'جارٍ الإرسال…', orderRef: 'رقم الطلب', quickAdd: 'أضف',
+  pickup: 'اطلب عبر الموقع واستلم من الجزارة', sendOrder: 'أرسل طلبي', closedTitle: 'الطلبات مغلقة حاليا', closedPaused: 'سلتك محفوظة: عد بعد قليل.', closedBack: 'تستأنف الطلبات {d} على الساعة {t}.', closedToday: 'اليوم', closedTomorrow: 'غدا', closedBtn: 'الطلبات مغلقة', dayClosed: 'الجزارة مغلقة في هذا اليوم: اختر تاريخا آخر.', closedDay: 'مغلق', sending: 'جارٍ الإرسال…', orderRef: 'رقم الطلب', quickAdd: 'أضف',
   telInvalid: 'أدخل رقماً صحيحاً: 05 أو 06 أو 07 متبوعاً بـ 8 أرقام.',
   orderFail: 'تعذر إرسال الطلب. تحقق من اتصالك وحاول مرة أخرى.',
   statCuts: 'قطعة للاختيار', statCats: 'أقسام', statMin: 'غرام كحد أدنى', stepsTitle: 'الطلب سهل',
@@ -158,6 +159,11 @@ const AR: Record<TKey, string> = {
 };
 
 const DICT: Record<Lang, Record<TKey, string>> = { fr: FR, ar: AR };
+
+const DAY_NAMES: Record<Lang, string[]> = {
+  fr: ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+  ar: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
+};
 
 function startOfToday() {
   const d = new Date();
@@ -210,6 +216,28 @@ export class I18n {
     if (!d || isNaN(d.getTime()) || d < startOfToday()) return this.t('backSoon');
     const day = d.toLocaleDateString(this.lang() === 'ar' ? 'ar-DZ' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     return this.t('backOn').replace('{d}', day);
+  }
+
+  /** Horaires de la semaine pour le site, jours groupés */
+  hoursLines(schedule: DaySchedule[]) {
+    const name = (d: number) => DAY_NAMES[this.lang()][d];
+    return scheduleLines(schedule).map(l => ({
+      days: l.first === l.last ? name(l.first) : `${name(l.first)} – ${name(l.last)}`,
+      hours: l.open ? `${l.from} – ${l.to}` : this.t('closedDay'),
+    }));
+  }
+
+  /** Motif d'une fermeture et moment de la reprise */
+  closedMessage(s: OrderingState) {
+    if (!s.reopens) return [s.note, this.t('closedPaused')].filter(Boolean).join(' — ');
+    const today = algeriaClock(new Date()).date;
+    const tomorrow = new Date(`${today}T12:00:00Z`);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const { date, time } = s.reopens;
+    const day = date === today ? this.t('closedToday')
+      : date === tomorrow.toISOString().slice(0, 10) ? this.t('closedTomorrow')
+      : new Date(`${date}T12:00:00Z`).toLocaleDateString(this.lang() === 'ar' ? 'ar-DZ' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    return [s.note, this.t('closedBack').replace('{d}', day).replace('{t}', time)].filter(Boolean).join(' — ');
   }
 
   /** Prix affiché sur un produit : au kg, à la pièce ou sur commande. */

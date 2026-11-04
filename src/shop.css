@@ -386,6 +386,11 @@ app-shop-layout {
   .footer-grid > div:not(:first-child) a:hover { color: #fff; padding-inline-start: 6px; }
   .copy { border-top: 1px solid rgba(255, 255, 255, .1); padding: 18px 0; font-size: .85rem; text-align: center; }
 
+  .closed-bar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; background: #fbeaea; color: #8f1020; border-bottom: 1px solid #f2c6cc; }
+  .closed-bar svg { flex: none; width: 26px; height: 26px; }
+  .closed-bar b { display: block; }
+  .closed-bar p { margin: 0; font-size: .9rem; }
+  form .closed-bar { border: 1px solid #f2c6cc; border-radius: 12px; }
   .wa-float { position: fixed; bottom: 22px; inset-inline-end: 22px; z-index: 60; display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%; background: #25d366; box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .45); transition: transform .25s var(--ease); }
   .wa-float::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: #25d366; animation: ring 2.4s ease-out infinite; z-index: -1; }
   @keyframes ring { to { transform: scale(1.7); opacity: 0; } }

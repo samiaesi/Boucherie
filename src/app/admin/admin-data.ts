@@ -8,6 +8,7 @@ import { Announcement } from '../core/announcements';
 import { db, firebaseConfig } from '../core/firebase';
 import { Invoice, buildInvoice, invoiceNumber } from '../core/invoice';
 import { Company, PaymentMode, ProLine, amountInWords, computePro } from '../core/pro-invoice';
+import { DEFAULT_ORDERING, OrderingRules } from '../core/ordering';
 import { Role } from './roles';
 import {
   Category, DEFAULT_CATEGORIES, DEFAULT_FRIDGE, DEFAULT_SETTINGS, FridgeItem, Offer, Order, OrderItem, OrderStatus, Product, Settings,
@@ -36,6 +37,7 @@ export class AdminData {
   /** Produits et paramètres en direct, pour les alertes */
   readonly products = signal<Product[]>([]);
   readonly settings = signal<Settings>(DEFAULT_SETTINGS);
+  readonly ordering = signal<OrderingRules>(DEFAULT_ORDERING);
   readonly fridge = signal<FridgeItem[]>(DEFAULT_FRIDGE);
   /** Dernière erreur Firebase, effacée à la prochaine écriture réussie */
   readonly lastError = signal('');
@@ -105,6 +107,11 @@ export class AdminData {
           this.markLoaded('settings');
         },
         this.watchFailed('paramètres'),
+      ),
+      onSnapshot(
+        doc(db, 'settings', 'ordering'),
+        snap => this.ordering.set({ ...DEFAULT_ORDERING, ...(snap.data() as Partial<OrderingRules> | undefined) }),
+        this.watchFailed('horaires'),
       ),
       onSnapshot(
         doc(db, 'settings', 'fridge'),
@@ -336,6 +343,10 @@ export class AdminData {
 
   saveFridge(list: FridgeItem[]) {
     return this.guarded(setDoc(doc(db, 'settings', 'fridge'), { list }));
+  }
+
+  saveOrdering(data: Partial<OrderingRules>) {
+    return this.guarded(setDoc(doc(db, 'settings', 'ordering'), data, { merge: true }));
   }
 
   saveSettings(s: Settings) {

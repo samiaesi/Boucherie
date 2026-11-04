@@ -47,6 +47,8 @@ export const PAGES: Page[] = [
     icon: 'M4 8h16v4H4zM6 12v9h12v-9M12 8v13M12 8S10 3 7.5 4 9 8 12 8zM12 8s2-5 4.5-4S15 8 12 8z' },
   { path: 'rayons', label: 'Rayons', group: 'Stock et catalogue', roles: ADMINS,
     icon: 'M4 5h7v6H4zM13 5h7v6h-7zM4 13h7v6H4zM13 13h7v6h-7z' },
+  { path: 'horaires', label: 'Horaires et commandes', group: 'Administration', roles: ADMINS,
+    icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2' },
   { path: 'parametres', label: 'Paramètres', group: 'Administration', roles: ADMINS,
     icon: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4' },
   { path: 'equipe', label: 'Équipe', group: 'Administration', roles: ADMINS,

@@ -30,7 +30,7 @@ export class Notifications implements OnDestroy {
   readonly items = computed(() => {
     const role = this.auth.role();
     return buildNotices({
-      orders: this.data.orders(), products: this.data.products(), fridge: this.data.fridge(), settings: this.data.settings(),
+      orders: this.data.orders(), products: this.data.products(), fridge: this.data.fridge(), settings: this.data.settings(), ordersPaused: this.data.ordering().ordersPaused,
       now: this.now(), online: this.online(), error: this.data.lastError(),
     }).filter(n => role === 'admin' || n.kind === 'order' || (n.kind === 'stock' && role === 'manager'));
   });

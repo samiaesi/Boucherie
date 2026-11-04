@@ -4,7 +4,9 @@ import { RouterLink } from '@angular/router';
 import { Cart, CartLine, lineTotal } from '../core/cart';
 import { OrderItem, deliveryCost, orderRef } from '../core/data';
 import { I18n, TKey } from '../core/i18n';
+import { dayIsOpen } from '../core/ordering';
 import { Shop } from '../core/shop';
+import { ClosedNotice } from './closed-notice';
 
 /** Longueur maximale du champ details acceptée par firestore.rules */
 const MAX_DETAILS = 2000;
@@ -13,7 +15,7 @@ const PHONE = /^0[567]\d{8}$/;
 
 @Component({
   selector: 'app-checkout',
-  imports: [FormsModule, RouterLink],
+  imports: [ClosedNotice, FormsModule, RouterLink],
   template: `
     <section class="page-head"><div class="wrap"><h1>{{ i18n.t('checkoutTitle') }}</h1></div></section>
     <section class="shop">
@@ -61,8 +63,9 @@ const PHONE = /^0[567]\d{8}$/;
               <label class="optin"><input type="checkbox" name="marketing" [(ngModel)]="form.marketing"> <span>{{ i18n.t('marketing') }}</span></label>
               <label>{{ i18n.t('notes') }}<textarea name="notes" [(ngModel)]="form.notes"></textarea></label>
               @if (error()) { <div class="form-error" role="alert">{{ error() }}</div> }
-              <button class="btn btn-red block" type="submit" [disabled]="f.invalid || sending()">
-                {{ sending() ? i18n.t('sending') : i18n.t('sendOrder') }}
+              <app-closed-notice />
+              <button class="btn btn-red block" type="submit" [disabled]="f.invalid || sending() || !shop.ordering().open">
+                {{ !shop.ordering().open ? i18n.t('closedBtn') : sending() ? i18n.t('sending') : i18n.t('sendOrder') }}
               </button>
               <p class="note">{{ i18n.t(mode() === 'livraison' ? 'payDelivery' : 'fNote') }}</p>
             </form>
@@ -148,6 +151,12 @@ export class Checkout {
     const tel = f.tel.replace(/[\s.-]/g, '');
     if (!PHONE.test(tel)) {
       this.error.set(t('telInvalid'));
+      return;
+    }
+    this.shop.refreshClock();
+    if (!this.shop.ordering().open) return;
+    if (!dayIsOpen(this.shop.orderingRules(), f.date)) {
+      this.error.set(t('dayClosed'));
       return;
     }
     const lines = this.cart.lines().map(l =>

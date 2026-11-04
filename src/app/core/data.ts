@@ -80,12 +80,6 @@ export interface Offer {
   items_ar: string[];
 }
 
-export interface Hours {
-  fr: string;
-  ar: string;
-  h: string;
-}
-
 export interface Settings {
   /** Nom commercial */
   name_fr: string;
@@ -105,7 +99,6 @@ export interface Settings {
   address_ar: string;
   phone: string;
   whatsapp: string;
-  hours: Hours[];
   /** Photos du site (data URL JPEG), choisies depuis l'admin */
   heroImage?: string;
   aboutImage?: string;
@@ -422,10 +415,6 @@ export const DEFAULT_SETTINGS: Settings = {
   address_ar: 'عين البرد، سيدي بلعباس — الجزائر',
   phone: '0X XX XX XX XX',
   whatsapp: '213000000000',
-  hours: [
-    { fr: 'Samedi – Jeudi', ar: 'السبت – الخميس', h: '7h00 – 20h00' },
-    { fr: 'Vendredi', ar: 'الجمعة', h: '7h00 – 12h00' },
-  ],
   deliveryEnabled: true,
   deliveryZones: ['Aïn El Berd', 'Sidi Bel Abbès'],
   deliveryFee: 200,

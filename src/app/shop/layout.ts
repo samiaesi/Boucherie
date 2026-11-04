@@ -4,6 +4,7 @@ import { Announcement, KIND_LABELS } from '../core/announcements';
 import { Cart, lineTotal } from '../core/cart';
 import { I18n } from '../core/i18n';
 import { Shop } from '../core/shop';
+import { ClosedNotice } from './closed-notice';
 
 const SEEN_KEY = 'newsSeen';
 
@@ -17,7 +18,7 @@ function savedSeen(): Set<string> {
 
 @Component({
   selector: 'app-shop-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [ClosedNotice, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <div class="progress" #progress></div>
     <header #header>
@@ -61,6 +62,7 @@ function savedSeen(): Set<string> {
       </div>
     </header>
 
+    <app-closed-notice />
     <main><router-outlet /></main>
 
     <footer>

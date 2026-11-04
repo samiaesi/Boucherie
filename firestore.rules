@@ -12,6 +12,11 @@ service cloud.firestore {
     }
     function isAdmin() { return isMember() && role() == 'admin'; }
     function isManager() { return isMember() && role() in ['admin', 'manager']; }
+    // Fermeture manuelle des commandes, depuis l'admin
+    function ordersOpen() {
+      let ordering = /databases/$(database)/documents/settings/ordering;
+      return !exists(ordering) || get(ordering).data.get('ordersPaused', false) != true;
+    }
 
     match /products/{id} {
       allow read: if true;
@@ -42,7 +47,8 @@ service cloud.firestore {
         && request.resource.data.typeLabel is string && request.resource.data.typeLabel.size() <= 100
         && request.resource.data.details is string && request.resource.data.details.size() <= 2000
         && request.resource.data.status == 'nouveau'
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && ordersOpen();
       allow read, update: if isMember();
       allow delete: if isAdmin();
     }

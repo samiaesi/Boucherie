@@ -21,6 +21,8 @@ export interface NoticeInput {
   products: Product[];
   fridge: FridgeItem[];
   settings: Settings;
+  /** Fermeture manuelle des commandes en cours */
+  ordersPaused?: boolean;
   now: Date;
   online: boolean;
   error: string;
@@ -120,13 +122,14 @@ function fridgeNotices(fridge: FridgeItem[]): Notice[] {
   });
 }
 
-function systemNotices({ products, fridge, settings, online, error }: NoticeInput): Notice[] {
+function systemNotices({ products, fridge, settings, ordersPaused, online, error }: NoticeInput): Notice[] {
   const list: Notice[] = [];
   const add = (id: string, level: NoticeLevel, title: string, text: string, link: string) =>
     list.push({ id: `system-${id}`, kind: 'system', level, title, text, link });
 
   if (!online) add('offline', 'danger', 'Pas de connexion internet', 'Les nouvelles commandes ne peuvent pas arriver.', '/admin/commandes');
   if (error) add('error', 'danger', 'Erreur Firebase', error, '/admin/commandes');
+  if (ordersPaused) add('paused', 'danger', 'Commandes fermées', "Le site refuse les commandes jusqu'à la réouverture.", '/admin/horaires');
   if (settings.whatsapp === DEFAULT_SETTINGS.whatsapp) {
     add('whatsapp', 'danger', 'Numéro WhatsApp manquant', 'Le bouton WhatsApp du site et le rapport ne marcheront pas.', '/admin/parametres');
   }

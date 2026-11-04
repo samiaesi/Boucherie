@@ -101,7 +101,8 @@
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
   .preview { display: flex; align-items: center; gap: 12px; }
   .card-box { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; max-width: 760px; }
-  .hours-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; }
+  .hours-link { color: var(--muted); font-size: .9rem; }
+  .hours-link a { color: var(--red); font-weight: 600; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: .9rem; z-index: 100; }
 
   @media (max-width: 900px) {
@@ -120,7 +121,7 @@
 
   @media (max-width: 700px) {
     .order { grid-template-columns: 1fr; }
-    .grid2, .hours-row { grid-template-columns: 1fr; }
+    .grid2 { grid-template-columns: 1fr; }
     .item { flex-wrap: wrap; }
   }
 }

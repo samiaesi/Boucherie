@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { DEFAULT_SETTINGS, Settings as ShopSettings } from '../core/data';
 import { AdminData } from './admin-data';
 import { resizeImage } from './image';
@@ -8,7 +9,7 @@ type PhotoKey = 'heroImage' | 'aboutImage';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   template: `
     <div class="head"><h2>Paramètres de la boutique</h2></div>
     @if (loaded()) {
@@ -25,20 +26,7 @@ type PhotoKey = 'heroImage' | 'aboutImage';
             <input name="whatsapp" placeholder="213555123456" pattern="[0-9]{8,15}" [(ngModel)]="s.whatsapp">
           </label>
         </div>
-        <div>
-          <label>Horaires</label>
-          <div style="display:grid;gap:8px;margin-top:6px">
-            @for (h of s.hours; track $index; let i = $index) {
-              <div class="hours-row">
-                <input [name]="'fr' + i" placeholder="Jours (français)" [(ngModel)]="h.fr">
-                <input [name]="'ar' + i" dir="rtl" placeholder="الأيام" [(ngModel)]="h.ar">
-                <input [name]="'h' + i" placeholder="7h00 – 20h00" [(ngModel)]="h.h">
-                <button type="button" class="btn danger small" (click)="s.hours.splice(i, 1)">✕</button>
-              </div>
-            }
-          </div>
-          <button type="button" class="btn light small" style="margin-top:8px" (click)="s.hours.push({ fr: '', ar: '', h: '' })">+ Ajouter une ligne</button>
-        </div>
+        <p class="hours-link">Les horaires se règlent dans <a routerLink="/admin/horaires">Horaires et commandes</a>.</p>
         <div>
           <label>Livraison</label>
           <label class="check" style="margin:8px 0"><input type="checkbox" name="deliveryEnabled" [(ngModel)]="s.deliveryEnabled"> Proposer la livraison aux clients</label>
@@ -133,7 +121,6 @@ export class Settings implements OnInit {
         .filter(([, v]) => v !== undefined)
         .map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]),
     ) as unknown as ShopSettings;
-    trimmed.hours = this.s.hours.filter(h => h.fr || h.h);
     trimmed.vatRate = Number(this.s.vatRate) || 0;
     trimmed.stampRate = Number(this.s.stampRate) || 0;
     trimmed.deliveryZones = this.zones.split('\n').map(z => z.trim()).filter(Boolean);

@@ -1,8 +1,9 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { collection, doc, getDoc, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { Announcement, liveAnnouncements } from './announcements';
 import { db } from './firebase';
 import { TKey } from './i18n';
+import { DEFAULT_ORDERING, OrderingRules, orderingState } from './ordering';
 import { localDay } from './stats';
 import {
   Category, DEFAULT_CATEGORIES, DEFAULT_OFFERS, DEFAULT_PRODUCTS, DEFAULT_SETTINGS, FridgeItem,
@@ -10,6 +11,7 @@ import {
 } from './data';
 
 const ORDER_TIMEOUT_MS = 15000;
+const CLOCK_TICK_MS = 30000;
 
 function savedLastOrder() {
   try {
@@ -39,7 +41,43 @@ export class Shop {
   /** Annonces en ligne aujourd'hui */
   readonly live = computed(() => liveAnnouncements(this.announcements(), localDay(new Date())));
 
+  readonly orderingRules = signal<OrderingRules>(DEFAULT_ORDERING);
+  /** Écart avec l'heure du serveur : l'horloge d'un téléphone peut être fausse */
+  private clockOffset = 0;
+  private readonly now = signal(new Date());
+  /** Commandes ouvertes ou non, à jour sur les pages déjà ouvertes */
+  readonly ordering = computed(() => orderingState(this.orderingRules(), this.now()));
+  private watching = false;
+
+  refreshClock() {
+    this.now.set(new Date(Date.now() + this.clockOffset));
+  }
+
+  private async syncClock() {
+    try {
+      const res = await fetch('/', { method: 'HEAD', cache: 'no-store' });
+      const server = Date.parse(res.headers.get('date') ?? '');
+      if (!isNaN(server)) this.clockOffset = server - Date.now();
+    } catch (e) {
+      console.warn('Heure du serveur indisponible', e);
+    }
+    this.refreshClock();
+  }
+
+  private watchOrdering() {
+    if (this.watching) return;
+    this.watching = true;
+    this.syncClock();
+    setInterval(() => this.refreshClock(), CLOCK_TICK_MS);
+    onSnapshot(
+      doc(db, 'settings', 'ordering'),
+      snap => this.orderingRules.set({ ...DEFAULT_ORDERING, ...(snap.data() as Partial<OrderingRules> | undefined) }),
+      e => console.warn('Horaires indisponibles', e),
+    );
+  }
+
   async load() {
+    this.watchOrdering();
     this.loadAnnouncements();
     try {
       const [ps, os, ss, cs, fs] = await Promise.all([

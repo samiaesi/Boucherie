@@ -54,6 +54,7 @@ export const routes: Routes = [
       page('rayons', () => import('./admin/categories').then(m => m.Categories)),
       page('produits', () => import('./admin/products').then(m => m.Products)),
       page('formules', () => import('./admin/offers').then(m => m.Offers)),
+      page('horaires', () => import('./admin/hours').then(m => m.Hours)),
       page('parametres', () => import('./admin/settings').then(m => m.Settings)),
     ],
   },

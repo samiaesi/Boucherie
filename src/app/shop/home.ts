@@ -228,8 +228,8 @@ const SLIDES: { a: TKey; b: TKey; t: TKey; link: { cat?: string } }[] = [
               <div class="grow">
                 <h3>{{ i18n.t('hoursT') }}</h3>
                 <table class="hours">
-                  @for (h of shop.settings().hours; track $index) {
-                    <tr><td>{{ i18n.lang() === 'ar' ? (h.ar || h.fr) : h.fr }}</td><td>{{ h.h }}</td></tr>
+                  @for (h of hours(); track h.days) {
+                    <tr><td>{{ h.days }}</td><td>{{ h.hours }}</td></tr>
                   }
                 </table>
               </div>
@@ -243,6 +243,7 @@ const SLIDES: { a: TKey; b: TKey; t: TKey; link: { cat?: string } }[] = [
 })
 export class Home implements OnInit, OnDestroy {
   protected readonly i18n = inject(I18n);
+  protected readonly hours = computed(() => this.i18n.hoursLines(this.shop.orderingRules().schedule));
   protected readonly shop = inject(Shop);
   private readonly cart = inject(Cart);
   private readonly sanitizer = inject(DomSanitizer);
