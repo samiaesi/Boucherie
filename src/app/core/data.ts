@@ -395,6 +395,23 @@ export const applyPools = (products: Product[], fridge: FridgeItem[]) => product
     : p;
 });
 
+/** Ce qui manque pour servir ces articles. Les coupes d'une même réserve s'additionnent. */
+export function stockShortages(items: OrderItem[], products: Product[], fridge: FridgeItem[]) {
+  const needs = new Map<string, { name: string; unit: string; have: number; need: number }>();
+  for (const item of items) {
+    const product = products.find(p => p.id === item.productId);
+    if (!product) continue;
+    const pool = poolOf(product, fridge);
+    if (!pool && !product.trackStock) continue;
+    const key = pool ? `pool-${pool.id}` : product.id;
+    const line = needs.get(key) ?? (pool
+      ? { name: pool.name, unit: 'kg', have: pool.kg, need: 0 }
+      : { name: product.name_fr, unit: stockUnit(product), have: product.stock ?? 0, need: 0 });
+    needs.set(key, { ...line, need: roundStock(line.need + itemQty(item)) });
+  }
+  return [...needs.values()].filter(l => l.need > l.have);
+}
+
 /** Produits qui gardent leur propre stock */
 export const ownStock = (products: Product[], fridge: FridgeItem[]) => products.filter(p => !poolOf(p, fridge));
 

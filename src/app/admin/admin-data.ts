@@ -13,10 +13,13 @@ import { DEFAULT_ORDERING, OrderingRules } from '../core/ordering';
 import { Role } from './roles';
 import {
   Category, DEFAULT_CATEGORIES, DEFAULT_FRIDGE, DEFAULT_SETTINGS, FridgeItem, Offer, Order, OrderItem, OrderStatus, Product, Settings,
-  byOrder, itemQty, orderRef, poolOf, readFridge, roundStock,
+  byOrder, itemQty, orderRef, poolOf, readFridge, roundStock, stockShortages,
 } from '../core/data';
 
 type Col = 'products' | 'offers' | 'orders';
+
+/** Refus normal, à expliquer à l'équipe : ce n'est pas une panne de Firebase */
+class StockError extends Error {}
 
 /** Lignes d'une facture pro, sous la forme attendue par le stock */
 const proItems = (lines: ProLine[]): OrderItem[] => lines.filter(l => l.productId).map(l => (l.unit === 'kg'
@@ -59,6 +62,10 @@ export class AdminData {
       this.lastError.set('');
       return result;
     } catch (e) {
+      if (e instanceof StockError) {
+        this.notify(e.message, 10000);
+        throw e;
+      }
       const text = `Échec de l'enregistrement : ${e instanceof Error ? e.message : e}`;
       this.lastError.set(text);
       this.notify(text, 8000);
@@ -207,6 +214,11 @@ export class AdminData {
 
   /** Retire (sign -1) ou remet (sign +1) des articles en stock, dans la transaction en cours. */
   private moveStock(tx: Transaction, items: OrderItem[], sign: number, products: Product[], fridge: FridgeItem[]) {
+    const short = sign < 0 ? stockShortages(items, products, fridge) : [];
+    if (short.length) {
+      const detail = short.map(l => `${l.name} : il reste ${roundStock(l.have)} ${l.unit}, il en faut ${l.need} ${l.unit}`).join(' · ');
+      throw new StockError(`Stock insuffisant. ${detail}. Réduisez la commande ou enregistrez un arrivage.`);
+    }
     const pools = new Map<string, number>();
     for (const item of items) {
       const product = products.find(p => p.id === item.productId);

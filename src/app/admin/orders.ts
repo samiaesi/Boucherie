@@ -44,11 +44,11 @@ type Filter = 'actives' | 'toutes' | OrderStatus;
             }
           </div>
           <div class="actions">
-            <select [value]="o.status" (change)="setStatus(o, $any($event.target).value)">
+            <select [value]="o.status" (change)="setStatus(o, $any($event.target).value, $any($event.target))">
               @for (s of statuses; track s) { <option [value]="s" [selected]="s === o.status">{{ s }}</option> }
             </select>
             @if (next(o); as n) {
-              <button class="btn small" [class.wa]="n.whatsapp" (click)="n.whatsapp ? notifyClient(o, n.status) : setStatus(o, n.status)">{{ n.label }}</button>
+              <button class="btn small" [class.wa]="n.whatsapp" (click)="n.whatsapp ? notifyClient(o, n.status) : setStatus(o, n.status, $any($event.target).closest('article').querySelector('select'))">{{ n.label }}</button>
             }
             @if (o.invoiceId) { <a class="btn light small" target="_blank" [href]="'/facture/' + o.invoiceId">Voir la facture</a> }
             @if (o.items?.length) { <a class="btn light small" routerLink="/admin/etiquettes" [queryParams]="{ order: o.id }">Étiquettes</a> }
@@ -158,9 +158,14 @@ export class Orders implements OnInit {
     return d.startsWith('0') ? '213' + d.slice(1) : d;
   }
 
-  protected async setStatus(o: Order, status: OrderStatus) {
-    await this.data.changeStatus(o, status);
-    this.data.notify('Statut mis à jour');
+  protected async setStatus(o: Order, status: OrderStatus, select: HTMLSelectElement) {
+    try {
+      await this.data.changeStatus(o, status);
+      this.data.notify('Statut mis à jour');
+    } catch {
+      // Le message d'erreur est déjà affiché : la liste revient au vrai statut
+      select.value = o.status;
+    }
   }
 
   protected async remove(id: string) {
