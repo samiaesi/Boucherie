@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Announcement, KIND_LABELS } from '../core/announcements';
 import { Cart, lineTotal } from '../core/cart';
 import { I18n } from '../core/i18n';
+import { Logo } from '../core/logo';
 import { Shop } from '../core/shop';
 import { ClosedNotice } from './closed-notice';
 
@@ -18,13 +19,13 @@ function savedSeen(): Set<string> {
 
 @Component({
   selector: 'app-shop-layout',
-  imports: [ClosedNotice, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [ClosedNotice, Logo, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <div class="progress" #progress></div>
     <header #header>
       <div class="wrap nav">
         <a routerLink="/" class="logo">
-          <img src="logo.svg" alt="Logo">
+          <app-logo />
           <span><b>{{ i18n.pick(shop.settings(), 'name') }}</b><small>{{ i18n.t('brandSub') }}</small></span>
         </a>
         <nav class="menu" [class.open]="menuOpen()" (click)="menuOpen.set(false)">
@@ -69,7 +70,7 @@ function savedSeen(): Set<string> {
       <div class="wrap footer-grid">
         <div>
           <a routerLink="/" class="logo light">
-            <img src="logo.svg" alt="">
+            <app-logo />
             <span><b>{{ i18n.pick(shop.settings(), 'name') }}</b><small>{{ i18n.t('brandSub') }}</small></span>
           </a>
           <p>{{ i18n.t('footerText') }}</p>

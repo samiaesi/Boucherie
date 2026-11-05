@@ -43,9 +43,8 @@ app-shop-layout {
   .nav { display: flex; align-items: center; justify-content: space-between; height: 80px; gap: 16px; transition: height .3s var(--ease); }
   header.small .nav { height: 64px; }
   .logo { display: flex; align-items: center; gap: 12px; }
-  .logo img { width: 52px; height: 52px; transition: transform .5s var(--ease); }
-  .logo:hover img { transform: rotate(-12deg) scale(1.08); }
-  header.small .logo img { width: 42px; height: 42px; }
+  .logo app-logo { width: 64px; transition: width .3s; }
+  header.small .logo app-logo { width: 52px; }
   .logo b { font-family: var(--font-title); font-weight: 800; font-size: 1.2rem; display: block; line-height: 1.1; }
   .logo small { font-size: .72rem; color: var(--red); font-weight: 700; }
   .logo.light b { color: #fff; }
@@ -450,7 +449,7 @@ app-shop-layout {
     .news-btn, .burger { width: 38px; height: 38px; }
     .cart-btn { padding: 9px 12px; }
     .news-panel { position: fixed; top: 76px; inset-inline: 12px; width: auto; }
-    .logo img, header.small .logo img { width: 42px; height: 42px; }
+    .logo app-logo, header.small .logo app-logo { width: 46px; }
     .why, .filters { grid-template-columns: 1fr; }
     .rayon-select { font-weight: 700; }
     .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

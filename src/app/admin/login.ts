@@ -1,3 +1,4 @@
+import { Logo } from '../core/logo';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -5,11 +6,11 @@ import { Auth } from './auth';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [FormsModule, Logo],
   template: `
     <section class="adm login">
       <form class="login-card" (ngSubmit)="submit()">
-        <img src="logo.svg" alt="">
+        <app-logo />
         <h1>Espace administration</h1>
         <input type="email" name="email" placeholder="Email" required autocomplete="username" [(ngModel)]="email">
         <input type="password" name="password" placeholder="Mot de passe" required autocomplete="current-password" [(ngModel)]="password">

@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Logo } from '../core/logo';
 import { AdminData } from './admin-data';
 import { Auth } from './auth';
 import { Bell } from './bell';
@@ -8,12 +9,12 @@ import { ROLE_LABELS, canOpen, menuFor } from './roles';
 
 @Component({
   selector: 'app-admin-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Bell],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Bell, Logo],
   template: `
     <div class="adm shell">
       <div class="side-scrim" [class.show]="menuOpen()" (click)="menuOpen.set(false)"></div>
       <aside class="side" [class.open]="menuOpen()">
-        <div class="brand"><img src="logo.svg" alt=""> <span>Boucherie Hallem</span></div>
+        <div class="brand"><app-logo /> <span>Boucherie Hallem</span></div>
         <nav aria-label="Menu" (click)="menuOpen.set(false)">
           @for (g of menu(); track g.name) {
             <p class="group">{{ g.name }}</p>

@@ -403,7 +403,7 @@ export const animals = (f: FridgeItem, kg = f.kg) => (f.kgEach ? roundStock(kg /
 
 export const DEFAULT_SETTINGS: Settings = {
   name_fr: 'Boucherie Hallem',
-  name_ar: 'جزارة حلام',
+  name_ar: 'جزارة حلّام',
   company: 'SARL Deligne',
   nif: '',
   nis: '',

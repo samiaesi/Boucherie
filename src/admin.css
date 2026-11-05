@@ -25,14 +25,14 @@
   /* Connexion */
   &.login { display: grid; place-items: center; padding: 20px; background: linear-gradient(135deg, #3a0e15, var(--bordeaux)); }
   .login-card { background: #fff; border-radius: 18px; padding: 34px; width: 100%; max-width: 380px; display: grid; gap: 14px; text-align: center; }
-  .login-card img { width: 80px; margin: 0 auto; }
+  .login-card app-logo { width: 88px; margin: 0 auto; }
   .login-card h1 { font-family: Inter, sans-serif; font-size: 1.3rem; }
 
   /* Mise en page : menu latéral + contenu */
   &.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); }
   .side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; background: #1d1613; color: #d9cec6; z-index: 30; }
   .side .brand { display: flex; align-items: center; gap: 10px; padding: 16px; font-weight: 700; color: #fff; }
-  .side .brand img { width: 38px; }
+  .side .brand app-logo { width: 40px; }
   .side nav { flex: 1; overflow-y: auto; padding: 0 10px 12px; scrollbar-width: thin; scrollbar-color: #4a3b35 transparent; }
   .side .group { margin: 16px 8px 6px; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8d8078; }
   .side nav a { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 10px; font-size: .92rem; font-weight: 500; transition: background .15s, color .15s; }

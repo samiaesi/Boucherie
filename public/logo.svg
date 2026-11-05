@@ -1,27 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <defs>
-    <path id="arcTop" d="M30,100 a70,70 0 0,1 140,0"/>
-    <path id="arcBot" d="M24,100 a76,76 0 0,0 152,0"/>
-  </defs>
-  <circle cx="100" cy="100" r="96" fill="#c41e25"/>
-  <circle cx="100" cy="100" r="86" fill="none" stroke="#ffffff" stroke-width="2"/>
-  
-  <text font-family="Georgia, serif" font-size="15" font-weight="700" fill="#ffffff" letter-spacing="3">
-    <textPath href="#arcTop" startOffset="50%" text-anchor="middle">BOUCHERIE</textPath>
-  </text>
-  <text font-family="Georgia, serif" font-size="16" font-weight="700" fill="#ffffff" letter-spacing="4">
-    <textPath href="#arcBot" startOffset="50%" text-anchor="middle">HALLEM</textPath>
-  </text>
-  <!-- Tête de bélier stylisée -->
-  <g transform="translate(20 8) scale(.8)">
-  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round">
-    <path d="M86,78 c-10,-14 -34,-12 -36,6 c-2,16 18,22 24,10 c4,-8 -4,-14 -10,-10"/>
-    <path d="M114,78 c10,-14 34,-12 36,6 c2,16 -18,22 -24,10 c-4,-8 4,-14 10,-10"/>
+  <title>Boucherie Hallem</title>
+  <circle cx="100" cy="100" r="98" fill="#d0102a"/>
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#fff" stroke-width="1.5"/>
+  <circle cx="100" cy="100" r="64" fill="none" stroke="#fff" stroke-width="1.5"/>
+  <g transform="translate(38 40) scale(.62)" fill="#fff">
+    <path d="M78 116C58 104 40 72 52 40 54 66 66 90 86 104Z"/>
+    <path d="M74 122C50 118 28 94 28 62 38 88 56 104 80 112Z"/>
+    <path d="M72 128C52 134 30 124 20 100 36 114 54 120 74 118Z"/>
+    <path d="M108 144L106 166h9M124 142L126 166h9" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M130 62C130 50 140 46 150 50L166 57 152 63C151 74 152 84 155 94 160 114 150 134 126 142 106 148 86 142 76 126 74 120 76 114 80 110 84 104 90 100 98 98 116 92 126 78 130 62Z"/>
+    <path d="M132 52C128 42 134 36 138 42 138 32 148 32 148 42 152 36 160 40 154 50 148 46 140 47 132 52Z"/>
+    <path d="M151 66C156 72 153 80 148 76Z"/>
+    <path d="M98 118C110 106 130 108 138 118 128 132 110 134 98 118ZM110 118C116 114 124 114 130 118" fill="none" stroke="#d0102a" stroke-width="3.5" stroke-linecap="round"/>
   </g>
-  <path d="M86,76 q14,-8 28,0 l4,26 q-2,22 -18,30 q-16,-8 -18,-30 z" fill="#ffffff"/>
-  <circle cx="93" cy="96" r="3" fill="#c41e25"/>
-  <circle cx="107" cy="96" r="3" fill="#c41e25"/>
-  <path d="M95,121 q5,4 10,0" stroke="#c41e25" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <g fill="#fff" font-family="Georgia, 'Times New Roman', serif" text-anchor="middle">
+    <g font-size="15">
+      <text x="100" y="30" transform="rotate(-38 100 100)">B</text>
+      <text x="100" y="30" transform="rotate(-28.5 100 100)">O</text>
+      <text x="100" y="30" transform="rotate(-19 100 100)">U</text>
+      <text x="100" y="30" transform="rotate(-9.5 100 100)">C</text>
+      <text x="100" y="30">H</text>
+      <text x="100" y="30" transform="rotate(9.5 100 100)">E</text>
+      <text x="100" y="30" transform="rotate(19 100 100)">R</text>
+      <text x="100" y="30" transform="rotate(28.5 100 100)">I</text>
+      <text x="100" y="30" transform="rotate(38 100 100)">E</text>
+    </g>
+    <g font-size="17" font-weight="700">
+      <text x="100" y="183" transform="rotate(30 100 100)">H</text>
+      <text x="100" y="183" transform="rotate(18 100 100)">A</text>
+      <text x="100" y="183" transform="rotate(6 100 100)">L</text>
+      <text x="100" y="183" transform="rotate(-6 100 100)">L</text>
+      <text x="100" y="183" transform="rotate(-18 100 100)">E</text>
+      <text x="100" y="183" transform="rotate(-30 100 100)">M</text>
+    </g>
   </g>
-  <text x="100" y="152" text-anchor="middle" font-family="Tahoma, Arial, sans-serif" font-size="17" font-weight="700" fill="#ffffff">حلال</text>
+  <circle cx="23" cy="104" r="3" fill="#fff"/>
+  <circle cx="177" cy="104" r="3" fill="#fff"/>
 </svg>
