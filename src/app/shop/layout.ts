@@ -40,7 +40,7 @@ function savedSeen(): Set<string> {
           <button class="lang" (click)="i18n.toggle()">{{ i18n.t('langBtn') }}</button>
           <div class="news-wrap">
             <button class="news-btn" [class.ring]="unseen().length" (click)="toggleNews()" [attr.aria-label]="i18n.t('newsTitle')">
-              🔔 @if (unseen().length) { <b>{{ unseen().length }}</b> }
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10a6 6 0 1 1 12 0c0 5 2 6 2 7H4c0-1 2-2 2-7zM10 20a2 2 0 0 0 4 0" /></svg>@if (unseen().length) { <b>{{ unseen().length }}</b> }
             </button>
             @if (newsOpen()) {
               <div class="news-panel">
@@ -55,11 +55,11 @@ function savedSeen(): Set<string> {
             }
           </div>
           <button class="cart-btn" (click)="cart.open.set(true)" [attr.aria-label]="i18n.t('cart')">
-            @for (n of [cart.bump()]; track n) { <span class="cart-ico">🛒</span> }
+            @for (n of [cart.bump()]; track n) { <span class="cart-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5zM9 8V7a3 3 0 0 1 6 0v1" /></svg></span> }
             <span class="hide-sm">{{ i18n.t('cart') }}</span>
             @if (cart.count()) { <b>{{ cart.count() }}</b> }
           </button>
-          <button class="burger" aria-label="Menu" (click)="menuOpen.set(!menuOpen())">☰</button>
+          <button class="burger" aria-label="Menu" (click)="menuOpen.set(!menuOpen())"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
         </div>
       </div>
     </header>

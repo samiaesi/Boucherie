@@ -35,6 +35,22 @@ export interface Invoice {
 
 export const invoiceNumber = (year: number, n: number) => `FA-${year}-${String(n).padStart(4, '0')}`;
 
+const parseNumber = (number: string) => {
+  const [, year, n] = number.split('-');
+  return { year: Number(year), n: Number(n) };
+};
+
+/**
+ * Compteur à garder après la suppression d'une facture, pour ne pas laisser de trou :
+ * seul le dernier numéro de l'année se libère. Null si le compteur ne bouge pas.
+ */
+export function counterAfterDelete(deleted: string, others: string[], current: number) {
+  const { year, n } = parseNumber(deleted);
+  if (n !== current) return null;
+  const left = others.map(parseNumber).filter(o => o.year === year && o.n !== n);
+  return { year, value: Math.max(0, ...left.map(o => o.n)) };
+}
+
 /** Part de TVA comprise dans un montant TTC */
 export const vatPart = (total: number, rate: number) => (rate ? Math.round(total - total / (1 + rate / 100)) : 0);
 

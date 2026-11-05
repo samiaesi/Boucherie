@@ -2,6 +2,7 @@ import { Logo } from '../core/logo';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AdminData } from './admin-data';
 import { Auth } from './auth';
 
 @Component({
@@ -25,6 +26,7 @@ export class Login {
   private readonly ltr = (document.documentElement.dir = 'ltr');
 
   private readonly auth = inject(Auth);
+  private readonly data = inject(AdminData);
   private readonly router = inject(Router);
   protected email = '';
   protected password = '';
@@ -37,6 +39,7 @@ export class Login {
     try {
       const { user } = await this.auth.login(this.email, this.password);
       if (await this.auth.loadRole()) {
+        this.data.audit('login', user.email ?? '');
         await this.router.navigateByUrl('/admin');
         return;
       }

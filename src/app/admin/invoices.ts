@@ -5,6 +5,7 @@ import { Invoice } from '../core/invoice';
 import { paymentState, round2 } from '../core/pro-invoice';
 import { AdminData } from './admin-data';
 import { Auth } from './auth';
+import { canDelete } from './roles';
 
 @Component({
   selector: 'app-invoices',
@@ -35,6 +36,7 @@ import { Auth } from './auth';
             <button class="btn danger small" (click)="cancel(i)">Annuler</button>
           }
           <a class="btn light small" target="_blank" [href]="'/facture/' + i.id">Ouvrir</a>
+          @if (canManage()) { <button class="btn danger small" (click)="remove(i)">Supprimer</button> }
         </div>
       } @empty {
         @if (loaded()) { <div class="empty">Aucune facture. Elles sont créées à la confirmation des commandes.</div> }
@@ -74,7 +76,7 @@ export class Invoices implements OnInit {
   }
 
   protected canManage() {
-    return this.auth.role() !== 'commandes';
+    return canDelete(this.auth.role());
   }
 
   protected state(i: Invoice) {
@@ -90,6 +92,17 @@ export class Invoices implements OnInit {
     await this.data.setPaid(i, round2(i.pro!.paid + amount));
     this.data.notify('Paiement enregistré');
     await this.reload();
+  }
+
+  protected async remove(i: Invoice) {
+    if (!confirm(`Supprimer définitivement la facture ${i.number} de ${i.customer.name} ? Elle ne pourra pas être récupérée.`)) return;
+    try {
+      await this.data.deleteInvoice(i, this.list().filter(x => x.id !== i.id));
+      this.data.notify('Facture supprimée');
+      await this.reload();
+    } catch {
+      // Le message d'erreur est déjà affiché
+    }
   }
 
   protected async cancel(i: Invoice) {

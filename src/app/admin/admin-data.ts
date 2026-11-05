@@ -1,22 +1,27 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import {
-  Transaction, addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, writeBatch,
+  Timestamp, Transaction, addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, increment, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { deleteApp, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 import { Announcement } from '../core/announcements';
+import { AuditAction, AuditEntry, describeChanges, trimDetail } from '../core/audit';
 import { db, firebaseConfig } from '../core/firebase';
-import { Invoice, buildInvoice, invoiceNumber } from '../core/invoice';
+import { Invoice, buildInvoice, counterAfterDelete, invoiceNumber } from '../core/invoice';
 import { Company, PaymentMode, ProLine, amountInWords, computePro } from '../core/pro-invoice';
 import { Lot, LotInput, lotNumber } from '../core/lots';
 import { DEFAULT_ORDERING, OrderingRules } from '../core/ordering';
+import { Auth } from './auth';
 import { Role } from './roles';
 import {
   Category, DEFAULT_CATEGORIES, DEFAULT_FRIDGE, DEFAULT_SETTINGS, FridgeItem, Offer, Order, OrderItem, OrderStatus, Product, Settings,
-  byOrder, itemQty, orderRef, poolOf, readFridge, roundStock, stockShortages,
+  byOrder, formatNumber, itemQty, orderRef, poolOf, readFridge, roundStock, stockShortages,
 } from '../core/data';
 
 type Col = 'products' | 'offers' | 'orders';
+
+const AUDIT_LIMIT = 2000;
+const COL_ACTION: Record<Col, 'product' | 'offer' | 'order'> = { products: 'product', offers: 'offer', orders: 'order' };
 
 /** Refus normal, à expliquer à l'équipe : ce n'est pas une panne de Firebase */
 class StockError extends Error {}
@@ -35,6 +40,7 @@ export interface Member {
 /** Accès en écriture à Firestore pour l'espace admin. */
 @Injectable({ providedIn: 'root' })
 export class AdminData {
+  private readonly auth = inject(Auth);
   readonly orders = signal<Order[]>([]);
   readonly newOrders = computed(() => this.orders().filter(o => o.status === 'nouveau').length);
   readonly toast = signal('');
@@ -71,6 +77,33 @@ export class AdminData {
       this.notify(text, 8000);
       throw new Error(text);
     }
+  }
+
+  /** Ajoute une ligne au journal. Une panne du journal ne doit jamais bloquer le travail en boutique. */
+  async audit(action: AuditAction, target: string, detail = '') {
+    const user = this.auth.user();
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'audit'), {
+        at: serverTimestamp(), uid: user.uid, email: user.email ?? '', role: this.auth.role() ?? '', action, target, detail: trimDetail(detail),
+      });
+    } catch (e) {
+      console.warn('Journal d\'audit non enregistré', action, e);
+      this.lastError.set('Journal d\'audit non enregistré : publiez les règles Firebase.');
+    }
+  }
+
+  async listAudit(from: Date, to: Date): Promise<{ entries: AuditEntry[]; capped: boolean }> {
+    const snap = await getDocs(query(collection(db, 'audit'), where('at', '>=', from), where('at', '<=', to), orderBy('at', 'desc'), limit(AUDIT_LIMIT)));
+    const entries = snap.docs.map(d => {
+      const data = d.data();
+      return { ...data, id: d.id, at: (data['at'] as Timestamp | null)?.toDate() ?? new Date() } as AuditEntry;
+    });
+    return { entries, capped: snap.size >= AUDIT_LIMIT };
+  }
+
+  private productName(id: string) {
+    return this.products().find(p => p.id === id)?.name_fr ?? id;
   }
 
   private markLoaded(name: string) {
@@ -145,16 +178,24 @@ export class AdminData {
   }
 
   /** Crée (id vide) ou remplace un document. */
-  save(col: Col, id: string | null, data: object) {
-    return this.guarded<unknown>(id ? setDoc(doc(db, col, id), data) : addDoc(collection(db, col), data));
+  async save(col: Col, id: string | null, data: object) {
+    const before = col === 'products' && id ? this.products().find(p => p.id === id) : undefined;
+    const result = await this.guarded<unknown>(id ? setDoc(doc(db, col, id), data) : addDoc(collection(db, col), data));
+    const name = (data as { name_fr?: string }).name_fr ?? id ?? '';
+    this.audit(`${COL_ACTION[col]}.${before || (id && col !== 'products') ? 'updated' : 'created'}`, name, before ? describeChanges(before, data) : '');
+    return result;
   }
 
-  update(col: Col, id: string, data: object) {
-    return this.guarded(updateDoc(doc(db, col, id), data));
+  async update(col: Col, id: string, data: object) {
+    const before = col === 'products' ? this.products().find(p => p.id === id) : undefined;
+    await this.guarded(updateDoc(doc(db, col, id), data));
+    this.audit(`${COL_ACTION[col]}.updated`, col === 'products' ? this.productName(id) : id, describeChanges(before, data));
   }
 
-  remove(col: Col, id: string) {
-    return this.guarded(deleteDoc(doc(db, col, id)));
+  async remove(col: Col, id: string) {
+    const name = col === 'products' ? this.productName(id) : id;
+    await this.guarded(deleteDoc(doc(db, col, id)));
+    this.audit(`${COL_ACTION[col]}.deleted`, name);
   }
 
   async getSettings(): Promise<Settings> {
@@ -180,6 +221,7 @@ export class AdminData {
       batch.update(doc(db, 'orders', o.id), patch);
       batch.set(trackRef, track, { merge: true });
       await this.guarded(batch.commit());
+      this.audit('order.status', orderRef(o.id), `${o.name} · ${o.status} → ${status}`);
       return o.invoiceId;
     }
 
@@ -209,6 +251,7 @@ export class AdminData {
       tx.update(doc(db, 'orders', o.id), patch);
       tx.set(trackRef, track, { merge: true });
     }));
+    this.audit('order.status', orderRef(o.id), `${o.name} · ${o.status} → ${status} · ${deduct ? 'stock retiré' : 'stock remis'}`);
     return patch.invoiceId ?? o.invoiceId;
   }
 
@@ -263,24 +306,69 @@ export class AdminData {
         createdAt: serverTimestamp(),
       });
     }));
+    this.audit('invoice.created', input.client.name, `${formatNumber(totals.ttc)} DA TTC · stock ${input.deductStock ? 'retiré' : 'non touché'}`);
     return invoiceRef.id;
   }
 
-  setPaid(inv: Invoice, paid: number) {
-    return this.guarded(updateDoc(doc(db, 'invoices', inv.id), { 'pro.paid': paid }));
+  async setPaid(inv: Invoice, paid: number) {
+    await this.guarded(updateDoc(doc(db, 'invoices', inv.id), { 'pro.paid': paid }));
+    this.audit('invoice.paid', inv.number, `${inv.customer.name} · encaissé : ${inv.pro?.paid ?? 0} → ${paid} DA`);
   }
 
   /** Une facture émise n'est jamais supprimée : elle est annulée, et son stock revient. */
   async cancelProInvoice(inv: Invoice) {
     const products = inv.pro?.stockDeducted ? await this.list<Product>('products') : [];
     const fridgeRef = doc(db, 'settings', 'fridge');
-    return this.guarded(runTransaction(db, async tx => {
+    await this.guarded(runTransaction(db, async tx => {
       const snap = await tx.get(fridgeRef);
       if (inv.pro?.stockDeducted) {
         this.moveStock(tx, proItems(inv.pro.lines), 1, products, snap.exists() ? readFridge(snap.data()['list']) : []);
       }
       tx.update(doc(db, 'invoices', inv.id), { status: 'annulée' });
     }));
+    this.audit('invoice.cancelled', inv.number, `${inv.customer.name} · ${formatNumber(inv.total)} DA`);
+  }
+
+  /**
+   * Supprime une commande et son suivi. Si elle avait été confirmée, son poids revient en stock
+   * et sa facture passe en annulée.
+   */
+  async deleteOrder(o: Order) {
+    const products = o.stockDone ? await this.list<Product>('products') : [];
+    const fridgeRef = doc(db, 'settings', 'fridge');
+    const invoiceRef = o.invoiceId ? doc(db, 'invoices', o.invoiceId) : null;
+    await this.guarded(runTransaction(db, async tx => {
+      const snap = await tx.get(fridgeRef);
+      const invoice = invoiceRef ? await tx.get(invoiceRef) : null;
+      if (o.stockDone) this.moveStock(tx, o.items ?? [], 1, products, snap.exists() ? readFridge(snap.data()['list']) : []);
+      if (invoiceRef && invoice?.exists()) tx.update(invoiceRef, { status: 'annulée' });
+      tx.delete(doc(db, 'orders', o.id));
+      tx.delete(doc(db, 'tracking', o.id));
+    }));
+    this.audit('order.deleted', orderRef(o.id), `${o.name} · ${o.tel} · ${o.status}${o.total !== undefined ? ` · ${formatNumber(o.total)} DA` : ''}${o.stockDone ? ' · stock remis' : ''}`);
+  }
+
+  /** Supprime une facture sans laisser de trou dans la numérotation quand c'est la dernière. */
+  async deleteInvoice(inv: Invoice, others: Invoice[]) {
+    const restore = !!inv.pro?.stockDeducted && inv.status !== 'annulée';
+    const products = restore ? await this.list<Product>('products') : [];
+    const counterRef = doc(db, 'settings', 'invoiceCounter');
+    const fridgeRef = doc(db, 'settings', 'fridge');
+    const orderDoc = inv.orderId ? doc(db, 'orders', inv.orderId) : null;
+    await this.guarded(runTransaction(db, async tx => {
+      const counter = await tx.get(counterRef);
+      const fridge = await tx.get(fridgeRef);
+      const order = orderDoc ? await tx.get(orderDoc) : null;
+      const year = Number(inv.number.split('-')[1]);
+      const next = counterAfterDelete(inv.number, others.map(i => i.number), counter.data()?.[year] ?? 0);
+      if (restore) this.moveStock(tx, proItems(inv.pro!.lines), 1, products, fridge.exists() ? readFridge(fridge.data()['list']) : []);
+      if (next) tx.set(counterRef, { [next.year]: next.value }, { merge: true });
+      if (orderDoc && order?.exists()) tx.update(orderDoc, { invoiceId: deleteField() });
+      // Une commande déjà supprimée n'a plus besoin de sa fiche de suivi
+      else if (inv.orderId) tx.delete(doc(db, 'tracking', inv.orderId));
+      tx.delete(doc(db, 'invoices', inv.id));
+    }));
+    this.audit('invoice.deleted', inv.number, `${inv.customer.name} · ${formatNumber(inv.total)} DA · ${inv.status}`);
   }
 
   async listCompanies(): Promise<Company[]> {
@@ -290,15 +378,15 @@ export class AdminData {
 
   /** Crée ou met à jour un client et renvoie son identifiant. */
   async saveCompany(id: string | null, data: Omit<Company, 'id'>): Promise<string> {
-    if (id) {
-      await this.guarded(setDoc(doc(db, 'companies', id), data));
-      return id;
-    }
-    return (await this.guarded(addDoc(collection(db, 'companies'), data))).id;
+    const saved = id ?? doc(collection(db, 'companies')).id;
+    await this.guarded(setDoc(doc(db, 'companies', saved), data));
+    this.audit('company.updated', data.name);
+    return saved;
   }
 
-  removeCompany(id: string) {
-    return this.guarded(deleteDoc(doc(db, 'companies', id)));
+  async removeCompany(id: string) {
+    await this.guarded(deleteDoc(doc(db, 'companies', id)));
+    this.audit('company.deleted', id);
   }
 
   async listAnnouncements(): Promise<Announcement[]> {
@@ -307,11 +395,14 @@ export class AdminData {
   }
 
   async addAnnouncement(data: Omit<Announcement, 'id'>): Promise<string> {
-    return (await this.guarded(addDoc(collection(db, 'announcements'), data))).id;
+    const id = (await this.guarded(addDoc(collection(db, 'announcements'), data))).id;
+    this.audit('announcement.created', data.title_fr, `du ${data.start} au ${data.end}`);
+    return id;
   }
 
-  removeAnnouncement(id: string) {
-    return this.guarded(deleteDoc(doc(db, 'announcements', id)));
+  async removeAnnouncement(id: string) {
+    await this.guarded(deleteDoc(doc(db, 'announcements', id)));
+    this.audit('announcement.deleted', id);
   }
 
   async listInvoices(): Promise<Invoice[]> {
@@ -330,18 +421,21 @@ export class AdminData {
     try {
       const { user } = await createUserWithEmailAndPassword(getAuth(app), email, password);
       await this.guarded(setDoc(doc(db, 'admins', user.uid), { email, role }));
+      this.audit('member.created', email, `rôle : ${role}`);
     } finally {
       await deleteApp(app);
     }
   }
 
-  setMemberRole(m: Member, role: Role) {
-    return this.guarded(updateDoc(doc(db, 'admins', m.uid), { role }));
+  async setMemberRole(m: Member, role: Role) {
+    await this.guarded(updateDoc(doc(db, 'admins', m.uid), { role }));
+    this.audit('member.role', m.email, `${m.role} → ${role}`);
   }
 
   /** Retire l'accès à l'admin. Le compte Firebase reste, sans aucun droit. */
-  removeMember(m: Member) {
-    return this.guarded(deleteDoc(doc(db, 'admins', m.uid)));
+  async removeMember(m: Member) {
+    await this.guarded(deleteDoc(doc(db, 'admins', m.uid)));
+    this.audit('member.deleted', m.email, `rôle : ${m.role}`);
   }
 
   /** Les rayons sont une liste dans settings/categories : déjà couvert par firestore.rules. */
@@ -350,12 +444,19 @@ export class AdminData {
     return structuredClone(snap.exists() ? (snap.data()['list'] as Category[]) : DEFAULT_CATEGORIES).sort(byOrder);
   }
 
-  saveCategories(list: Category[]) {
-    return this.guarded(setDoc(doc(db, 'settings', 'categories'), { list }));
+  async saveCategories(list: Category[]) {
+    await this.guarded(setDoc(doc(db, 'settings', 'categories'), { list }));
+    this.audit('categories.updated', 'Rayons', list.map(c => c.name_fr).join(', '));
   }
 
-  saveFridge(list: FridgeItem[]) {
-    return this.guarded(setDoc(doc(db, 'settings', 'fridge'), { list }));
+  async saveFridge(list: FridgeItem[]) {
+    const before = this.fridge();
+    await this.guarded(setDoc(doc(db, 'settings', 'fridge'), { list }));
+    const changes = list.map(f => {
+      const text = describeChanges(before.find(b => b.id === f.id), f);
+      return text && `${f.name} : ${text}`;
+    }).filter(Boolean);
+    this.audit('fridge.updated', 'Frigo', changes.join(' | '));
   }
 
   async listLots(): Promise<Lot[]> {
@@ -388,7 +489,7 @@ export class AdminData {
     const year = Number(input.arrivalDate.slice(0, 4));
     const counterRef = doc(db, 'settings', 'lotCounter');
     const lotRef = doc(collection(db, 'lots'));
-    return this.guarded(runTransaction(db, async tx => {
+    const created = await this.guarded(runTransaction(db, async tx => {
       const counter = await tx.get(counterRef);
       const fridge = await this.fridgeInTx(tx);
       const next = (counter.data()?.[year] ?? 0) + 1;
@@ -398,25 +499,32 @@ export class AdminData {
       this.moveLot(tx, input, input.qty, fridge);
       return matricule;
     }));
+    this.audit('lot.created', created, `${input.target.name} · ${input.qty} ${input.target.unit} · ${input.supplierName} · réf. ${input.supplierRef}`);
+    return created;
   }
 
   /** Un arrivage annulé reste dans l'historique : son matricule n'est jamais réutilisé. */
-  cancelLot(lot: Lot) {
+  async cancelLot(lot: Lot) {
     const lotRef = doc(db, 'lots', lot.id);
-    return this.guarded(runTransaction(db, async tx => {
+    await this.guarded(runTransaction(db, async tx => {
       const snap = await tx.get(lotRef);
       if (snap.data()?.['cancelled']) throw new Error('Cet arrivage est déjà annulé.');
       const fridge = await this.fridgeInTx(tx);
       this.moveLot(tx, lot, -lot.qty, fridge);
       tx.update(lotRef, { cancelled: true });
     }));
+    this.audit('lot.cancelled', lot.matricule, `${lot.target.name} · ${lot.qty} ${lot.target.unit}`);
   }
 
-  saveOrdering(data: Partial<OrderingRules>) {
-    return this.guarded(setDoc(doc(db, 'settings', 'ordering'), data, { merge: true }));
+  async saveOrdering(data: Partial<OrderingRules>) {
+    const before = this.ordering();
+    await this.guarded(setDoc(doc(db, 'settings', 'ordering'), data, { merge: true }));
+    this.audit('ordering.updated', 'Commandes', describeChanges(before, data));
   }
 
-  saveSettings(s: Settings) {
-    return this.guarded(setDoc(doc(db, 'settings', 'main'), s));
+  async saveSettings(s: Settings) {
+    const before = this.settings();
+    await this.guarded(setDoc(doc(db, 'settings', 'main'), s));
+    this.audit('settings.updated', 'Paramètres', describeChanges(before, s));
   }
 }

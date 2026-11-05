@@ -99,8 +99,6 @@ export interface Settings {
   address_ar: string;
   /** Lien de la fiche Google Maps */
   mapLink: string;
-  /** Position de la boutique (latitude,longitude) pour la carte du site */
-  mapPosition: string;
   phone: string;
   whatsapp: string;
   /** Photos du site (data URL JPEG), choisies depuis l'admin */
@@ -435,7 +433,6 @@ export const DEFAULT_SETTINGS: Settings = {
   address_fr: 'Aïn El Berd, Sidi Bel Abbès — Algérie',
   address_ar: 'عين البرد، سيدي بلعباس — الجزائر',
   mapLink: 'https://maps.app.goo.gl/ZFvfvTezb546B2F8A',
-  mapPosition: '35.3682734,-0.5111658',
   phone: '0X XX XX XX XX',
   whatsapp: '213000000000',
   deliveryEnabled: true,

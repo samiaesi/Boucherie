@@ -3,6 +3,7 @@ import { DatePipe, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Order, OrderStatus, STATUSES, orderRef } from '../core/data';
 import { Shop } from '../core/shop';
+import { canDelete } from './roles';
 import { AdminData } from './admin-data';
 import { Auth } from './auth';
 
@@ -53,7 +54,7 @@ type Filter = 'actives' | 'toutes' | OrderStatus;
             @if (o.invoiceId) { <a class="btn light small" target="_blank" [href]="'/facture/' + o.invoiceId">Voir la facture</a> }
             @if (o.items?.length) { <a class="btn light small" routerLink="/admin/etiquettes" [queryParams]="{ order: o.id }">Étiquettes</a> }
             <a class="btn light small" target="_blank" [href]="'https://wa.me/' + waNumber(o.tel)">Écrire au client</a>
-            @if (auth.role() === 'admin') { <button class="btn danger small" (click)="remove(o.id)">Supprimer</button> }
+            @if (canDelete(auth.role())) { <button class="btn danger small" (click)="remove(o)">Supprimer</button> }
           </div>
         </article>
       } @empty {
@@ -168,9 +169,19 @@ export class Orders implements OnInit {
     }
   }
 
-  protected async remove(id: string) {
-    if (!confirm('Supprimer définitivement cette commande ?')) return;
-    await this.data.remove('orders', id);
-    this.data.notify('Commande supprimée');
+  protected readonly canDelete = canDelete;
+
+  protected async remove(o: Order) {
+    const consequences = [
+      o.stockDone ? 'Son poids revient en stock.' : '',
+      o.invoiceId ? 'Sa facture passe en annulée.' : '',
+    ].filter(Boolean).join(' ');
+    if (!confirm(`Supprimer définitivement la commande de ${o.name} ? ${consequences}`)) return;
+    try {
+      await this.data.deleteOrder(o);
+      this.data.notify('Commande supprimée');
+    } catch {
+      // Le message d'erreur est déjà affiché
+    }
   }
 }

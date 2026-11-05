@@ -51,14 +51,14 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && ordersOpen();
       allow read, update: if isMember();
-      allow delete: if isAdmin();
+      allow delete: if isManager();
     }
 
-    // Factures : lisibles avec leur lien secret, jamais listables par le public, jamais supprimées
+    // Factures : lisibles avec leur lien secret, jamais listables par le public
     match /invoices/{id} {
       allow get: if true;
       allow list, create, update: if isMember();
-      allow delete: if false;
+      allow delete: if isManager();
     }
 
     // Suivi public : lisible avec son lien secret, sans nom, téléphone ni adresse
@@ -68,12 +68,23 @@ service cloud.firestore {
         || (request.resource.data.keys().hasOnly(['status', 'delivery', 'date', 'ref', 'steps'])
             && request.resource.data.status == 'nouveau');
       allow update: if isMember();
+      allow delete: if isManager();
     }
 
     // Clients professionnels : jamais lisibles par le public
     match /companies/{id} { allow read, write: if isManager(); }
     // Arrivages : jamais supprimés, un arrivage annulé garde son matricule
     match /lots/{id} { allow read, create, update: if isManager(); }
+
+    // Journal d'audit : seul l'administrateur le lit, personne ne peut le modifier ni le supprimer
+    match /audit/{id} {
+      allow read: if isAdmin();
+      allow create: if isMember()
+        && request.resource.data.keys().hasOnly(['at', 'uid', 'email', 'role', 'action', 'target', 'detail'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
 
     match /admins/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());

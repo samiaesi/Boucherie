@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, Order } from './data';
-import { buildInvoice, invoiceNumber, vatPart } from './invoice';
+import { buildInvoice, counterAfterDelete, invoiceNumber, vatPart } from './invoice';
 
 const order: Order = {
   id: 'abc', name: 'Karim', tel: '0555123456', type: 'livraison', typeLabel: 'Panier', date: '2026-11-05', details: '',
@@ -36,5 +36,23 @@ describe('Facture', () => {
   it('calcule la TVA comprise dans un prix TTC', () => {
     expect(vatPart(1190, 19)).toBe(190);
     expect(vatPart(1190, 0)).toBe(0);
+  });
+});
+
+describe('counterAfterDelete', () => {
+  it('libère le dernier numéro', () => {
+    expect(counterAfterDelete('FA-2026-0006', ['FA-2026-0005', 'FA-2026-0004'], 6)).toEqual({ year: 2026, value: 5 });
+  });
+
+  it('remet à zéro quand il ne reste aucune facture de l\'année', () => {
+    expect(counterAfterDelete('FA-2026-0001', ['FA-2025-0040'], 1)).toEqual({ year: 2026, value: 0 });
+  });
+
+  it('ne touche pas au compteur pour une facture plus ancienne', () => {
+    expect(counterAfterDelete('FA-2026-0003', ['FA-2026-0006'], 6)).toBeNull();
+  });
+
+  it('reprend au plus haut numéro restant si des factures ont été supprimées dans le désordre', () => {
+    expect(counterAfterDelete('FA-2026-0006', ['FA-2026-0002'], 6)).toEqual({ year: 2026, value: 2 });
   });
 });

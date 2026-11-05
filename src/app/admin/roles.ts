@@ -51,11 +51,16 @@ export const PAGES: Page[] = [
     icon: 'M4 5h7v6H4zM13 5h7v6h-7zM4 13h7v6H4zM13 13h7v6h-7z' },
   { path: 'horaires', label: 'Horaires et commandes', group: 'Administration', roles: ADMINS,
     icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2' },
+  { path: 'audit', label: 'Rapport d\'audit', group: 'Administration', roles: ADMINS,
+    icon: 'M9 3h6l1 2h3v16H5V5h3zM9 3v3h6V3M9 12l2 2 4-4M9 17h6' },
   { path: 'parametres', label: 'Paramètres', group: 'Administration', roles: ADMINS,
     icon: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4' },
   { path: 'equipe', label: 'Équipe', group: 'Administration', roles: ADMINS,
     icon: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14.5c1.8.8 3 2.8 3 5.5' },
 ];
+
+/** Supprimer une commande ou une facture : firestore.rules applique le même droit. */
+export const canDelete = (role: Role | null) => role === 'admin' || role === 'manager';
 
 export const canOpen = (role: Role | null, path: string) =>
   !!role && !!PAGES.find(p => p.path === path)?.roles.includes(role);

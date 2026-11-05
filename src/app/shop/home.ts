@@ -260,7 +260,7 @@ export class Home implements OnInit, OnDestroy {
   });
 
   protected readonly mapUrl = computed(() => this.sanitizer.bypassSecurityTrustResourceUrl(
-    `https://maps.google.com/maps?q=${encodeURIComponent(this.shop.settings().mapPosition)}&z=17&output=embed`,
+    `https://maps.google.com/maps?q=${encodeURIComponent(`${this.shop.settings().name_fr}, Aïn el Berd`)}&z=17&output=embed`,
   ));
 
   ngOnInit() {

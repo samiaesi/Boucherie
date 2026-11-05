@@ -55,6 +55,7 @@ export const routes: Routes = [
       page('produits', () => import('./admin/products').then(m => m.Products)),
       page('formules', () => import('./admin/offers').then(m => m.Offers)),
       page('arrivages', () => import('./admin/arrivals').then(m => m.Arrivals)),
+      page('audit', () => import('./admin/audit-page').then(m => m.Audit)),
       page('horaires', () => import('./admin/hours').then(m => m.Hours)),
       page('parametres', () => import('./admin/settings').then(m => m.Settings)),
     ],
