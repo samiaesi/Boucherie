@@ -11,60 +11,40 @@ import { Count, Tilt } from './effects';
 import { ProductCard } from './product-card';
 import { Reveal } from './reveal';
 
-const SLIDE_MS = 6000;
 const STEP_MS = 2200;
-
-const SLIDES: { a: TKey; b: TKey; t: TKey; link: { cat?: string } }[] = [
-  { a: 'slide1a', b: 'slide1b', t: 'slide1t', link: { cat: 'poulet' } },
-  { a: 'slide2a', b: 'slide2b', t: 'slide2t', link: { cat: 'agneau' } },
-  { a: 'slide3a', b: 'slide3b', t: 'slide3t', link: {} },
-];
 
 @Component({
   selector: 'app-home',
   imports: [RouterLink, IconPipe, ProductCard, Reveal, Count, Tilt],
   template: `
-    <section class="hero" (mousemove)="parallax($event)">
-      @for (img of heroImages(); track img; let i = $index) {
-        <div class="hero-bg" [class.on]="i === slide()" [style.background-image]="'url(' + img + ')'"></div>
-      }
-      <div class="hero-shade"></div>
+    <section class="hero">
+      <i class="hero-glow" aria-hidden="true"></i>
       <div class="wrap hero-grid">
-        @for (s of [slides[slide()]]; track s.a) {
-          <div class="slide">
-            <span class="kicker">{{ i18n.t('heroEyebrow') }}</span>
-            <h1>
-              <span class="line">
-                @for (w of words(i18n.t(s.a)); track $index) { <span class="word" [style.--i]="$index">{{ w }}&nbsp;</span> }
-              </span>
-              <em class="line">
-                @for (w of words(i18n.t(s.b)); track $index) { <span class="word" [style.--i]="$index + 3">{{ w }}&nbsp;</span> }
-              </em>
-            </h1>
-            <p>{{ i18n.t(s.t) }}</p>
-            <div class="hero-pickup">🏪 {{ i18n.t(shop.pickupKey()) }}</div>
-            <div class="hero-actions">
-              <a routerLink="/boutique" [queryParams]="s.link" class="btn btn-red">{{ i18n.t('order') }}</a>
-              <a routerLink="/boutique" class="btn btn-outline">{{ i18n.t('seeAll') }}</a>
-            </div>
+        <div class="hero-text">
+          <span class="hero-status" [class.closed]="!shop.ordering().open"><i></i>{{ i18n.t(shop.ordering().open ? 'heroOpen' : 'closedTitle') }}</span>
+          <h1>
+            <span class="line"><span>{{ i18n.t('heroLine1') }}</span></span>
+            <span class="line"><span class="accent">{{ i18n.t('heroLine2') }}</span></span>
+          </h1>
+          <p>{{ i18n.t('heroText') }}</p>
+          <div class="hero-actions">
+            <a routerLink="/boutique" class="hero-cta">{{ i18n.t('order') }}<span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></a>
+            <a routerLink="/boutique" class="hero-link">{{ i18n.t('seeAll') }}</a>
           </div>
-        }
-        <div class="hero-float" [style.transform]="floatMove()"><img src="logo.svg" alt=""></div>
-      </div>
-      <div class="dots wrap">
-        @for (s of slides; track s.a; let i = $index) {
-          <button [class.on]="i === slide()" (click)="goTo(i)" [attr.aria-label]="i + 1"><i></i></button>
-        }
+          <ul class="hero-points">
+            @for (k of heroPoints; track k) { <li>{{ i18n.t(k) }}</li> }
+          </ul>
+        </div>
+        <div class="hero-tiles">
+          @for (t of heroTiles(); track t.id; let i = $index) {
+            <a class="htile" appTilt routerLink="/boutique" [queryParams]="{ cat: t.id }" [style.--d]="i">
+              <img [src]="t.image" alt="">
+              <span class="htile-label"><b>{{ t.name }}</b><span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></span>
+            </a>
+          }
+        </div>
       </div>
     </section>
-
-    <div class="marquee" aria-hidden="true">
-      <div class="marquee-track">
-        @for (n of [1, 2, 3, 4]; track n) {
-          <span>{{ i18n.t(shop.pickupKey()) }}</span><span>{{ i18n.t('s1') }}</span><span>{{ i18n.t('s2') }}</span><span>{{ i18n.t('s3') }}</span><span>{{ i18n.t('slide3b') }}</span>
-        }
-      </div>
-    </div>
 
     @if (shop.live().length) {
       <section class="today">
@@ -247,9 +227,6 @@ export class Home implements OnInit, OnDestroy {
   protected readonly shop = inject(Shop);
   private readonly cart = inject(Cart);
   private readonly sanitizer = inject(DomSanitizer);
-  protected readonly slides = SLIDES;
-  protected readonly slide = signal(0);
-  protected readonly floatMove = signal('');
   protected readonly num = formatNumber;
   protected readonly why: { t: TKey; d: TKey }[] = [
     { t: 'w1t', d: 'w1' }, { t: 'w2t', d: 'w2' }, { t: 'w3t', d: 'w3' }, { t: 'w4t', d: 'w4' },
@@ -263,13 +240,18 @@ export class Home implements OnInit, OnDestroy {
   /** Étape mise en avant : avance seule, s'arrête sur celle que le visiteur survole */
   protected readonly step = signal(0);
   private stepTimer?: ReturnType<typeof setInterval>;
-  private timer?: ReturnType<typeof setInterval>;
 
-  /** La photo choisie dans l'admin remplace la première image de la bannière. */
-  protected readonly heroImages = computed(() => {
-    const own = this.shop.settings().heroImage;
-    return own ? [own, ...HERO_PHOTOS.slice(1)] : HERO_PHOTOS;
-  });
+  protected readonly heroPoints: TKey[] = ['pointHalal', 'pointCut', 'pointDelivery'];
+
+  /** Le grand bloc montre le bœuf, ou la photo choisie dans l'admin. */
+  protected readonly heroTiles = computed(() => [
+    { id: 'boeuf', fallback: HERO_PHOTOS[2], own: this.shop.settings().heroImage },
+    { id: 'agneau', fallback: HERO_PHOTOS[1] },
+    { id: 'poulet', fallback: HERO_PHOTOS[0] },
+  ].map(t => {
+    const c = this.shop.category(t.id);
+    return { id: t.id, image: t.own || c?.image || t.fallback, name: c ? this.i18n.pick(c, 'name') : t.id };
+  }));
 
   protected readonly featured = computed(() => {
     const all = this.shop.products();
@@ -282,12 +264,10 @@ export class Home implements OnInit, OnDestroy {
   ));
 
   ngOnInit() {
-    this.startTimer();
     this.resumeSteps();
   }
 
   ngOnDestroy() {
-    clearInterval(this.timer);
     clearInterval(this.stepTimer);
   }
 
@@ -300,25 +280,6 @@ export class Home implements OnInit, OnDestroy {
   protected holdStep(i: number) {
     clearInterval(this.stepTimer);
     this.step.set(i);
-  }
-
-  private startTimer() {
-    clearInterval(this.timer);
-    this.timer = setInterval(() => this.slide.update(i => (i + 1) % SLIDES.length), SLIDE_MS);
-  }
-
-  protected goTo(i: number) {
-    this.slide.set(i);
-    this.startTimer();
-  }
-
-  protected words(text: string) {
-    return text.split(' ');
-  }
-
-  protected parallax(e: MouseEvent) {
-    const x = e.clientX / window.innerWidth - 0.5, y = e.clientY / window.innerHeight - 0.5;
-    this.floatMove.set(`translate(${x * -28}px, ${y * -28}px)`);
   }
 
   protected countIn(category: string) {

@@ -25,7 +25,7 @@ const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
             </select>
             <button type="button" class="btn light small" [disabled]="i === 0" (click)="move(i, -1)">↑</button>
             <button type="button" class="btn light small" [disabled]="i === list.length - 1" (click)="move(i, 1)">↓</button>
-            <button type="button" class="btn danger small" (click)="list.splice(i, 1)">✕</button>
+            <button type="button" class="btn danger small" [attr.aria-label]="'Supprimer le rayon ' + c.name_fr" (click)="remove(i)">✕</button>
           </div>
         }
         <div><button type="button" class="btn light small" (click)="add()">+ Ajouter un rayon</button></div>
@@ -54,6 +54,14 @@ export class Categories implements OnInit {
 
   protected add() {
     this.list.push({ id: '', order: this.list.length + 1, icon: 'boeuf', name_fr: '', name_ar: '' });
+  }
+
+  /** La suppression n'est définitive qu'après Enregistrer, mais la croix est vite cliquée. */
+  protected remove(i: number) {
+    const c = this.list[i];
+    const count = this.data.products().filter(p => p.category === c.id).length;
+    const warning = count ? `\n\n${count} produit(s) de ce rayon ne seront plus visibles dans le menu des rayons.` : '';
+    if (confirm(`Supprimer le rayon « ${c.name_fr} » ?${warning}`)) this.list.splice(i, 1);
   }
 
   protected move(i: number, delta: number) {
