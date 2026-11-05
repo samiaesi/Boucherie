@@ -1,14 +1,29 @@
 import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Category, formatNumber, orderRef } from '../core/data';
+import { IconPipe } from '../core/icon';
 import { localDay } from '../core/stats';
 import { AdminData } from './admin-data';
-import { DEFAULT_LABEL_SIZE, LABEL_SIZES, Label, LabelSize, a4Layout, clampSize, labelScale, labelsFromOrder, manualLabel, morningLabels } from './labels-data';
+import { DEFAULT_LABEL_FIELDS, DEFAULT_LABEL_SIZE, LABEL_SIZES, Label, LabelFields, LabelSize, a4Layout, labelDates, clampSize, labelScale, labelsFromOrder, manualLabel, morningLabels } from './labels-data';
 
 type Format = 'thermal' | 'a4';
 
 const COUNTS_KEY = 'ticketCounts';
 const SIZE_KEY = 'ticketSize';
+const FIELDS_KEY = 'ticketFields';
+
+function savedFields(): LabelFields {
+  try {
+    return { ...DEFAULT_LABEL_FIELDS, ...JSON.parse(localStorage.getItem(FIELDS_KEY) ?? '{}') };
+  } catch {
+    return DEFAULT_LABEL_FIELDS;
+  }
+}
+
+const FIELD_NAMES: [keyof LabelFields, string][] = [
+  ['company', "Nom de l'entreprise"], ['rayon', 'Pictogramme du rayon'], ['weight', 'Poids'],
+  ['date', 'Date'], ['arrival', "Date d'arrivage"], ['expiry', "Date d'expiration"],
+];
 
 function savedSize(): LabelSize {
   try {
@@ -31,7 +46,7 @@ const pageStyle = (format: Format, s: LabelSize) =>
 
 @Component({
   selector: 'app-labels',
-  imports: [FormsModule],
+  imports: [FormsModule, IconPipe],
   template: `
     <div class="no-print">
       <div class="head">
@@ -81,8 +96,18 @@ const pageStyle = (format: Format, s: LabelSize) =>
             </div>
           }
           <label>{{ mode() === 'morning' ? 'Date du ticket' : 'Emballé le' }}<input name="packed" type="date" [ngModel]="packed()" (ngModelChange)="packed.set($event)"></label>
-          <label>À consommer jusqu'au<input name="useBy" type="date" [ngModel]="useBy()" (ngModelChange)="useBy.set($event)"></label>
+          <label>Date d'arrivage<input name="arrival" type="date" [ngModel]="arrival()" (ngModelChange)="arrival.set($event)"></label>
+          <label>Date d'expiration<input name="useBy" type="date" [ngModel]="useBy()" (ngModelChange)="useBy.set($event)"></label>
+          @if (mode() === 'morning') {
+            <label>Poids du ticket (g)<input name="ticketGrams" type="number" min="0" step="50" placeholder="Vide : à écrire à la main" [ngModel]="ticketGrams()" (ngModelChange)="ticketGrams.set(+$event || 0)"></label>
+          }
         </div>
+        <fieldset class="fields">
+          <legend>Afficher sur le ticket</legend>
+          @for (f of fieldNames; track f[0]) {
+            <label class="check"><input type="checkbox" [name]="'f-' + f[0]" [ngModel]="fields()[f[0]]" (ngModelChange)="setField(f[0], $event)"> {{ f[1] }}</label>
+          }
+        </fieldset>
         @if (format() === 'a4') {
           <div class="print-info">
             <label class="check"><input type="checkbox" name="cuts" [ngModel]="cuts()" (ngModelChange)="cuts.set($event)"> Imprimer les traits de découpe</label>
@@ -124,24 +149,23 @@ const pageStyle = (format: Format, s: LabelSize) =>
           <article class="label" [class.simple]="l.simple">
             <header>
               <img src="logo.svg" alt="">
-              <div><b>{{ shop().name_fr }}</b><small>{{ shop().phone }}</small></div>
+              <div><b>{{ shop().name_fr }}</b><small>{{ fields().company ? shop().company : shop().phone }}</small></div>
+              @if (fields().rayon && rayonIcon(l); as icon) { <span class="rayon-ico" [innerHTML]="icon | icon"></span> }
               <span class="halal">حلال</span>
             </header>
             <div class="name"><b>{{ l.name_fr }}</b><span dir="rtl">{{ l.name_ar }}</span></div>
-            @if (l.simple) {
-              <div class="ticket-date">{{ short(packed()) }}</div>
-            }
             @if (l.detail) { <small class="detail">{{ l.detail }}</small> }
             <div class="numbers">
-              @if (l.weight) { <b>{{ l.weight }}</b> }
+              @if (fields().weight) {
+                @if (weightOf(l); as w) { <b>{{ w }}</b> } @else { <span class="blank">Poids : ............ kg</span> }
+              }
               @if (showPrice() && l.amount) { <b>{{ num(l.amount) }} DA</b> }
             </div>
             @if (showPrice() && l.priceKg) { <small>{{ num(l.priceKg) }} DA/kg</small> }
-            <footer>
-              @if (packed() && !l.simple) { <span>Emballé : {{ short(packed()) }}</span> }
-              @if (useBy()) { <span><b>DLC : {{ short(useBy()) }}</b></span> }
-              @if (l.ref) { <span>{{ l.ref }} · {{ l.client }}</span> }
-            </footer>
+            <div class="facts">
+              @for (d of dates(); track d.label) { <span><small>{{ d.label }}</small><b>{{ d.value }}</b></span> }
+            </div>
+            @if (l.ref) { <footer><span>{{ l.ref }} · {{ l.client }}</span></footer> }
           </article>
         }
       </div>
@@ -156,8 +180,17 @@ const pageStyle = (format: Format, s: LabelSize) =>
     .count { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); font-weight: 500; }
     .count.on { border-color: var(--bordeaux); background: #fbf1f2; }
     .count input { width: 72px; padding: 6px 8px; }
-    .label.simple .name { flex-direction: column; align-items: center; gap: 0; margin-top: 1.5mm; font-size: 14pt; line-height: 1.1; text-align: center; }
-    .ticket-date { margin-top: auto; text-align: center; font-size: 15pt; font-weight: 800; }
+    .label.simple .name { flex-direction: column; align-items: center; gap: 0; font-size: 13pt; line-height: 1.12; text-align: center; }
+    .label.simple .numbers { justify-content: center; font-size: 13pt; }
+    .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+    .fields legend { padding: 0 6px; color: var(--muted); font-size: .85rem; font-weight: 600; }
+    .rayon-ico { flex: none; display: block; width: 6.5mm; height: 6.5mm; }
+    .rayon-ico :is(svg) { display: block; width: 100%; height: 100%; }
+    .blank { font-size: 8pt; font-weight: 600; }
+    .facts { display: flex; justify-content: space-evenly; gap: 1.5mm; margin-top: auto; padding-top: .8mm; border-top: .2mm solid #000; }
+    .facts span { min-width: 0; text-align: center; }
+    .facts small { display: block; font-size: 5.5pt; line-height: 1.1; }
+    .facts b { display: block; font-size: 8pt; white-space: nowrap; }
     .custom { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .print-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: .88rem; }
     .sheet { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -171,7 +204,7 @@ const pageStyle = (format: Format, s: LabelSize) =>
     .label header b { display: block; font-size: 7.5pt; }
     .label small { font-size: 6.5pt; }
     .halal { padding: .3mm 1.5mm; border: .3mm solid #000; font-family: Cairo, sans-serif; font-weight: 800; }
-    .name { display: flex; justify-content: space-between; gap: 2mm; margin-top: 1mm; font-size: 10pt; font-weight: 700; font-family: Inter, Cairo, sans-serif; }
+    .name { display: flex; justify-content: space-between; gap: 2mm; margin-top: auto; font-size: 10pt; font-weight: 700; font-family: Inter, Cairo, sans-serif; }
     .name span { font-family: Cairo, sans-serif; }
     .numbers { display: flex; justify-content: space-between; margin-top: .5mm; font-size: 11pt; }
     .label footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 2mm; margin-top: auto; font-size: 6.5pt; }
@@ -208,6 +241,11 @@ export class Labels implements OnDestroy {
   });
   protected readonly packed = signal(localDay(new Date()));
   protected readonly useBy = signal('');
+  protected readonly arrival = signal('');
+  protected readonly ticketGrams = signal(0);
+  protected readonly fieldNames = FIELD_NAMES;
+  protected readonly fields = signal(savedFields());
+  protected readonly dates = computed(() => labelDates(this.fields(), { date: this.packed(), expiry: this.useBy(), arrival: this.arrival() }, d => this.short(d)));
   protected readonly showPrice = signal(true);
   protected readonly productId = signal('');
   protected readonly grams = signal(500);
@@ -230,7 +268,7 @@ export class Labels implements OnDestroy {
   protected readonly labels = computed(() => {
     if (this.mode() === 'morning') return this.morning();
     const o = this.data.orders().find(x => x.id === this.orderId());
-    return [...(o ? labelsFromOrder(o) : []), ...this.manual()];
+    return [...(o ? labelsFromOrder(o, this.data.products()) : []), ...this.manual()];
   });
 
   constructor() {
@@ -250,6 +288,23 @@ export class Labels implements OnDestroy {
 
   protected perPage(s: LabelSize) {
     return a4Layout(s, 0).perPage;
+  }
+
+  protected setField(key: keyof LabelFields, on: boolean) {
+    const next = { ...this.fields(), [key]: on };
+    this.fields.set(next);
+    try { localStorage.setItem(FIELDS_KEY, JSON.stringify(next)); } catch {}
+  }
+
+  protected rayonIcon(l: Label) {
+    return this.categories().find(c => c.id === l.category)?.icon;
+  }
+
+  /** Vide sur un ticket du matin sans poids saisi : la ligne s'écrit à la main. */
+  protected weightOf(l: Label) {
+    if (l.weight) return l.weight;
+    const g = this.ticketGrams();
+    return g ? (g >= 1000 ? `${formatNumber(g / 1000)} kg` : `${g} g`) : '';
   }
 
   protected chooseSize(choice: string) {

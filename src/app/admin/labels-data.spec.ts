@@ -1,5 +1,5 @@
 import { Order, Product } from '../core/data';
-import { a4Layout, clampSize, labelScale, labelsFromOrder, manualLabel, morningLabels } from './labels-data';
+import { DEFAULT_LABEL_FIELDS, a4Layout, clampSize, labelDates, labelScale, labelsFromOrder, manualLabel, morningLabels } from './labels-data';
 
 const order = (items: Order['items']): Order => ({
   id: 'abcdef123456', name: 'Karim', tel: '', type: 'retrait', typeLabel: '', date: '', details: '', lang: 'fr', status: 'confirmé', items,
@@ -75,5 +75,19 @@ describe('Taille des tickets', () => {
     expect(labelScale({ w: 120, h: 40 })).toBe(1);
     expect(labelScale({ w: 97, h: 90 })).toBe(1.617);
     expect(labelScale({ w: 30, h: 20 })).toBe(0.5);
+  });
+});
+
+describe('Dates du ticket', () => {
+  const dates = { date: '2026-11-05', expiry: '2026-11-08', arrival: '2026-11-04' };
+  const short = (d: string) => d.slice(5);
+
+  it('imprime les trois dates remplies', () => {
+    expect(labelDates(DEFAULT_LABEL_FIELDS, dates, short).map(d => d.label)).toEqual(['Date', 'Arrivage', 'Expire le']);
+  });
+
+  it('ignore une date vide ou décochée', () => {
+    const list = labelDates({ ...DEFAULT_LABEL_FIELDS, arrival: false }, { ...dates, expiry: '' }, short);
+    expect(list).toEqual([{ label: 'Date', value: '11-05' }]);
   });
 });

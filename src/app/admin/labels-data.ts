@@ -14,13 +14,36 @@ export interface Label {
   client: string;
   /** Ticket du matin : seulement le nom et les dates, en grand */
   simple?: boolean;
+  /** Rayon du produit, pour son pictogramme */
+  category?: string;
+}
+
+/** Ce que le boucher choisit d'imprimer sur le ticket */
+export interface LabelFields {
+  company: boolean;
+  rayon: boolean;
+  date: boolean;
+  expiry: boolean;
+  arrival: boolean;
+  weight: boolean;
+}
+
+export const DEFAULT_LABEL_FIELDS: LabelFields = { company: true, rayon: true, date: true, expiry: true, arrival: true, weight: true };
+
+/** Lignes de dates d'un ticket : une date vide ou décochée n'est pas imprimée. */
+export function labelDates(fields: LabelFields, dates: { date: string; expiry: string; arrival: string }, short: (day: string) => string) {
+  return [
+    { label: 'Date', show: fields.date, day: dates.date },
+    { label: 'Arrivage', show: fields.arrival, day: dates.arrival },
+    { label: 'Expire le', show: fields.expiry, day: dates.expiry },
+  ].filter(d => d.show && d.day).map(d => ({ label: d.label, value: short(d.day) }));
 }
 
 /** Tickets à coller sur la viande de la vitrine : aucun lien avec une commande. */
 export function morningLabels(products: Product[], counts: Record<string, number>): Label[] {
   return products.flatMap(p => {
     const label: Label = {
-      name_fr: p.name_fr, name_ar: p.name_ar, detail: '', weight: '', priceKg: 0, amount: 0, ref: '', client: '', simple: true,
+      name_fr: p.name_fr, name_ar: p.name_ar, category: p.category, detail: '', weight: '', priceKg: 0, amount: 0, ref: '', client: '', simple: true,
     };
     return Array.from({ length: Math.max(0, Math.floor(counts[p.id] ?? 0)) }, () => label);
   });
@@ -29,10 +52,10 @@ export function morningLabels(products: Product[], counts: Record<string, number
 const weightText = (grams: number) => formatWeight(Math.round(grams), 'g', 'kg');
 
 /** Une étiquette par paquet : 2 × 500 g donnent 2 étiquettes de 500 g. */
-export function labelsFromOrder(o: Order): Label[] {
+export function labelsFromOrder(o: Order, products: Product[] = []): Label[] {
   return (o.items ?? []).filter(i => i.name_fr).flatMap(i => {
     const label: Label = {
-      name_fr: i.name_fr ?? '', name_ar: i.name_ar ?? '', detail: i.option_fr ?? '',
+      name_fr: i.name_fr ?? '', name_ar: i.name_ar ?? '', category: products.find(p => p.id === i.productId)?.category, detail: i.option_fr ?? '',
       weight: i.grams ? weightText(i.grams) : '',
       priceKg: i.unit === 'kg' ? (i.price ?? 0) : 0,
       amount: i.qty ? Math.round((i.total ?? 0) / i.qty) : 0,
@@ -45,7 +68,7 @@ export function labelsFromOrder(o: Order): Label[] {
 /** Étiquette saisie à la main, pour la vitrine ou le frigo. */
 export function manualLabel(p: Product, grams: number): Label {
   return {
-    name_fr: p.name_fr, name_ar: p.name_ar, detail: '', weight: grams ? weightText(grams) : '',
+    name_fr: p.name_fr, name_ar: p.name_ar, category: p.category, detail: '', weight: grams ? weightText(grams) : '',
     priceKg: p.unit === 'kg' ? p.price : 0,
     amount: p.unit === 'kg' ? Math.round((p.price * grams) / 1000) : p.price,
     ref: '', client: '',
