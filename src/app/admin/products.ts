@@ -1,7 +1,8 @@
 import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, ICONS, Product, formatNumber } from '../core/data';
+import { ActivatedRoute } from '@angular/router';
+import { Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, ICONS, Product, formatNumber, isCabinet } from '../core/data';
 import { productRef, referenceTakenBy, searchProducts } from '../core/product-search';
 import { AdminData } from './admin-data';
 import { resizeImage } from './image';
@@ -74,7 +75,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
           <label>Stock
             <select name="source" [(ngModel)]="draft.source">
               <option value="">Automatique</option>
-              @for (f of data.fridge(); track f.id) { <option [value]="f.id">Réserve {{ f.name }}</option> }
+              @for (f of reserves(); track f.id) { <option [value]="f.id">Réserve {{ f.name }}</option> }
               <option value="none">Stock propre au produit</option>
             </select>
           </label>
@@ -126,6 +127,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
 export class Products implements OnInit {
   protected readonly data = inject(AdminData);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly route = inject(ActivatedRoute);
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
   protected readonly products = signal<Product[]>([]);
   protected readonly loaded = signal(false);
@@ -134,6 +136,7 @@ export class Products implements OnInit {
   protected readonly image = signal<string | null>(null);
   protected readonly error = signal('');
   protected readonly categories = signal<Category[]>([]);
+  protected readonly reserves = computed(() => this.data.fridge().filter(f => !isCabinet(f)));
   protected readonly search = signal('');
   protected readonly rayon = signal('');
   protected readonly ref = productRef;
@@ -148,6 +151,10 @@ export class Products implements OnInit {
   async ngOnInit() {
     this.categories.set(await this.data.getCategories());
     await this.reload();
+    // Arrivée depuis un rayonnage du frigo : la fiche s'ouvre directement
+    const edit = this.route.snapshot.queryParamMap.get('edit');
+    const product = this.products().find(p => p.id === edit);
+    if (product) this.open(product);
   }
 
   private blank(): Product {

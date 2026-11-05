@@ -1,5 +1,5 @@
 import { Order, Product } from '../core/data';
-import { labelsFromOrder, manualLabel, morningLabels } from './labels-data';
+import { a4Layout, clampSize, labelScale, labelsFromOrder, manualLabel, morningLabels } from './labels-data';
 
 const order = (items: Order['items']): Order => ({
   id: 'abcdef123456', name: 'Karim', tel: '', type: 'retrait', typeLabel: '', date: '', details: '', lang: 'fr', status: 'confirmé', items,
@@ -54,5 +54,26 @@ describe('Étiquettes', () => {
 
   it('garde le prix à la pièce sans poids', () => {
     expect(manualLabel({ ...kefta, unit: 'piece', price: 1500 }, 0)).toMatchObject({ weight: '', priceKg: 0, amount: 1500 });
+  });
+});
+
+describe('Taille des tickets', () => {
+  it('calcule la planche A4', () => {
+    expect(a4Layout({ w: 60, h: 40 }, 30)).toEqual({ columns: 3, rows: 7, perPage: 21, pages: 2 });
+    expect(a4Layout({ w: 97, h: 90 }, 6)).toEqual({ columns: 2, rows: 3, perPage: 6, pages: 1 });
+    expect(a4Layout({ w: 38, h: 25 }, 0).pages).toBe(0);
+  });
+
+  it('garde un ticket lisible et dans la feuille', () => {
+    expect(clampSize({ w: 5, h: 5 })).toEqual({ w: 30, h: 20 });
+    expect(clampSize({ w: 500, h: 500 })).toEqual({ w: 194, h: 281 });
+    expect(clampSize({ w: 72.4, h: 41 })).toEqual({ w: 72, h: 41 });
+  });
+
+  it('agrandit le texte avec le ticket sans dépasser', () => {
+    expect(labelScale({ w: 60, h: 40 })).toBe(1);
+    expect(labelScale({ w: 120, h: 40 })).toBe(1);
+    expect(labelScale({ w: 97, h: 90 })).toBe(1.617);
+    expect(labelScale({ w: 30, h: 20 })).toBe(0.5);
   });
 });

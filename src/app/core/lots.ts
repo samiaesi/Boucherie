@@ -1,4 +1,4 @@
-import { FridgeItem, Product, poolOf, stockUnit } from './data';
+import { FridgeItem, Product, isCabinet, poolOf, stockUnit } from './data';
 
 /** Ce qui reçoit l'arrivage : une réserve du frigo ou un produit suivi seul */
 export interface LotTarget {
@@ -30,7 +30,7 @@ export const lotNumber = (year: number, n: number) => `LOT-${year}-${String(n).p
 /** Les réserves d'abord, puis les produits dont le stock ne dépend pas d'une réserve. */
 export function lotTargets(products: Product[], fridge: FridgeItem[]): LotTarget[] {
   return [
-    ...fridge.map(f => ({ kind: 'fridge' as const, id: f.id, name: f.name, unit: 'kg' })),
+    ...fridge.filter(f => !isCabinet(f)).map(f => ({ kind: 'fridge' as const, id: f.id, name: f.name, unit: 'kg' })),
     ...products.filter(p => p.trackStock && !poolOf(p, fridge))
       .map(p => ({ kind: 'product' as const, id: p.id, name: p.name_fr, unit: stockUnit(p) })),
   ];

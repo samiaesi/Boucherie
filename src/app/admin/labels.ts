@@ -3,11 +3,20 @@ import { FormsModule } from '@angular/forms';
 import { Category, formatNumber, orderRef } from '../core/data';
 import { localDay } from '../core/stats';
 import { AdminData } from './admin-data';
-import { Label, labelsFromOrder, manualLabel, morningLabels } from './labels-data';
+import { DEFAULT_LABEL_SIZE, LABEL_SIZES, Label, LabelSize, a4Layout, clampSize, labelScale, labelsFromOrder, manualLabel, morningLabels } from './labels-data';
 
 type Format = 'thermal' | 'a4';
 
 const COUNTS_KEY = 'ticketCounts';
+const SIZE_KEY = 'ticketSize';
+
+function savedSize(): LabelSize {
+  try {
+    return clampSize({ ...DEFAULT_LABEL_SIZE, ...JSON.parse(localStorage.getItem(SIZE_KEY) ?? '{}') });
+  } catch {
+    return DEFAULT_LABEL_SIZE;
+  }
+}
 
 function savedCounts(): Record<string, number> {
   try {
@@ -17,10 +26,8 @@ function savedCounts(): Record<string, number> {
   }
 }
 
-const PAGE_STYLE: Record<Format, string> = {
-  thermal: '@page { size: 60mm 40mm; margin: 0; }',
-  a4: '@page { size: A4; margin: 8mm; }',
-};
+const pageStyle = (format: Format, s: LabelSize) =>
+  (format === 'a4' ? '@page { size: A4; margin: 8mm; }' : `@page { size: ${s.w}mm ${s.h}mm; margin: 0; }`);
 
 @Component({
   selector: 'app-labels',
@@ -55,13 +62,33 @@ const PAGE_STYLE: Record<Format, string> = {
           }
           <label>Format
             <select name="format" [ngModel]="format()" (ngModelChange)="format.set($event)">
-              <option value="thermal">Imprimante à étiquettes (60 × 40 mm)</option>
-              <option value="a4">Feuille A4 (planche d'étiquettes)</option>
+              <option value="a4">Feuille A4 à découper</option>
+              <option value="thermal">Imprimante à étiquettes</option>
             </select>
           </label>
+          <label>Taille du ticket
+            <select name="sizeChoice" [ngModel]="sizeChoice()" (ngModelChange)="chooseSize($event)">
+              @for (s of sizes; track s.w + 'x' + s.h) {
+                <option [value]="s.w + 'x' + s.h">{{ s.w }} × {{ s.h }} mm{{ format() === 'a4' ? ' · ' + perPage(s) + ' par page' : '' }}</option>
+              }
+              <option value="custom">Taille personnalisée</option>
+            </select>
+          </label>
+          @if (sizeChoice() === 'custom') {
+            <div class="custom">
+              <label>Largeur (mm)<input name="w" type="number" min="30" max="194" [ngModel]="size().w" (ngModelChange)="setSize({ w: +$event, h: size().h })"></label>
+              <label>Hauteur (mm)<input name="h" type="number" min="20" max="281" [ngModel]="size().h" (ngModelChange)="setSize({ w: size().w, h: +$event })"></label>
+            </div>
+          }
           <label>{{ mode() === 'morning' ? 'Date du ticket' : 'Emballé le' }}<input name="packed" type="date" [ngModel]="packed()" (ngModelChange)="packed.set($event)"></label>
           <label>À consommer jusqu'au<input name="useBy" type="date" [ngModel]="useBy()" (ngModelChange)="useBy.set($event)"></label>
         </div>
+        @if (format() === 'a4') {
+          <div class="print-info">
+            <label class="check"><input type="checkbox" name="cuts" [ngModel]="cuts()" (ngModelChange)="cuts.set($event)"> Imprimer les traits de découpe</label>
+            <span>{{ layout().columns }} colonnes × {{ layout().rows }} lignes · {{ layout().perPage }} tickets par page@if (labels().length) { · {{ layout().pages }} page(s)}</span>
+          </div>
+        }
         @if (mode() === 'morning') {
           <div class="counts">
             @for (p of morningProducts(); track p.id) {
@@ -91,7 +118,8 @@ const PAGE_STYLE: Record<Format, string> = {
     </div>
 
     @if (labels().length) {
-      <div class="sheet" [class.a4]="format() === 'a4'" [class.thermal]="format() === 'thermal'">
+      <div class="sheet" [class.a4]="format() === 'a4'" [class.thermal]="format() === 'thermal'" [class.cut]="format() === 'a4' && cuts()"
+           [style.--w]="size().w" [style.--h]="size().h" [style.--s]="scale()" [style.--cols]="layout().columns">
         @for (l of labels(); track $index) {
           <article class="label" [class.simple]="l.simple">
             <header>
@@ -130,8 +158,13 @@ const PAGE_STYLE: Record<Format, string> = {
     .count input { width: 72px; padding: 6px 8px; }
     .label.simple .name { flex-direction: column; align-items: center; gap: 0; margin-top: 1.5mm; font-size: 14pt; line-height: 1.1; text-align: center; }
     .ticket-date { margin-top: auto; text-align: center; font-size: 15pt; font-weight: 800; }
+    .custom { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .print-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: .88rem; }
     .sheet { display: flex; flex-wrap: wrap; gap: 10px; }
-    .label { display: flex; flex-direction: column; width: 60mm; height: 40mm; padding: 2mm 2.5mm; overflow: hidden; border: 1px dashed #bbb; background: #fff; color: #000; font-family: Inter, Cairo, sans-serif; font-size: 7.5pt; line-height: 1.15; }
+    .sheet.a4 { display: grid; grid-template-columns: repeat(var(--cols), calc(var(--w) * 1mm)); grid-auto-rows: calc(var(--h) * 1mm); gap: 0; width: max-content; max-width: 100%; overflow-x: auto; background: #fff; }
+    .sheet.a4 .label { border: 0; }
+    .sheet.cut .label { outline: .3mm dashed #333; outline-offset: -.15mm; }
+    .label { box-sizing: border-box; display: flex; flex-direction: column; zoom: var(--s); width: calc(var(--w) * 1mm / var(--s)); height: calc(var(--h) * 1mm / var(--s)); padding: 2mm 2.5mm; overflow: hidden; border: 1px dashed #bbb; background: #fff; color: #000; font-family: Inter, Cairo, sans-serif; font-size: 7.5pt; line-height: 1.15; }
     .label header { display: flex; align-items: center; gap: 1.5mm; }
     .label header img { width: 6mm; height: 6mm; }
     .label header div { flex: 1; min-width: 0; }
@@ -148,7 +181,9 @@ const PAGE_STYLE: Record<Format, string> = {
       .sheet { gap: 0; }
       .label { border: 0; }
       .sheet.thermal .label { break-after: page; }
-      .sheet.a4 .label { border: 1px dashed #bbb; break-inside: avoid; }
+      .sheet.a4 { width: auto; max-width: none; overflow: visible; }
+      .sheet.a4 .label { break-inside: avoid; }
+      .sheet.a4:not(.cut) .label { outline: 0; }
     }
   `,
 })
@@ -161,7 +196,16 @@ export class Labels implements OnDestroy {
   protected readonly categories = signal<Category[]>([]);
   protected readonly counts = signal<Record<string, number>>(savedCounts());
   protected readonly orderId = signal('');
-  protected readonly format = signal<Format>('thermal');
+  protected readonly format = signal<Format>('a4');
+  protected readonly sizes = LABEL_SIZES;
+  protected readonly size = signal(savedSize());
+  protected readonly customSize = signal(false);
+  protected readonly cuts = signal(true);
+  protected readonly scale = computed(() => labelScale(this.size()));
+  protected readonly sizeChoice = computed(() => {
+    const s = this.size();
+    return !this.customSize() && LABEL_SIZES.some(x => x.w === s.w && x.h === s.h) ? `${s.w}x${s.h}` : 'custom';
+  });
   protected readonly packed = signal(localDay(new Date()));
   protected readonly useBy = signal('');
   protected readonly showPrice = signal(true);
@@ -172,7 +216,7 @@ export class Labels implements OnDestroy {
   protected readonly num = formatNumber;
   protected readonly ref = orderRef;
   protected readonly shop = this.data.settings;
-  private readonly pageStyle = document.createElement('style');
+  private readonly pageStyleTag = document.createElement('style');
 
   protected readonly activeOrders = computed(() =>
     this.data.orders().filter(o => !['annulé', 'récupéré', 'livré'].includes(o.status)));
@@ -190,8 +234,8 @@ export class Labels implements OnDestroy {
   });
 
   constructor() {
-    document.head.append(this.pageStyle);
-    effect(() => { this.pageStyle.textContent = PAGE_STYLE[this.format()]; });
+    document.head.append(this.pageStyleTag);
+    effect(() => { this.pageStyleTag.textContent = pageStyle(this.format(), this.size()); });
     effect(() => {
       const id = this.order();
       if (id) {
@@ -200,6 +244,26 @@ export class Labels implements OnDestroy {
       }
     });
     this.data.getCategories().then(list => this.categories.set(list));
+  }
+
+  protected readonly layout = computed(() => a4Layout(this.size(), this.labels().length));
+
+  protected perPage(s: LabelSize) {
+    return a4Layout(s, 0).perPage;
+  }
+
+  protected chooseSize(choice: string) {
+    this.customSize.set(choice === 'custom');
+    if (choice === 'custom') return;
+    const [w, h] = choice.split('x').map(Number);
+    this.setSize({ w, h });
+  }
+
+  /** La taille est gardée sur cet ordinateur. */
+  protected setSize(size: LabelSize) {
+    const clean = clampSize(size);
+    this.size.set(clean);
+    try { localStorage.setItem(SIZE_KEY, JSON.stringify(clean)); } catch {}
   }
 
   /** Les nombres sont gardés d'un matin à l'autre sur cet ordinateur. */
@@ -217,7 +281,7 @@ export class Labels implements OnDestroy {
   }
 
   ngOnDestroy() {
-    this.pageStyle.remove();
+    this.pageStyleTag.remove();
   }
 
   protected addManual() {

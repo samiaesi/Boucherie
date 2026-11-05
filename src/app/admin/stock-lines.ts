@@ -1,4 +1,4 @@
-import { FridgeItem, Product, animals, applyPools, isLowStock, isOutOfStock, isOverStock, poolOf, reorderQty, roundStock, stockUnit } from '../core/data';
+import { FridgeItem, Product, animals, applyPools, isCabinet, isLowStock, isOutOfStock, isOverStock, poolOf, reorderQty, roundStock, stockUnit } from '../core/data';
 
 export type StockState = 'out' | 'low' | 'over' | 'ok' | 'untracked';
 
@@ -54,13 +54,43 @@ export function stockLines(products: Product[], fridge: FridgeItem[]): StockLine
   return lines.sort((a, b) => RANK[a.state] - RANK[b.state]);
 }
 
-/** État d'une réserve du frigo, avec les mêmes repères que la page Stock. */
-export function fridgeLine(item: FridgeItem) {
+const RESERVE_ICONS: Record<string, string> = { moutons: 'agneau', vaches: 'boeuf', poulets: 'poulet' };
+
+/** Pictogramme de la porte : celui choisi, sinon celui de l'animal. */
+export const fridgeIcon = (f: FridgeItem) => f.icon ?? RESERVE_ICONS[f.id] ?? 'boeuf';
+
+const inCabinet = (f: FridgeItem, products: Product[]) => products.filter(p => f.rayons?.includes(p.category));
+
+/** Ce qu'on trouve en ouvrant la porte. */
+export function fridgeContents(f: FridgeItem, products: Product[]) {
+  if (isCabinet(f)) {
+    return inCabinet(f, products).map(p => ({
+      product: p,
+      state: stateOf(p),
+      note: p.trackStock ? `${roundStock(p.stock ?? 0)} ${p.unit === 'kg' ? 'kg' : stockUnit(p)}` : 'Stock non suivi',
+    }));
+  }
+  const reserve = [{ ...f, tracked: true }];
+  return products.filter(p => poolOf(p, reserve)).map(p => ({
+    product: p, state: null as StockState | null, note: '',
+  }));
+}
+
+/** État d'un frigo, avec les mêmes repères que la page Stock. */
+export function fridgeLine(item: FridgeItem, products: Product[] = []) {
+  if (isCabinet(item)) {
+    const tracked = inCabinet(item, products).filter(p => p.trackStock);
+    const states = tracked.map(stateOf);
+    const state: StockState = !tracked.length ? 'untracked'
+      : states.includes('out') ? 'out' : states.includes('low') ? 'low' : states.includes('over') ? 'over' : 'ok';
+    const total = tracked.filter(p => p.unit === 'kg').reduce((sum, p) => sum + (p.stock ?? 0), 0);
+    return { item, cabinet: true, state, fill: null, beasts: 0, total };
+  }
   const state: StockState = !item.tracked ? 'untracked'
     : item.kg <= 0 ? 'out'
     : item.min && item.kg <= item.min ? 'low'
     : item.max && item.kg > item.max ? 'over' : 'ok';
-  return { item, state, fill: fillOf(item.kg, item.min, item.max), beasts: animals(item, Number(item.kg) || 0) };
+  return { item, cabinet: false, state, fill: fillOf(item.kg, item.min, item.max), beasts: animals(item, Number(item.kg) || 0), total: item.kg };
 }
 
 /** Nombre de produits par état, pour le résumé en haut de page. */

@@ -57,6 +57,10 @@ export interface FridgeItem {
   kgEach: number;
   /** Date de retour annoncée aux clients quand la réserve est vide */
   restockDate?: string;
+  /** Pictogramme sur la porte du frigo (clé de ICONS) */
+  icon?: string;
+  /** Frigo de produits : rayons rangés dedans, chaque produit garde son propre stock */
+  rayons?: string[];
 }
 
 export interface Category {
@@ -418,6 +422,9 @@ export const ownStock = (products: Product[], fridge: FridgeItem[]) => products.
 /** Lit le frigo enregistré ; l'ancien format comptait des bêtes, pas des kg. */
 export const readFridge = (list: (FridgeItem & { count?: number })[]): FridgeItem[] =>
   list.map(({ count, ...f }) => ({ ...f, tracked: !!f.tracked, kg: f.kg ?? (count ?? 0) * f.kgEach }));
+
+/** Vrai pour un frigo de produits (surgelés…), faux pour une réserve en kg */
+export const isCabinet = (f: FridgeItem) => !!f.rayons?.length;
 
 /** Équivalent en bêtes d'une quantité en kg */
 export const animals = (f: FridgeItem, kg = f.kg) => (f.kgEach ? roundStock(kg / f.kgEach) : 0);

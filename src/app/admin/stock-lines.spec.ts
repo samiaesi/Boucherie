@@ -1,5 +1,5 @@
 import { FridgeItem, Product } from '../core/data';
-import { fridgeLine, stockCounts, stockLines } from './stock-lines';
+import { fridgeContents, fridgeIcon, fridgeLine, stockCounts, stockLines } from './stock-lines';
 
 const product = (over: Partial<Product>) => ({
   id: 'p', name_fr: 'Poulet', unit: 'kg', source: 'none', trackStock: true, stock: 1000, stockAlert: 200, stockMax: 0, ...over,
@@ -56,5 +56,38 @@ describe('fridgeLine', () => {
   it('remplit la jauge et compte les bêtes', () => {
     const line = fridgeLine(item({}));
     expect([line.fill, line.beasts]).toEqual([50, 2.5]);
+  });
+});
+
+describe('Frigos', () => {
+  const reserve = { id: 'moutons', name: 'Moutons', tracked: false, kg: 33, min: 0, max: 0, kgEach: 16 } as FridgeItem;
+  const cabinet = { id: 'poissons-surgeles', name: 'Poissons', tracked: false, kg: 0, min: 0, max: 0, kgEach: 0, rayons: ['poissons'], icon: 'poisson' } as FridgeItem;
+  const products = [
+    { id: 'gigot', name_fr: 'Gigot', category: 'agneau', unit: 'kg', source: 'moutons' },
+    { id: 'merlan', name_fr: 'Merlan', category: 'poissons', unit: 'kg', source: 'none', trackStock: true, stock: 12, stockAlert: 2 },
+    { id: 'calamar', name_fr: 'Calamar', category: 'poissons', unit: 'kg', source: 'none', trackStock: true, stock: 0 },
+    { id: 'sardine', name_fr: 'Sardine', category: 'poissons', unit: 'kg', source: 'none' },
+  ] as Product[];
+
+  it('choisit le pictogramme', () => {
+    expect(fridgeIcon(reserve)).toBe('agneau');
+    expect(fridgeIcon(cabinet)).toBe('poisson');
+  });
+
+  it('montre les coupes dans une réserve, même non suivie', () => {
+    expect(fridgeContents(reserve, products).map(c => c.product.id)).toEqual(['gigot']);
+  });
+
+  it('montre les produits des rayons dans un frigo de surgelés', () => {
+    const list = fridgeContents(cabinet, products);
+    expect(list.map(c => [c.product.id, c.state, c.note])).toEqual([
+      ['merlan', 'ok', '12 kg'], ['calamar', 'out', '0 kg'], ['sardine', 'untracked', 'Stock non suivi'],
+    ]);
+  });
+
+  it('résume un frigo de produits par son pire état', () => {
+    const line = fridgeLine(cabinet, products);
+    expect([line.cabinet, line.state, line.total]).toEqual([true, 'out', 12]);
+    expect(fridgeLine(cabinet, products.filter(p => p.id === 'sardine')).state).toBe('untracked');
   });
 });
