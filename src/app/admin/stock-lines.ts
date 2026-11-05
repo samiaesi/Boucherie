@@ -1,9 +1,18 @@
-import { FridgeItem, Product, applyPools, isLowStock, isOutOfStock, isOverStock, poolOf, reorderQty, roundStock, stockUnit } from '../core/data';
+import { FridgeItem, Product, animals, applyPools, isLowStock, isOutOfStock, isOverStock, poolOf, reorderQty, roundStock, stockUnit } from '../core/data';
 
 export type StockState = 'out' | 'low' | 'over' | 'ok' | 'untracked';
 
 export const STATE_LABELS: Record<StockState, string> = {
   out: 'Rupture', low: 'Stock bas', over: 'Trop de stock', ok: 'En stock', untracked: 'Non suivi',
+};
+
+/** Tracés SVG des états (grille 24×24) */
+export const STATE_ICONS: Record<StockState, string> = {
+  out: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM6 6l12 12',
+  low: 'M12 4L3 20h18zM12 10v5M12 18v.01',
+  over: 'M12 20V5M6 11l6-6 6 6',
+  ok: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6',
+  untracked: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12h8',
 };
 
 export interface StockLine {
@@ -43,6 +52,15 @@ export function stockLines(products: Product[], fridge: FridgeItem[]): StockLine
     };
   });
   return lines.sort((a, b) => RANK[a.state] - RANK[b.state]);
+}
+
+/** État d'une réserve du frigo, avec les mêmes repères que la page Stock. */
+export function fridgeLine(item: FridgeItem) {
+  const state: StockState = !item.tracked ? 'untracked'
+    : item.kg <= 0 ? 'out'
+    : item.min && item.kg <= item.min ? 'low'
+    : item.max && item.kg > item.max ? 'over' : 'ok';
+  return { item, state, fill: fillOf(item.kg, item.min, item.max), beasts: animals(item, Number(item.kg) || 0) };
 }
 
 /** Nombre de produits par état, pour le résumé en haut de page. */

@@ -10,6 +10,8 @@ export interface Product {
   category: string;
   order: number;
   available: boolean;
+  /** Référence interne, saisie dans la fiche produit */
+  reference?: string;
   price: number;
   unit: Unit;
   name_fr: string;

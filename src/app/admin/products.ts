@@ -2,6 +2,7 @@ import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } fr
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, ICONS, Product, formatNumber } from '../core/data';
+import { productRef, referenceTakenBy, searchProducts } from '../core/product-search';
 import { AdminData } from './admin-data';
 import { resizeImage } from './image';
 
@@ -25,8 +26,16 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
         <button class="btn" (click)="open(null)">+ Ajouter un produit</button>
       </div>
     </div>
+    <div class="finder">
+      <input type="search" placeholder="Référence, nom ou rayon…" aria-label="Rechercher un produit" [ngModel]="search()" (ngModelChange)="search.set($event)" name="search">
+      <select aria-label="Rayon" [ngModel]="rayon()" (ngModelChange)="rayon.set($event)" name="rayon">
+        <option value="">Tous les rayons</option>
+        @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name_fr }}</option> }
+      </select>
+      <span>{{ shown().length }} / {{ products().length }}</span>
+    </div>
     <div class="items">
-      @for (p of products(); track p.id) {
+      @for (p of shown(); track p.id) {
         <div class="item" [class.off]="!p.available">
           <div class="thumb">
             @if (p.image) { <img [src]="p.image" alt=""> } @else { <span [innerHTML]="icon(p.category)"></span> }
@@ -34,7 +43,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
           <div class="info">
             <b>{{ p.name_fr }} <span class="ar">· {{ p.name_ar }}</span>
               @if (!p.available) { <span class="pill">Masqué</span> }</b>
-            <small>{{ p.desc_fr }}</small>
+            <small>Réf. {{ ref(p) }} · {{ rayonName(p) }}</small>
           </div>
           <div class="price">{{ price(p) }}</div>
           <div class="item-actions">
@@ -44,7 +53,9 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
           </div>
         </div>
       } @empty {
-        @if (loaded()) {
+        @if (loaded() && products().length) {
+          <div class="empty">Aucun produit trouvé.</div>
+        } @else if (loaded()) {
           <div class="empty">Aucun produit dans Firebase : le site affiche les produits par défaut. Importez-les pour pouvoir les modifier.</div>
         }
       }
@@ -54,6 +65,8 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
       <form class="modal" (ngSubmit)="save()">
         <h3>{{ editingId ? 'Modifier le produit' : 'Nouveau produit' }}</h3>
         <div class="grid2">
+          <label>Référence<input name="reference" autocomplete="off" [placeholder]="editingId ? editingId.toUpperCase() : 'Automatique'" [(ngModel)]="draft.reference"></label>
+          <span></span>
           <label>Nom (français)<input name="name_fr" required [(ngModel)]="draft.name_fr"></label>
           <label>Nom (arabe)<input name="name_ar" dir="rtl" required [(ngModel)]="draft.name_ar"></label>
           <label>Description (français)<textarea name="desc_fr" rows="2" [(ngModel)]="draft.desc_fr"></textarea></label>
@@ -104,6 +117,11 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
       </form>
     </dialog>
   `,
+  styles: `
+    .finder { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 10px; align-items: center; margin-bottom: 14px; max-width: 760px; }
+    .finder span { color: var(--muted); font-size: .86rem; white-space: nowrap; }
+    @media (max-width: 600px) { .finder { grid-template-columns: 1fr auto; } .finder input { grid-column: 1 / -1; } }
+  `,
 })
 export class Products implements OnInit {
   protected readonly data = inject(AdminData);
@@ -116,6 +134,10 @@ export class Products implements OnInit {
   protected readonly image = signal<string | null>(null);
   protected readonly error = signal('');
   protected readonly categories = signal<Category[]>([]);
+  protected readonly search = signal('');
+  protected readonly rayon = signal('');
+  protected readonly ref = productRef;
+  protected readonly shown = computed(() => searchProducts(this.products(), p => p, this.search(), this.rayon(), this.categories()));
   protected editingId: string | null = null;
   protected draft: Draft = this.toDraft(this.blank());
 
@@ -151,6 +173,10 @@ export class Products implements OnInit {
     return this.icons[name] ?? this.icons['boeuf'];
   }
 
+  protected rayonName(p: Product) {
+    return this.categories().find(c => c.id === p.category)?.name_fr ?? p.category;
+  }
+
   protected price(p: Product) {
     if (p.unit === 'order' || !p.price) return 'Sur commande';
     return `${formatNumber(p.price)} DA / ${p.unit === 'piece' ? 'pièce' : 'kg'}`;
@@ -178,6 +204,12 @@ export class Products implements OnInit {
 
   protected async save() {
     const d = this.draft;
+    const reference = (d.reference ?? '').trim();
+    const taken = referenceTakenBy(reference, this.editingId, this.products());
+    if (taken) {
+      this.error.set(`La référence ${reference} est déjà utilisée par ${taken.name_fr}.`);
+      return;
+    }
     const data: Omit<Product, 'id'> = {
       ...d, name_fr: d.name_fr.trim(), name_ar: d.name_ar.trim(), desc_fr: d.desc_fr.trim(), desc_ar: d.desc_ar.trim(),
       price: Number(d.price) || 0, order: Number(d.order) || 0,
@@ -185,6 +217,8 @@ export class Products implements OnInit {
       options_fr: lines(d.options_fr), options_ar: lines(d.options_ar),
     };
     if (!data.source) delete data.source;
+    if (reference) data.reference = reference;
+    else delete data.reference;
     const image = this.image();
     if (image) data.image = image;
     try {

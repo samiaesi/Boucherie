@@ -90,7 +90,7 @@ function savedSeen(): Set<string> {
           <p dir="ltr"><a [href]="phoneHref()">{{ shop.settings().phone }}</a></p>
         </div>
       </div>
-      <div class="copy"><div class="wrap">© {{ year }} {{ i18n.pick(shop.settings(), 'name') }} · {{ shop.settings().company }} · {{ i18n.t('footer') }}</div></div>
+      <div class="copy"><div class="wrap">© {{ year }} {{ i18n.pick(shop.settings(), 'name') }} · {{ shop.settings().company }} · {{ i18n.t('footer') }} · {{ i18n.t('madeBy') }} <bdi dir="ltr">Medine Samia</bdi></div></div>
     </footer>
 
     <!-- Panier -->

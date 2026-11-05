@@ -1,5 +1,5 @@
 import { FridgeItem, Product } from '../core/data';
-import { stockCounts, stockLines } from './stock-lines';
+import { fridgeLine, stockCounts, stockLines } from './stock-lines';
 
 const product = (over: Partial<Product>) => ({
   id: 'p', name_fr: 'Poulet', unit: 'kg', source: 'none', trackStock: true, stock: 1000, stockAlert: 200, stockMax: 0, ...over,
@@ -39,5 +39,22 @@ describe('stockCounts', () => {
   it('compte les produits par état', () => {
     const counts = stockCounts(stockLines([product({}), product({ stock: 0 }), product({ trackStock: false })], []));
     expect(counts).toEqual({ out: 1, low: 0, over: 0, ok: 1, untracked: 1 });
+  });
+});
+
+describe('fridgeLine', () => {
+  const item = (over: Partial<FridgeItem>) => ({ id: 'm', name: 'Moutons', tracked: true, kg: 50, min: 10, max: 100, kgEach: 20, ...over }) as FridgeItem;
+
+  it('donne le même état que la page Stock', () => {
+    expect(fridgeLine(item({})).state).toBe('ok');
+    expect(fridgeLine(item({ kg: 10 })).state).toBe('low');
+    expect(fridgeLine(item({ kg: 0 })).state).toBe('out');
+    expect(fridgeLine(item({ kg: 120 })).state).toBe('over');
+    expect(fridgeLine(item({ tracked: false })).state).toBe('untracked');
+  });
+
+  it('remplit la jauge et compte les bêtes', () => {
+    const line = fridgeLine(item({}));
+    expect([line.fill, line.beasts]).toEqual([50, 2.5]);
   });
 });

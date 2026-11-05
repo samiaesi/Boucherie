@@ -1,19 +1,12 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Product, byOrder } from '../core/data';
+import { Category, Product, byOrder } from '../core/data';
+import { productRef, searchProducts } from '../core/product-search';
 import { AdminData } from './admin-data';
-import { STATE_LABELS, StockLine, StockState, stockCounts, stockLines } from './stock-lines';
+import { STATE_ICONS, STATE_LABELS, StockLine, StockState, stockCounts, stockLines } from './stock-lines';
 
 type Filter = 'tous' | StockState;
-
-const ICONS: Record<StockState, string> = {
-  out: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM6 6l12 12',
-  low: 'M12 4L3 20h18zM12 10v5M12 18v.01',
-  over: 'M12 20V5M6 11l6-6 6 6',
-  ok: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6',
-  untracked: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12h8',
-};
 
 interface Draft {
   id: string;
@@ -41,7 +34,14 @@ interface Draft {
       }
     </div>
 
-    <input class="search" type="search" placeholder="Rechercher un produit…" aria-label="Rechercher un produit" [ngModel]="search()" (ngModelChange)="search.set($event)" name="search">
+    <div class="finder">
+      <input type="search" placeholder="Référence, nom ou rayon…" aria-label="Rechercher un produit" [ngModel]="search()" (ngModelChange)="search.set($event)" name="search">
+      <select aria-label="Rayon" [ngModel]="rayon()" (ngModelChange)="rayon.set($event)" name="rayon">
+        <option value="">Tous les rayons</option>
+        @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name_fr }}</option> }
+      </select>
+      <span>{{ shown().length }} / {{ lines().length }}</span>
+    </div>
 
     @if (data.ready() && !lines().length) {
       <div class="empty">Aucun produit dans Firebase. Importez d'abord les produits dans <a routerLink="/admin/produits">l'onglet Produits</a>.</div>
@@ -53,6 +53,7 @@ interface Draft {
         <div class="row" [class.off]="l.state === 'untracked'">
           <div class="name">
             <b>{{ l.product.name_fr }}</b>
+            <small>Réf. {{ ref(l.product) }} · {{ rayonName(l.product) }}</small>
             @if (l.pool) { <small>Réserve : {{ l.pool.name }}</small> }
           </div>
           <div>
@@ -105,45 +106,39 @@ interface Draft {
     .tile.low b { color: var(--orange); }
     .tile.ok b { color: var(--green); }
     .tile.active { border-color: var(--ink, #1d1613); box-shadow: inset 0 0 0 1px var(--ink, #1d1613); }
-    .search { max-width: 340px; margin-bottom: 12px; }
+    .finder { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 10px; align-items: center; max-width: 760px; margin-bottom: 12px; }
+    .finder span { color: var(--muted); font-size: .86rem; white-space: nowrap; }
     .table { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
     .row { display: grid; grid-template-columns: minmax(170px, 1.5fr) 150px minmax(150px, 1.2fr) 90px 150px; gap: 14px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--line); }
     .row:first-child { border-top: 0; }
     .row.off .name b { color: var(--muted); font-weight: 600; }
     .titles { padding-block: 9px; background: var(--bg); color: var(--muted); font-size: .78rem; font-weight: 600; }
     .name small, .qty small, .limits small { display: block; color: var(--muted); font-size: .78rem; }
-    .state { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; white-space: nowrap; }
-    .state svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-    .state.ok { background: #e7f4ec; color: var(--green); }
-    .state.low { background: #fdf1dc; color: #94570f; }
-    .state.out { background: #fbeaea; color: var(--red); }
-    .state.over { background: #e7eef8; color: var(--blue); }
-    .state.untracked { background: #f1eee9; color: var(--muted); }
-    .gauge { display: block; height: 6px; margin: 5px 0 3px; border-radius: 3px; background: #efeae3; overflow: hidden; }
-    .gauge i { display: block; height: 100%; border-radius: 3px; background: var(--green); }
-    .gauge i.low { background: var(--orange); }
-    .gauge i.out { background: var(--red); }
-    .gauge i.over { background: var(--blue); }
     .none { color: var(--muted); }
     .action { text-align: end; }
     .editor { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; align-items: end; padding: 14px 16px; background: var(--bg); border-top: 1px dashed var(--line); }
     .buttons { display: flex; gap: 8px; }
     @media (max-width: 800px) {
       .titles { display: none; }
+      .finder { grid-template-columns: 1fr auto; }
+      .finder input { grid-column: 1 / -1; }
       .row { grid-template-columns: 1fr auto; gap: 8px 12px; }
       .limits { display: flex; gap: 12px; }
       .action { text-align: end; }
     }
   `,
 })
-export class Stock {
+export class Stock implements OnInit {
   protected readonly data = inject(AdminData);
+  protected readonly categories = signal<Category[]>([]);
+  protected readonly rayon = signal('');
+  protected readonly ref = productRef;
   protected readonly filter = signal<Filter>('tous');
   protected readonly search = signal('');
   protected readonly draft = signal<Draft | null>(null);
   protected readonly busy = signal(false);
   protected readonly label = (s: StockState) => STATE_LABELS[s];
-  protected readonly icon = (s: StockState) => ICONS[s];
+  protected readonly icon = (s: StockState) => STATE_ICONS[s];
 
   protected readonly lines = computed(() => stockLines([...this.data.products()].sort(byOrder), this.data.fridge()));
 
@@ -160,10 +155,18 @@ export class Stock {
   });
 
   protected readonly shown = computed(() => {
-    const f = this.filter(), q = this.search().trim().toLowerCase();
-    return this.lines().filter((l: StockLine) =>
-      (f === 'tous' || l.state === f) && (!q || l.product.name_fr.toLowerCase().includes(q)));
+    const f = this.filter();
+    const lines = this.lines().filter((l: StockLine) => f === 'tous' || l.state === f);
+    return searchProducts(lines, l => l.product, this.search(), this.rayon(), this.categories());
   });
+
+  async ngOnInit() {
+    this.categories.set(await this.data.getCategories());
+  }
+
+  protected rayonName(p: Product) {
+    return this.categories().find(c => c.id === p.category)?.name_fr ?? p.category;
+  }
 
   protected open(p: Product, trackStock: boolean) {
     this.draft.set({
