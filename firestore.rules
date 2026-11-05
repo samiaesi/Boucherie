@@ -32,7 +32,8 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin()
         || (id == 'fridge' && isMember())
-        || (id == 'invoiceCounter' && isMember());
+        || (id == 'invoiceCounter' && isMember())
+        || (id == 'lotCounter' && isManager());
     }
 
     // Commandes : tout le monde peut en créer une depuis le site, seule l'équipe les lit
@@ -71,6 +72,8 @@ service cloud.firestore {
 
     // Clients professionnels : jamais lisibles par le public
     match /companies/{id} { allow read, write: if isManager(); }
+    // Arrivages : jamais supprimés, un arrivage annulé garde son matricule
+    match /lots/{id} { allow read, create, update: if isManager(); }
 
     match /admins/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());

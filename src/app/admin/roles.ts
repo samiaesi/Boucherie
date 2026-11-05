@@ -37,6 +37,8 @@ export const PAGES: Page[] = [
     icon: 'M4 21V7l8-4v18M12 9l8 3v9M3 21h18M8 9v.01M8 13v.01M8 17v.01M16 14v.01M16 18v.01' },
   { path: 'declaration', label: 'Déclaration', group: 'Ventes', roles: MANAGERS,
     icon: 'M5 4h14v16H5zM5 9h14M10 9v11M14 13h2M14 16h2' },
+  { path: 'arrivages', label: 'Arrivages', group: 'Stock et catalogue', roles: MANAGERS,
+    icon: 'M3 7h11v10H3zM14 10h4l3 3v4h-7zM7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z' },
   { path: 'stock', label: 'Stock', group: 'Stock et catalogue', roles: MANAGERS,
     icon: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9' },
   { path: 'frigo', label: 'Frigo', group: 'Stock et catalogue', roles: MANAGERS,

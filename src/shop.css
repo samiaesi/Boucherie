@@ -374,6 +374,7 @@ app-shop-layout {
   .hours { width: 100%; border-collapse: collapse; font-size: .95rem; color: var(--text); }
   .hours td { padding: 5px 0; border-bottom: 1px dashed var(--border); }
   .hours td:last-child { text-align: end; direction: ltr; font-weight: 600; color: var(--ink); }
+  .map-link { color: var(--red); font-weight: 600; text-decoration: underline; }
   .map { width: 100%; min-height: 400px; height: 100%; border: 0; border-radius: var(--r); }
 
   /* Pied de page */

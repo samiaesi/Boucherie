@@ -221,7 +221,7 @@ const SLIDES: { a: TKey; b: TKey; t: TKey; link: { cat?: string } }[] = [
         </div>
         <div class="contact-grid" appReveal>
           <div class="info">
-            <div class="info-block"><span class="info-icon">📍</span><div><h3>{{ i18n.t('addrT') }}</h3><p>{{ i18n.pick(shop.settings(), 'address') }}</p></div></div>
+            <div class="info-block"><span class="info-icon">📍</span><div><h3>{{ i18n.t('addrT') }}</h3><p>{{ i18n.pick(shop.settings(), 'address') }}</p><a class="map-link" [href]="shop.settings().mapLink" target="_blank" rel="noopener">{{ i18n.t('mapLink') }}</a></div></div>
             <div class="info-block"><span class="info-icon">📞</span><div><h3>{{ i18n.t('telT') }}</h3><p dir="ltr">{{ shop.settings().phone }}</p></div></div>
             <div class="info-block">
               <span class="info-icon">🕒</span>
@@ -278,7 +278,7 @@ export class Home implements OnInit, OnDestroy {
   });
 
   protected readonly mapUrl = computed(() => this.sanitizer.bypassSecurityTrustResourceUrl(
-    `https://maps.google.com/maps?q=${encodeURIComponent(this.shop.settings().address_fr)}&z=14&output=embed`,
+    `https://maps.google.com/maps?q=${encodeURIComponent(this.shop.settings().mapPosition)}&z=17&output=embed`,
   ));
 
   ngOnInit() {

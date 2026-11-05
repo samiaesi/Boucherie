@@ -84,6 +84,7 @@ function savedSeen(): Set<string> {
         <div>
           <h4>{{ i18n.t('navContact') }}</h4>
           <p>{{ i18n.pick(shop.settings(), 'address') }}</p>
+          <a [href]="shop.settings().mapLink" target="_blank" rel="noopener">{{ i18n.t('mapLink') }}</a>
           <p dir="ltr"><a [href]="phoneHref()">{{ shop.settings().phone }}</a></p>
         </div>
       </div>

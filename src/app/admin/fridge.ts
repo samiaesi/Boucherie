@@ -1,5 +1,6 @@
 import { Component, inject, linkedSignal, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { FridgeItem, animals, roundStock } from '../core/data';
 import { AdminData } from './admin-data';
 
@@ -8,9 +9,9 @@ const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 
 @Component({
   selector: 'app-fridge',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   template: `
-    <div class="head"><h2>Frigo : réserve en kg</h2></div>
+    <div class="head"><h2>Frigo : réserve en kg</h2><a class="btn small" routerLink="/admin/arrivages">Nouvel arrivage</a></div>
     <p class="hint">
       Tout est compté en kilos. Un mouton vendu entier, en moitié ou découpé retire son poids de la même réserve
       à la confirmation de la commande.
@@ -36,12 +37,6 @@ const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
             <label>Minimum (kg)<input [name]="'min' + i" type="number" min="0" [(ngModel)]="f.min"></label>
             <label>Maximum (kg)<input [name]="'max' + i" type="number" min="0" [(ngModel)]="f.max"></label>
             <label>Poids moyen d'une bête (kg)<input [name]="'each' + i" type="number" min="0" step="0.1" [(ngModel)]="f.kgEach"></label>
-            <label>Arrivage (kg)
-              <span class="arrival">
-                <input #arrival type="number" min="0" step="0.5" placeholder="+ kg" aria-label="Poids reçu">
-                <button type="button" class="btn small" (click)="receive(f, arrival)">Ajouter</button>
-              </span>
-            </label>
             @if (f.kg <= 0) {
               <label>Retour prévu<input [name]="'back' + i" type="date" [(ngModel)]="f.restockDate"></label>
             }
@@ -61,7 +56,6 @@ const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
     .top .name { max-width: 240px; font-weight: 700; }
     .top .check { flex: 1; }
     .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
-    .arrival { display: flex; gap: 6px; }
     .stat.low { border-color: var(--orange); background: #fdf1dc; }
     .stat.off { opacity: .55; }
   `,
@@ -88,15 +82,6 @@ export class Fridge {
 
   protected remove(i: number) {
     this.list.update(l => l.filter((_, n) => n !== i));
-  }
-
-  /** Un arrivage s'ajoute à la réserve et efface la date de retour annoncée. */
-  protected receive(f: FridgeItem, input: HTMLInputElement) {
-    const kg = Number(input.value);
-    if (!(kg > 0)) return;
-    f.kg = roundStock((Number(f.kg) || 0) + kg);
-    delete f.restockDate;
-    input.value = '';
   }
 
   protected async save() {

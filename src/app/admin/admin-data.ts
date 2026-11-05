@@ -8,6 +8,7 @@ import { Announcement } from '../core/announcements';
 import { db, firebaseConfig } from '../core/firebase';
 import { Invoice, buildInvoice, invoiceNumber } from '../core/invoice';
 import { Company, PaymentMode, ProLine, amountInWords, computePro } from '../core/pro-invoice';
+import { Lot, LotInput, lotNumber } from '../core/lots';
 import { DEFAULT_ORDERING, OrderingRules } from '../core/ordering';
 import { Role } from './roles';
 import {
@@ -343,6 +344,60 @@ export class AdminData {
 
   saveFridge(list: FridgeItem[]) {
     return this.guarded(setDoc(doc(db, 'settings', 'fridge'), { list }));
+  }
+
+  async listLots(): Promise<Lot[]> {
+    const snap = await getDocs(query(collection(db, 'lots'), orderBy('createdAt', 'desc')));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id }) as Lot);
+  }
+
+  private async fridgeInTx(tx: Transaction) {
+    const snap = await tx.get(doc(db, 'settings', 'fridge'));
+    return snap.exists() ? readFridge(snap.data()['list']) : this.fridge();
+  }
+
+  /** Ajoute (qty > 0) ou retire (qty < 0) la quantité d'un arrivage. */
+  private moveLot(tx: Transaction, lot: LotInput, qty: number, fridge: FridgeItem[]) {
+    const arrival = qty > 0;
+    if (lot.target.kind === 'product') {
+      tx.update(doc(db, 'products', lot.target.id), { stock: increment(qty), ...(arrival ? { restockDate: '' } : {}) });
+      return;
+    }
+    const list = fridge.map(f => {
+      if (f.id !== lot.target.id) return f;
+      const { restockDate, ...rest } = f;
+      return { ...(arrival ? rest : f), kg: Math.max(0, roundStock(f.kg + qty)) };
+    });
+    tx.set(doc(db, 'settings', 'fridge'), { list });
+  }
+
+  /** Enregistre un arrivage, lui attribue son matricule et met le stock à jour d'un seul coup. */
+  async addLot(input: LotInput): Promise<string> {
+    const year = Number(input.arrivalDate.slice(0, 4));
+    const counterRef = doc(db, 'settings', 'lotCounter');
+    const lotRef = doc(collection(db, 'lots'));
+    return this.guarded(runTransaction(db, async tx => {
+      const counter = await tx.get(counterRef);
+      const fridge = await this.fridgeInTx(tx);
+      const next = (counter.data()?.[year] ?? 0) + 1;
+      const matricule = lotNumber(year, next);
+      tx.set(counterRef, { [year]: next }, { merge: true });
+      tx.set(lotRef, { ...input, matricule, createdAt: serverTimestamp() });
+      this.moveLot(tx, input, input.qty, fridge);
+      return matricule;
+    }));
+  }
+
+  /** Un arrivage annulé reste dans l'historique : son matricule n'est jamais réutilisé. */
+  cancelLot(lot: Lot) {
+    const lotRef = doc(db, 'lots', lot.id);
+    return this.guarded(runTransaction(db, async tx => {
+      const snap = await tx.get(lotRef);
+      if (snap.data()?.['cancelled']) throw new Error('Cet arrivage est déjà annulé.');
+      const fridge = await this.fridgeInTx(tx);
+      this.moveLot(tx, lot, -lot.qty, fridge);
+      tx.update(lotRef, { cancelled: true });
+    }));
   }
 
   saveOrdering(data: Partial<OrderingRules>) {

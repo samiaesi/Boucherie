@@ -12,6 +12,7 @@ type Filter = 'tous' | 'suivis' | 'bas' | 'rupture';
   template: `
     <div class="head">
       <h2>Stock</h2>
+      <a class="btn small" routerLink="/admin/arrivages">Nouvel arrivage</a>
       <div class="chips">
         @for (f of filters; track f[0]) {
           <button class="chip" [class.active]="f[0] === filter()" (click)="filter.set(f[0])">{{ f[1] }}</button>
@@ -54,12 +55,6 @@ type Filter = 'tous' | 'suivis' | 'bas' | 'rupture';
                 <input type="date" [value]="p.restockDate ?? ''" (change)="save(p, { restockDate: $any($event.target).value })">
               </label>
             }
-            <label>Arrivage
-              <span class="add-row">
-                <input #qty type="number" min="0" step="0.5" placeholder="+ qté">
-                <button class="btn small" (click)="receive(p, qty)">Ajouter</button>
-              </span>
-            </label>
           }
           }
         </div>
@@ -70,7 +65,6 @@ type Filter = 'tous' | 'suivis' | 'bas' | 'rupture';
     .stock-row { flex-wrap: wrap; }
     .stock-row label:not(.check) { width: 120px; }
     .stock-row label:last-child { width: 190px; }
-    .add-row { display: flex; gap: 6px; }
   `,
 })
 export class Stock implements OnInit {
@@ -114,10 +108,4 @@ export class Stock implements OnInit {
     await this.reload();
   }
 
-  protected async receive(p: Product, input: HTMLInputElement) {
-    const qty = Number(input.value);
-    if (!(qty > 0)) return;
-    await this.save(p, { stock: roundStock((p.stock ?? 0) + qty), restockDate: '' });
-    input.value = '';
-  }
 }
