@@ -6,6 +6,7 @@ import { I18n } from '../core/i18n';
 import { Logo } from '../core/logo';
 import { Shop } from '../core/shop';
 import { ClosedNotice } from './closed-notice';
+import { InstallApp } from './install-app';
 
 const SEEN_KEY = 'newsSeen';
 
@@ -19,7 +20,7 @@ function savedSeen(): Set<string> {
 
 @Component({
   selector: 'app-shop-layout',
-  imports: [ClosedNotice, Logo, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [ClosedNotice, InstallApp, Logo, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <div class="progress" #progress></div>
     <header #header>
@@ -65,6 +66,7 @@ function savedSeen(): Set<string> {
 
     <app-closed-notice />
     <main><router-outlet /></main>
+    <app-install />
 
     <footer>
       <div class="wrap footer-grid">
