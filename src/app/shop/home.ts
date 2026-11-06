@@ -48,6 +48,15 @@ const STEP_MS = 2200;
       </div>
     </section>
 
+    <section class="menu-cta">
+      <div class="wrap">
+        <a routerLink="/mon-menu" class="menu-banner">
+          <span><b>{{ i18n.t('menuBannerTitle') }}</b><small>{{ i18n.t('menuBannerText') }}</small></span>
+          <span class="hero-cta">{{ i18n.t('menuBannerBtn') }}<span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></span>
+        </a>
+      </div>
+    </section>
+
     @if (shop.live().length) {
       <section class="today">
         <div class="wrap">

@@ -28,6 +28,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', component: Home },
       { path: 'boutique', component: Catalog },
       { path: 'produit/:id', component: ProductPage },
+      { path: 'mon-menu', loadComponent: () => import('./shop/menu-page').then(m => m.MenuPage) },
       { path: 'notre-boucherie', loadComponent: () => import('./shop/about-page').then(m => m.AboutPage) },
       { path: 'commande', component: Checkout },
       { path: 'suivi/:id', component: TrackPage },

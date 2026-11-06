@@ -46,6 +46,10 @@ export class Cart {
   readonly bump = signal(0);
   readonly count = computed(() => this.lines().reduce((n, l) => n + l.qty, 0));
   readonly total = computed(() => this.lines().reduce((n, l) => n + lineTotal(l), 0));
+  /** Au moins un article dont le prix reste à confirmer */
+  readonly pending = computed(() => this.lines().some(l => l.unit === 'order'));
+  /** Commande spéciale avec un prix final calculé */
+  readonly specialPriced = computed(() => this.lines().some(l => l.special && l.unit !== 'order'));
   private hideTimer?: ReturnType<typeof setTimeout>;
   private warnTimer?: ReturnType<typeof setTimeout>;
 

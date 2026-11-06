@@ -152,6 +152,7 @@ const MIN_GRAMS = 100;
                   {{ out() ? i18n.t('soldOut') : i18n.t('addCart') }}
                 </button>
               </div>
+              @if (p.custom) { <p class="note">{{ i18n.t(customPrice() === null ? 'pendingPrice' : 'finalPrice') }}</p> }
               <p class="serve-line">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7h12v10H2zM14 10h4l4 4v3h-8zM6.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg>
                 {{ i18n.t(shop.pickupKey()) }}

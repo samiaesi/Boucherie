@@ -38,6 +38,7 @@ function savedSeen(): Set<string> {
           @if (shop.category('speciales')) {
             <a routerLink="/boutique" [queryParams]="{ cat: 'speciales' }">{{ i18n.t('specialOrder') }}</a>
           }
+          <a class="menu-plan" routerLink="/mon-menu" routerLinkActive="on">{{ i18n.t('menuNav') }}</a>
           @if (shop.hasAbout()) { <a routerLink="/notre-boucherie" routerLinkActive="on">{{ i18n.t('aboutNav') }}</a> }
           <a routerLink="/" fragment="contact">{{ i18n.t('navContact') }}</a>
           @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
@@ -134,9 +135,9 @@ function savedSeen(): Set<string> {
       </div>
       @if (cart.lines().length) {
         <div class="drawer-foot">
-          <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.money(cart.total()) }}</b></div>
+          <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.total(cart.total(), cart.pending()) }}</b></div>
           <p class="serve-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7h12v10H2zM14 10h4l4 4v3h-8zM6.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg>{{ i18n.t(shop.pickupKey()) }}</p>
-          <p class="note">{{ i18n.t('estimate') }}</p>
+          <p class="note">{{ i18n.t(cart.pending() ? 'pendingPrice' : 'estimate') }}</p>
           <a routerLink="/commande" class="btn btn-red block" (click)="cart.open.set(false)">{{ i18n.t('checkout') }}</a>
           <button class="btn-text" (click)="cart.open.set(false)">{{ i18n.t('keepShopping') }}</button>
         </div>
@@ -172,7 +173,7 @@ function savedSeen(): Set<string> {
     <!-- Panier toujours accessible sur mobile -->
     @if (cart.count() && !cart.open()) {
       <button class="sticky-cart" (click)="cart.open.set(true)">
-        <span>🛒 {{ i18n.t('stickyCart') }} ({{ cart.count() }})</span><b>{{ i18n.money(cart.total()) }}</b>
+        <span>🛒 {{ i18n.t('stickyCart') }} ({{ cart.count() }})</span><b>{{ i18n.total(cart.total(), cart.pending()) }}</b>
       </button>
     }
 

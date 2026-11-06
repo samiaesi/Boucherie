@@ -93,12 +93,13 @@ const PHONE = /^0[567]\d{8}$/;
                 </div>
               }
               @if (mode() === 'livraison') {
-                <div class="sum-line"><span>{{ i18n.t('subtotal') }}</span><b>{{ i18n.money(cart.total()) }}</b></div>
+                <div class="sum-line"><span>{{ i18n.t('subtotal') }}</span><b>{{ i18n.total(cart.total(), cart.pending()) }}</b></div>
                 <div class="sum-line"><span>{{ i18n.t('delivery') }}</span><b>{{ feeLabel(fee()) }}</b></div>
                 @if (freeLeft() > 0) { <p class="serve-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7C10 3 7 3 7 5s3 2 5 2zM12 7c2-4 5-4 5-2s-3 2-5 2z" /></svg>{{ freeLeftText() }}</p> }
               }
-              <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.money(grandTotal()) }}</b></div>
-              <p class="note">{{ i18n.t('estimate') }}</p>
+              <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.total(grandTotal(), cart.pending()) }}</b></div>
+              @if (cart.specialPriced()) { <p class="note">{{ i18n.t('finalPrice') }}</p> }
+              <p class="note">{{ i18n.t(cart.pending() ? 'pendingPrice' : 'estimate') }}</p>
             </aside>
           </div>
         }
@@ -201,7 +202,7 @@ export class Checkout {
     const lines = this.cart.lines().map(l =>
       `- ${l.qty} × ${this.describe(l)} : ${l.unit === 'order' ? t('toConfirm') : this.i18n.money(lineTotal(l))}`);
     const delivery = this.mode() === 'livraison';
-    const total = this.i18n.money(this.grandTotal());
+    const total = this.i18n.total(this.grandTotal(), this.cart.pending());
     const details = [
       ...lines,
       delivery && `${t('delivery')} : ${this.feeLabel(this.fee())}`,

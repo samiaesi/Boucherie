@@ -1,4 +1,6 @@
+import { TestBed } from '@angular/core/testing';
 import { DEFAULT_PRODUCTS, Product } from './data';
+import { I18n } from './i18n';
 import { choiceIcon, customReady, customText, customTotal } from './special-custom';
 
 const product = (price: number, meat: number, extra: number): Product => ({
@@ -49,5 +51,23 @@ describe('Personnalisation des commandes spéciales', () => {
 
   it('ajoute le poulet entier sans os au rayon poulet', () => {
     expect(DEFAULT_PRODUCTS.find(p => p.id === 'poulet-sans-os')?.category).toBe('poulet');
+  });
+});
+
+describe('Total avec un prix à confirmer', () => {
+  const i18n = () => TestBed.inject(I18n);
+
+  it('n\'annonce jamais 0 DA', () => {
+    expect(i18n().total(0, true)).toBe(i18n().t('toConfirm'));
+  });
+
+  it('garde le montant connu et signale le reste', () => {
+    const text = i18n().total(1500, true);
+    expect(text).toContain(i18n().money(1500));
+    expect(text).toContain(i18n().t('toConfirm'));
+  });
+
+  it('affiche le montant quand tout a un prix', () => {
+    expect(i18n().total(1500, false)).toBe(i18n().money(1500));
   });
 });
