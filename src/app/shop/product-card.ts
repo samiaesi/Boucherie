@@ -19,6 +19,11 @@ import { Tilt } from './effects';
         } @else {
           <span class="card-icon" [innerHTML]="icon() | icon"></span>
         }
+        @if (i18n.flags(product()).length) {
+          <span class="flags">
+            @for (f of i18n.flags(product()); track f.src) { <img [src]="f.src" [alt]="f.name" [title]="f.name" width="28" height="21"> }
+          </span>
+        }
       </a>
       <div class="card-body">
         <a [routerLink]="['/produit', product().id]"><h3>{{ i18n.pick(product(), 'name') }}</h3></a>

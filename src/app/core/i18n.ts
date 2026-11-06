@@ -1,5 +1,5 @@
 import { Injectable, effect, signal } from '@angular/core';
-import { Lang, Product, countryName, formatNumber, formatWeight, hasPriceRange, lowestPrice, originsOf } from './data';
+import { Lang, Product, countryFlag, countryName, formatNumber, formatWeight, hasPriceRange, lowestPrice, originsOf } from './data';
 import { DaySchedule, OrderingState, algeriaClock, scheduleLines } from './ordering';
 
 const FR = {
@@ -242,6 +242,11 @@ export class I18n {
       : date === tomorrow.toISOString().slice(0, 10) ? this.t('closedTomorrow')
       : new Date(`${date}T12:00:00Z`).toLocaleDateString(this.lang() === 'ar' ? 'ar-DZ' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
     return [s.note, this.t('closedBack').replace('{d}', day).replace('{t}', time)].filter(Boolean).join(' — ');
+  }
+
+  /** Drapeaux connus d'un produit, avec le nom du pays pour les lecteurs d'écran */
+  flags(p: Product) {
+    return originsOf(p).map(o => ({ src: countryFlag(o.country), name: this.country(o.country) })).filter(f => f.src);
   }
 
   /** Pays dans la langue du client */

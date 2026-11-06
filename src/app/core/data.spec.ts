@@ -1,4 +1,4 @@
-import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, countryName, hasPriceRange, itemQty, lowestPrice, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
+import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
 
 const sheep: FridgeItem = { id: 'moutons', name: 'Moutons', tracked: true, kg: 66, min: 100, max: 300, kgEach: 20 };
 const find = (id: string) => DEFAULT_PRODUCTS.find(p => p.id === id)!;
@@ -101,5 +101,16 @@ describe('Pays et prix', () => {
   it('garde le prix de base sans pays', () => {
     expect(originsOf({ price: 900 })).toEqual([]);
     expect(lowestPrice({ price: 900 })).toBe(900);
+  });
+});
+
+describe('countryFlag', () => {
+  it('trouve le drapeau d\'un pays de la liste', () => {
+    expect(countryFlag('Algérie')).toBe('flags/dz.svg');
+    expect(countryFlag('Brésil')).toBe('flags/br.svg');
+  });
+
+  it('ne donne aucun drapeau pour un pays écrit à la main', () => {
+    expect(countryFlag('Australie')).toBe('');
   });
 });

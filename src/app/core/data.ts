@@ -217,16 +217,22 @@ export const hasPriceRange = (p: Pick<Product, 'origin' | 'origins' | 'price'>) 
 export const originLabel = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => originsOf(p).map(o => o.country).join(', ');
 
 /** Pays proposés à la saisie ; un autre pays peut être écrit à la main. */
-export const COUNTRIES: { fr: string; ar: string }[] = [
-  { fr: 'Algérie', ar: 'الجزائر' }, { fr: 'Inde', ar: 'الهند' }, { fr: 'Espagne', ar: 'إسبانيا' }, { fr: 'Brésil', ar: 'البرازيل' },
-  { fr: 'Argentine', ar: 'الأرجنتين' }, { fr: 'France', ar: 'فرنسا' }, { fr: 'Irlande', ar: 'أيرلندا' }, { fr: 'Pologne', ar: 'بولندا' },
-  { fr: 'Roumanie', ar: 'رومانيا' }, { fr: 'Turquie', ar: 'تركيا' }, { fr: 'Maroc', ar: 'المغرب' }, { fr: 'Tunisie', ar: 'تونس' },
-  { fr: 'Mauritanie', ar: 'موريتانيا' }, { fr: 'Sénégal', ar: 'السنغال' }, { fr: 'Chine', ar: 'الصين' }, { fr: 'Vietnam', ar: 'فيتنام' },
+export const COUNTRIES: { fr: string; code: string; ar: string }[] = [
+  { fr: 'Algérie', code: 'dz', ar: 'الجزائر' }, { fr: 'Inde', code: 'in', ar: 'الهند' }, { fr: 'Espagne', code: 'es', ar: 'إسبانيا' }, { fr: 'Brésil', code: 'br', ar: 'البرازيل' },
+  { fr: 'Argentine', code: 'ar', ar: 'الأرجنتين' }, { fr: 'France', code: 'fr', ar: 'فرنسا' }, { fr: 'Irlande', code: 'ie', ar: 'أيرلندا' }, { fr: 'Pologne', code: 'pl', ar: 'بولندا' },
+  { fr: 'Roumanie', code: 'ro', ar: 'رومانيا' }, { fr: 'Turquie', code: 'tr', ar: 'تركيا' }, { fr: 'Maroc', code: 'ma', ar: 'المغرب' }, { fr: 'Tunisie', code: 'tn', ar: 'تونس' },
+  { fr: 'Mauritanie', code: 'mr', ar: 'موريتانيا' }, { fr: 'Sénégal', code: 'sn', ar: 'السنغال' }, { fr: 'Chine', code: 'cn', ar: 'الصين' }, { fr: 'Vietnam', code: 'vn', ar: 'فيتنام' },
 ];
 
 /** Nom du pays dans la langue du client ; un pays écrit à la main reste tel quel. */
 export const countryName = (origin: string, lang: Lang) =>
   (lang === 'ar' ? COUNTRIES.find(c => c.fr === origin)?.ar : undefined) ?? origin;
+
+/** Drapeau du pays dans public/flags, vide pour un pays écrit à la main. */
+export const countryFlag = (origin: string) => {
+  const code = COUNTRIES.find(c => c.fr === origin)?.code;
+  return code ? `flags/${code}.svg` : '';
+};
 
 export const ICON_NAMES: Record<string, string> = {
   agneau: 'Agneau',

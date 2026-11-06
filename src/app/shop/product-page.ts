@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Cart, lineTotal } from '../core/cart';
-import { DEFAULT_WEIGHTS, formatNumber, isLowStock, isOutOfStock, itemQty, originsOf, roundStock } from '../core/data';
+import { DEFAULT_WEIGHTS, countryFlag, formatNumber, isLowStock, isOutOfStock, itemQty, originsOf, roundStock } from '../core/data';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -28,14 +28,22 @@ const MIN_GRAMS = 100;
             <div class="detail-info">
               <h1>{{ i18n.pick(p, 'name') }}</h1>
               <div class="detail-price">{{ chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}</div>
-              @if (i18n.origin(p); as origin) { <div class="origin">{{ origin }}</div> }
+              @if (i18n.origin(p); as origin) {
+                <div class="origin">
+                  @for (f of i18n.flags(p); track f.src) { <img class="flag" [src]="f.src" alt="" width="24" height="18"> }
+                  {{ origin }}
+                </div>
+              }
               <p class="lead">{{ i18n.pick(p, 'desc') }}</p>
 
               @if (origins().length > 1) {
                 <h3>{{ i18n.t('chooseOrigin') }}</h3>
                 <div class="chips">
                   @for (o of origins(); track o.country; let i = $index) {
-                    <button class="chip" [class.on]="originIndex() === i" (click)="chooseOrigin(i)">{{ i18n.country(o.country) }} · {{ priceText(o.price) }}</button>
+                    <button class="chip" [class.on]="originIndex() === i" (click)="chooseOrigin(i)">
+                      @if (flag(o.country); as src) { <img class="flag" [src]="src" alt="" width="24" height="18"> }
+                      {{ i18n.country(o.country) }} · {{ priceText(o.price) }}
+                    </button>
                   }
                 </div>
               }
@@ -129,6 +137,7 @@ export class ProductPage {
   /** Paramètre de route :id */
   readonly id = input.required<string>();
   protected readonly minGrams = MIN_GRAMS;
+  protected readonly flag = countryFlag;
   protected readonly grams = signal(0);
   protected readonly option = signal(0);
   protected readonly originIndex = signal(0);
