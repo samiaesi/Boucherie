@@ -28,10 +28,11 @@ const MIN_GRAMS = 100;
             <div class="detail-info">
               <h1>{{ i18n.pick(p, 'name') }}</h1>
               <div class="detail-price">{{ chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}</div>
-              @if (i18n.origin(p); as origin) {
-                <div class="origin">
-                  @for (f of i18n.flags(p); track f.src) { <img class="flag" [src]="f.src" alt="" width="24" height="18"> }
-                  {{ origin }}
+              @if (i18n.countries(p).length) {
+                <div class="origin">{{ i18n.t('origin') }} :
+                  @for (c of i18n.countries(p); track c.name; let last = $last) {
+                    <span class="place">@if (c.flag) { <img class="flag" [src]="c.flag" alt="" width="20" height="15"> }{{ c.name }}@if (!last) {,}</span>
+                  }
                 </div>
               }
               <p class="lead">{{ i18n.pick(p, 'desc') }}</p>

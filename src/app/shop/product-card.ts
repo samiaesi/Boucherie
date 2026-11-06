@@ -19,15 +19,16 @@ import { Tilt } from './effects';
         } @else {
           <span class="card-icon" [innerHTML]="icon() | icon"></span>
         }
-        @if (i18n.flags(product()).length) {
-          <span class="flags">
-            @for (f of i18n.flags(product()); track f.src) { <img [src]="f.src" [alt]="f.name" [title]="f.name" width="28" height="21"> }
-          </span>
-        }
       </a>
       <div class="card-body">
         <a [routerLink]="['/produit', product().id]"><h3>{{ i18n.pick(product(), 'name') }}</h3></a>
-        @if (i18n.origin(product()); as origin) { <small class="origin">{{ origin }}</small> }
+        @if (i18n.countries(product()).length) {
+          <small class="origin">{{ i18n.t('origin') }} :
+          @for (c of i18n.countries(product()); track c.name; let last = $last) {
+            <span class="place">@if (c.flag) { <img class="flag" [src]="c.flag" alt="" width="20" height="15"> }{{ c.name }}@if (!last) {,}</span>
+          }
+        </small>
+        }
         <p>{{ i18n.pick(product(), 'desc') }}</p>
         <div class="card-foot">
           <span class="price-tag">{{ i18n.price(product()) }}</span>

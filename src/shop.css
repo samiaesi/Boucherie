@@ -190,10 +190,8 @@ app-shop-layout {
   .stock-note { margin-top: 16px; color: var(--red); font-weight: 700; }
   .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
   .price-tag { font-weight: 800; color: var(--red); }
-  .card-img { position: relative; }
-  .flags { position: absolute; z-index: 2; bottom: 10px; inset-inline-start: 10px; display: flex; gap: 5px; }
-  .flags img { display: block; width: 28px; height: 21px; border-radius: 4px; box-shadow: 0 0 0 2px #fff, 0 3px 8px rgba(0, 0, 0, .35); object-fit: cover; }
-  .flag { display: inline-block; width: 24px; height: 18px; margin-inline-end: 4px; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .12); object-fit: cover; vertical-align: -4px; }
+  .flag { display: inline-block; width: 20px; height: 15px; margin-inline-end: 4px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .14); object-fit: cover; vertical-align: -3px; }
+  .place { display: inline-block; margin-inline-end: 4px; white-space: nowrap; }
   .origin { display: block; margin-bottom: 6px; color: var(--text); font-size: .84rem; font-weight: 600; }
   .add { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--ink); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; transition: transform .3s var(--ease), background .2s; }
   .add:hover { background: var(--red); transform: rotate(90deg) scale(1.1); }

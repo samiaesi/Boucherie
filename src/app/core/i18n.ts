@@ -216,12 +216,6 @@ export class I18n {
     return this.t('backOn').replace('{d}', day);
   }
 
-  /** « Origine : Algérie », vide si le pays n'est pas renseigné */
-  origin(p: Product) {
-    const list = originsOf(p).map(o => countryName(o.country, this.lang()));
-    return list.length ? `${this.t('origin')} : ${list.join(', ')}` : '';
-  }
-
   /** Horaires de la semaine pour le site, jours groupés */
   hoursLines(schedule: DaySchedule[]) {
     const name = (d: number) => DAY_NAMES[this.lang()][d];
@@ -244,9 +238,9 @@ export class I18n {
     return [s.note, this.t('closedBack').replace('{d}', day).replace('{t}', time)].filter(Boolean).join(' — ');
   }
 
-  /** Drapeaux connus d'un produit, avec le nom du pays pour les lecteurs d'écran */
-  flags(p: Product) {
-    return originsOf(p).map(o => ({ src: countryFlag(o.country), name: this.country(o.country) })).filter(f => f.src);
+  /** Pays d'un produit avec leur drapeau, vide pour un pays écrit à la main */
+  countries(p: Product) {
+    return originsOf(p).map(o => ({ flag: countryFlag(o.country), name: this.country(o.country) }));
   }
 
   /** Pays dans la langue du client */
