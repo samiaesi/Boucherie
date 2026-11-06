@@ -248,6 +248,22 @@ export class AdminData {
     return snap.docs.map(d => ({ ...d.data(), id: d.id }) as LoyaltyCard);
   }
 
+  /** Achat au comptoir : crée la carte au besoin et ajoute les points du montant. */
+  async addStorePoints(tel: string, amount: number) {
+    const points = pointsFor(amount, this.settings().loyaltyEvery);
+    if (points <= 0) return 0;
+    const id = normalizeTel(tel), ref = doc(db, 'loyalty', id);
+    await this.guarded(runTransaction(db, async tx => {
+      const card = await tx.get(ref);
+      tx.set(ref, {
+        points: ((card.data()?.['points'] as number) ?? 0) + points,
+        earned: ((card.data()?.['earned'] as number) ?? 0) + points,
+      });
+    }));
+    this.audit('loyalty.updated', id, `+${points} points · achat en boutique ${amount} DA`);
+    return points;
+  }
+
   async adjustPoints(id: string, delta: number, reason: string) {
     const ref = doc(db, 'loyalty', id);
     await this.guarded(runTransaction(db, async tx => {

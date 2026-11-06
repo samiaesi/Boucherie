@@ -1,3 +1,4 @@
+import { normalizeTel, validTel } from './loyalty';
 import type { Campaign } from './campaigns';
 import { rebuildBasket } from './basket';
 import type { Cart } from './cart';
@@ -17,6 +18,16 @@ import {
 
 const ORDER_TIMEOUT_MS = 15000;
 const CLOCK_TICK_MS = 30000;
+
+const MY_TEL = 'loyaltyTel';
+
+function savedTel() {
+  try {
+    return localStorage.getItem(MY_TEL) ?? '';
+  } catch {
+    return '';
+  }
+}
 
 function savedLastOrder() {
   try {
@@ -48,6 +59,8 @@ export class Shop {
 
   /** Dernière commande de ce navigateur, pour le lien de suivi */
   readonly lastOrder = signal(savedLastOrder());
+  /** Numéro du client sur cet appareil, pour retrouver ses points sans le retaper */
+  readonly myTel = signal(savedTel());
 
   private readonly announcements = signal<Announcement[]>([]);
   /** Annonces en ligne aujourd'hui */
@@ -161,6 +174,12 @@ export class Shop {
     }
   }
 
+  rememberTel(tel: string) {
+    const clean = normalizeTel(tel);
+    this.myTel.set(clean);
+    try { localStorage.setItem(MY_TEL, clean); } catch {}
+  }
+
   /** Remet la dernière commande dans le panier, aux prix du jour. */
   reorder(cart: Cart, i18n: I18n) {
     const { lines, missing } = rebuildBasket(cart.lastBasket(), this.products(), this.offers());
@@ -188,6 +207,7 @@ export class Shop {
       setTimeout(() => reject(new Error('timeout')), ORDER_TIMEOUT_MS));
     await Promise.race([batch.commit(), timeout]);
     this.lastOrder.set(ref.id);
+    if (validTel(order.tel)) this.rememberTel(order.tel);
     try { localStorage.setItem('lastOrder', ref.id); } catch {}
     return ref.id;
   }

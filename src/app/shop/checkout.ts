@@ -89,9 +89,17 @@ const PHONE = /^0[567]\d{8}$/;
             <aside class="summary">
               <h3>{{ i18n.t('summary') }}</h3>
               @for (l of cart.lines(); track l.key) {
-                <div class="sum-line">
+                <div class="sum-line sum-edit">
                   <span>{{ l.qty }} × {{ describe(l) }}</span>
                   <b>{{ l.unit === 'order' ? i18n.t('toConfirm') : i18n.money(total(l)) }}</b>
+                  <div class="sum-tools">
+                    <div class="qty small">
+                      <button type="button" (click)="cart.setQty(l.key, l.qty - 1)" [attr.aria-label]="i18n.t('less')">−</button>
+                      <span>{{ l.qty }}</span>
+                      <button type="button" (click)="cart.setQty(l.key, l.qty + 1)" [attr.aria-label]="i18n.t('more')">+</button>
+                    </div>
+                    <button type="button" class="link" (click)="cart.setQty(l.key, 0)">{{ i18n.t('remove') }}</button>
+                  </div>
                 </div>
               }
               @if (mode() === 'livraison') {

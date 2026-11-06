@@ -61,7 +61,6 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
-    // Suivi public : lisible avec son lien secret, sans nom, téléphone ni adresse
     // Carte de fidélité : lue avec le numéro du client, écrite seulement par l'équipe
     match /loyalty/{tel} {
       allow get: if true;
@@ -69,6 +68,7 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
+    // Suivi public : lisible avec son lien secret, sans nom, téléphone ni adresse
     match /tracking/{id} {
       allow get: if true;
       allow create: if isMember()

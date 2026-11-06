@@ -44,7 +44,7 @@ function savedSeen(): Set<string> {
           <a class="menu-plan" routerLink="/mon-menu" routerLinkActive="on">{{ i18n.t('menuNav') }}</a>
           @if (shop.hasAbout()) { <a routerLink="/notre-boucherie" routerLinkActive="on">{{ i18n.t('aboutNav') }}</a> }
           <a routerLink="/" fragment="contact">{{ i18n.t('navContact') }}</a>
-          @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
+          @if (shop.lastOrder()) { <a class="menu-track" [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
         </nav>
         <div class="nav-actions">
           <button class="lang" (click)="i18n.toggle(); moveAfterLang()">{{ i18n.t('langBtn') }}</button>
@@ -100,6 +100,7 @@ function savedSeen(): Set<string> {
           <a [href]="shop.settings().mapLink" target="_blank" rel="noopener">{{ i18n.t('mapLink') }}</a>
           @if (shop.settings().loyaltyEnabled) { <a routerLink="/fidelite">{{ i18n.t('loyaltyNav') }}</a> }
           <a routerLink="/favoris">{{ i18n.t('favNav') }}</a>
+          @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
           <p dir="ltr"><a [href]="phoneHref()">{{ shop.settings().phone }}</a></p>
         </div>
       </div>

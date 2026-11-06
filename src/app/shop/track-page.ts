@@ -4,6 +4,7 @@ import { Timestamp, doc, onSnapshot } from 'firebase/firestore';
 import { OrderStatus } from '../core/data';
 import { db } from '../core/firebase';
 import { I18n, TKey } from '../core/i18n';
+import { MyPoints } from './my-points';
 
 interface Tracking {
   status: OrderStatus;
@@ -24,7 +25,7 @@ const STEP_LABELS: Record<OrderStatus, TKey> = {
 /** Suivi public : l'identifiant du lien, impossible à deviner, donne accès à l'état de la commande seul. */
 @Component({
   selector: 'app-track-page',
-  imports: [RouterLink],
+  imports: [MyPoints, RouterLink],
   template: `
     <section class="page-head"><div class="wrap"><h1>{{ i18n.t('trackTitle') }}</h1></div></section>
     <section class="shop">
@@ -50,6 +51,7 @@ const STEP_LABELS: Record<OrderStatus, TKey> = {
         } @else if (missing()) {
           <p class="empty">{{ i18n.t('trackMissing') }}</p>
         }
+        <app-my-points />
         <div class="center"><a routerLink="/boutique" class="btn btn-red">{{ i18n.t('keepShopping') }}</a></div>
       </div>
     </section>

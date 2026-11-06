@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../core/firebase';
@@ -36,7 +36,7 @@ import { Shop } from '../core/shop';
     </section>
   `,
 })
-export class LoyaltyPage {
+export class LoyaltyPage implements OnInit {
   protected readonly i18n = inject(I18n);
   private readonly shop = inject(Shop);
   protected readonly settings = this.shop.settings;
@@ -55,6 +55,12 @@ export class LoyaltyPage {
       : this.i18n.t('loyaltyReady').replace('{r}', reward);
   });
 
+  /** Un client déjà reconnu voit ses points tout de suite. */
+  ngOnInit() {
+    this.tel = this.shop.myTel();
+    if (this.tel) this.check();
+  }
+
   protected async check() {
     this.points.set(null);
     if (!validTel(this.tel)) {
@@ -66,6 +72,7 @@ export class LoyaltyPage {
     try {
       const snap = await getDoc(doc(db, 'loyalty', normalizeTel(this.tel)));
       this.points.set(snap.exists() ? (snap.data()['points'] as number) : 0);
+      this.shop.rememberTel(this.tel);
     } catch (e) {
       console.warn('Carte de fidélité indisponible', e);
       this.error.set('orderFail');

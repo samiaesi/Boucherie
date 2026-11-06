@@ -812,4 +812,17 @@ app-shop-layout {
   .res-item b { display: block; font-size: .92rem; }
   .res-item small { color: var(--red); font-size: .8rem; font-weight: 700; }
   .res-form { display: grid; gap: 14px; }
+
+  /* Récapitulatif modifiable */
+  .sum-edit { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; }
+  .sum-tools { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+  /* Points du client sur la page de suivi */
+  .my-points { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 18px 0; padding: 14px 20px; border-radius: 20px; color: #fff; background: radial-gradient(90% 150% at 90% 0%, rgba(208, 16, 42, .55), transparent 70%), linear-gradient(160deg, #2f2420, #17110e); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3); }
+  .my-points b { color: #ffc46b; font-size: 1.5rem; }
+
+  /* Le menu grandit avec les liens du client : le bandeau s'élargit, et le suivi passe en pied de page si la place manque */
+  @media (min-width: 961px) { header { width: min(1400px, calc(100% - 28px)); } }
+  @media (min-width: 961px) and (max-width: 1440px) { .menu-track { display: none; } }
+  @media (min-width: 961px) and (max-width: 1280px) { .menu { font-size: .82rem; } .menu a { padding: 8px 8px; } .logo span { font-size: .92rem; } }
 }
