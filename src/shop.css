@@ -787,7 +787,8 @@ app-shop-layout {
   .fav.on svg { fill: currentColor; }
   @keyframes favPop { 40% { transform: scale(1.28); } }
   .card > .fav { position: absolute; z-index: 2; top: 12px; inset-inline-end: 12px; }
-  .card .fat-tag { inset-inline-end: auto; }
+  .card .fat-tag { top: 12px; inset-inline-start: 12px; inset-inline-end: auto; }
+  .card.out .fat-tag { top: 44px; }
   .detail-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .detail-title .fav { margin-top: 6px; }
   .fav-link { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--ink); }
@@ -839,4 +840,7 @@ app-shop-layout {
   .price-tag s, .detail-price s { margin-inline-end: 7px; color: var(--text); font-size: .8em; font-weight: 600; opacity: .75; }
   .promo-count { display: inline-flex; align-items: center; gap: 10px; margin: 6px 0 0; padding: 8px 16px; border-radius: 999px; background: var(--g-strong); box-shadow: var(--g-shadow); }
   .promo-count b { color: var(--red); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+
+  /* Peu de promotions : les cartes restent centrées */
+  @media (min-width: 601px) { .promo-sec .grid { grid-template-columns: repeat(auto-fit, minmax(240px, 290px)); justify-content: center; } }
 }
