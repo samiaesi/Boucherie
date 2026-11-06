@@ -615,8 +615,9 @@ export function deliveryCost(s: Settings, subtotal: number) {
   return s.deliveryFreeFrom > 0 && subtotal >= s.deliveryFreeFrom ? 0 : s.deliveryFee;
 }
 
+/** Espace insécable : avec une espace simple, l'arabe inverse les groupes de chiffres (« 800 1 »). */
 export const formatNumber = (n: number) =>
-  Number(n || 0).toLocaleString('fr-FR').replace(/[  ]/g, ' ');
+  Number(n || 0).toLocaleString('fr-FR').replace(/\s/g, ' ');
 
 export const byOrder = (a: { order?: number }, b: { order?: number }) => (a.order ?? 99) - (b.order ?? 99);
 
