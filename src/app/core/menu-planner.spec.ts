@@ -1,5 +1,5 @@
-import { DEFAULT_CUSTOM, Product } from './data';
-import { planMenus } from './menu-planner';
+import { DEFAULT_CUSTOM, DEFAULT_PRODUCTS, Product } from './data';
+import { MENU_RECIPES, planMenus } from './menu-planner';
 
 const kg = (id: string, price: number, extra: Partial<Product> = {}): Product => ({
   id, category: 'x', order: 1, available: true, unit: 'kg', price, name_fr: id, name_ar: id, desc_fr: '', desc_ar: '', ...extra,
@@ -19,7 +19,8 @@ describe('Proposition de menu', () => {
   it('compte deux poulets farcis pour sept personnes', () => {
     const menu = planMenus(catalogue, { guests: 7, budget: 0, style: 'fete' }).find(m => m.id === 'poulet-farci')!;
     expect(menu.lines[0]).toMatchObject({ productId: 'poulet-farci', qty: 2, unit: 'piece', special: true });
-    expect(menu.total).toBe(2 * (1500 + 500));
+    expect(menu.lines[1]).toMatchObject({ productId: 'macedoine', grams: 850 });
+    expect(menu.total).toBe(2 * (1500 + 500) + 383);
   });
 
   it('calcule le poids selon le nombre de personnes', () => {
@@ -62,5 +63,34 @@ describe('Proposition de menu', () => {
     const dinde = kg('dinde-farcie', 0, { unit: 'order', special: true });
     expect(planMenus([dinde], { guests: 4, budget: 0, style: 'fete' })).toEqual([]);
     expect(planMenus([dinde], { guests: 8, budget: 0, style: 'fete' })[0].id).toBe('dinde-farcie');
+  });
+
+  it('garde le plat principal si l\'accompagnement manque', () => {
+    const menu = planMenus([farci(1500, 1000)], { guests: 4, budget: 0, style: 'fete' })[0];
+    expect(menu.lines.map(l => l.productId)).toEqual(['poulet-farci']);
+  });
+
+  it('ne propose que des produits du catalogue, avec des noms traduits', () => {
+    const ids = new Set(DEFAULT_PRODUCTS.map(p => p.id));
+    const used = MENU_RECIPES.flatMap(r => r.dishes.map(d => d.product));
+    expect(used.filter(id => !ids.has(id))).toEqual([]);
+    expect(new Set(MENU_RECIPES.map(r => r.id)).size).toBe(MENU_RECIPES.length);
+    expect(MENU_RECIPES.every(r => r.name_ar)).toBe(true);
+  });
+
+  it('fait tourner presque tous les produits vendables', () => {
+    const used = new Set(MENU_RECIPES.flatMap(r => r.dishes.map(d => d.product)));
+    expect(used.size).toBeGreaterThanOrEqual(36);
+  });
+
+  it('alterne les styles dans les premiers menus', () => {
+    const menus = planMenus(DEFAULT_PRODUCTS, { guests: 6, budget: 0, style: 'all' });
+    expect(new Set(menus.slice(0, 4).map(m => m.style)).size).toBe(4);
+  });
+
+  it('range le poisson aussi dans les menus simples', () => {
+    const ids = planMenus(DEFAULT_PRODUCTS, { guests: 6, budget: 0, style: 'simple' }).map(m => m.id);
+    expect(ids).toContain('poisson');
+    expect(ids).toContain('tajine');
   });
 });

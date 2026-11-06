@@ -724,7 +724,7 @@ app-shop-layout {
   .menu-banner b { display: block; font-size: 1.3rem; }
   .menu-banner small { color: var(--text); font-size: .94rem; }
   .planner { padding: 26px 0 60px; }
-  .plan-form { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 28px; align-items: end; padding: 22px 26px; border-radius: 26px; background: var(--g-bg); box-shadow: var(--g-shadow); }
+  .plan-form { display: grid; grid-template-columns: auto minmax(160px, 1fr) minmax(0, auto); gap: 28px; align-items: end; padding: 22px 26px; border-radius: 26px; background: var(--g-bg); box-shadow: var(--g-shadow); }
   .plan-field .pick-label b { color: var(--red); }
   .plan-field .chips { flex-wrap: wrap; }
   .plan-field input[type="range"] { width: 100%; height: 34px; padding: 0; border: 0; background: none; box-shadow: none; accent-color: var(--red); cursor: pointer; }
@@ -736,12 +736,14 @@ app-shop-layout {
   .plan-card:hover .plan-photos img { transform: scale(1.07); }
   .plan-body { display: flex; flex-direction: column; flex: 1; gap: 10px; padding: 18px 20px 20px; }
   .plan-body h2 { font-size: 1.22rem; font-weight: 800; }
-  .plan-body ul { display: grid; gap: 7px; flex: 1; margin: 0; padding: 0; list-style: none; font-size: .92rem; }
+  .plan-body ul { display: grid; align-content: start; gap: 7px; flex: 1; margin: 0; padding: 0; list-style: none; font-size: .92rem; }
   .plan-body li b { color: var(--red); }
   .plan-body li small { display: block; color: var(--text); font-size: .8rem; }
   .plan-price b { display: block; font-size: 1.32rem; font-weight: 800; }
   .plan-price small { color: var(--text); font-size: .82rem; }
   .plan-note { margin-top: 18px; text-align: center; }
+  .plan-more { margin-top: 22px; text-align: center; }
+  .plan-more .btn { background: var(--g-strong); box-shadow: var(--g-shadow); }
   @media (max-width: 960px) {
     .plan-form { grid-template-columns: 1fr; gap: 16px; padding: 18px; }
     .plan-results { grid-template-columns: 1fr; }

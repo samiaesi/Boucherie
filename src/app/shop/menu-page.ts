@@ -8,6 +8,7 @@ import { Shop } from '../core/shop';
 const MIN_GUESTS = 2;
 const MAX_GUESTS = 50;
 const NO_LIMIT = 60000;
+const PAGE_SIZE = 6;
 
 @Component({
   selector: 'app-menu-page',
@@ -40,7 +41,7 @@ const NO_LIMIT = 60000;
         </div>
 
         <div class="plan-results">
-          @for (m of menus(); track m.id; let i = $index) {
+          @for (m of menus().slice(0, shown()); track m.id; let i = $index) {
             <article class="plan-card" [style.--d]="i">
               <div class="plan-photos">
                 @for (src of m.images.slice(0, 2); track src) { <img [src]="src" alt="" loading="lazy"> }
@@ -64,6 +65,9 @@ const NO_LIMIT = 60000;
             <p class="empty">{{ i18n.t('menuNone') }} <a routerLink="/boutique">{{ i18n.t('seeAll') }}</a></p>
           }
         </div>
+        @if (menus().length > shown()) {
+          <div class="plan-more"><button class="btn btn-outline" (click)="shown.set(shown() + step)">{{ i18n.t('menuMore') }} ({{ menus().length - shown() }})</button></div>
+        }
         <p class="note plan-note">{{ i18n.t('menuNote') }}</p>
       </div>
     </section>
@@ -78,11 +82,14 @@ export class MenuPage {
   protected readonly noLimit = NO_LIMIT;
   protected readonly styles = [
     { id: 'all', key: 'menuAll' }, { id: 'fete', key: 'menuFeast' }, { id: 'simple', key: 'menuSimple' },
+    { id: 'grill', key: 'menuGrill' }, { id: 'mer', key: 'menuFish' },
   ] as const;
   protected readonly guests = signal(6);
   protected readonly budget = signal(NO_LIMIT);
   protected readonly style = signal<MenuStyle | 'all'>('all');
   protected readonly added = signal('');
+  protected readonly step = PAGE_SIZE;
+  protected readonly shown = signal(PAGE_SIZE);
 
   protected readonly menus = computed(() => planMenus(this.shop.products(), {
     guests: this.guests(), style: this.style(), budget: this.budget() >= NO_LIMIT ? 0 : this.budget(),
