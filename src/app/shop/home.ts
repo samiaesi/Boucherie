@@ -17,10 +17,11 @@ const STEP_MS = 2200;
   selector: 'app-home',
   imports: [RouterLink, IconPipe, ProductCard, Reveal, Count, Tilt],
   template: `
-    <section class="hero">
-      <i class="hero-glow" aria-hidden="true"></i>
+    <section class="hero" (pointermove)="heroLight($event)">
+      <img class="hero-bg" [src]="heroPhoto()" alt="" fetchpriority="high">
+      <i class="hero-shade" aria-hidden="true"></i>
       <div class="wrap hero-grid">
-        <div class="hero-text">
+        <div class="hero-text glass">
           <span class="hero-status" [class.closed]="!shop.ordering().open"><i></i>{{ i18n.t(shop.ordering().open ? 'heroOpen' : 'closedTitle') }}</span>
           <h1>
             <span class="line"><span>{{ i18n.t('heroLine1') }}</span></span>
@@ -37,9 +38,10 @@ const STEP_MS = 2200;
         </div>
         <div class="hero-tiles">
           @for (t of heroTiles(); track t.id; let i = $index) {
-            <a class="htile" appTilt routerLink="/boutique" [queryParams]="{ cat: t.id }" [style.--d]="i">
+            <a class="htile glass" routerLink="/boutique" [queryParams]="{ cat: t.id }" [style.--d]="i">
               <img [src]="t.image" alt="">
-              <span class="htile-label"><b>{{ t.name }}</b><span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></span>
+              <b>{{ t.name }}</b>
+              <span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
             </a>
           }
         </div>
@@ -253,6 +255,12 @@ export class Home implements OnInit, OnDestroy {
     return { id: t.id, image: t.own || c?.image || t.fallback, name: c ? this.i18n.pick(c, 'name') : t.id };
   }));
 
+  /** Fond plein écran : les photos Unsplash sont demandées en grand pour rester nettes. */
+  protected readonly heroPhoto = computed(() => {
+    const image = this.heroTiles()[0].image;
+    return image.includes('images.unsplash.com') ? image.replace(/w=\d+/, 'w=2000') : image;
+  });
+
   protected readonly featured = computed(() => {
     const all = this.shop.products();
     const picked = all.filter(p => p.featured);
@@ -265,6 +273,14 @@ export class Home implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.resumeSteps();
+  }
+
+  /** Le reflet du verre et le fond suivent le pointeur. */
+  protected heroLight(e: PointerEvent) {
+    const box = e.currentTarget as HTMLElement;
+    const r = box.getBoundingClientRect();
+    box.style.setProperty('--mx', String(Math.round(((e.clientX - r.left) / r.width) * 100)));
+    box.style.setProperty('--my', String(Math.round(((e.clientY - r.top) / r.height) * 100)));
   }
 
   ngOnDestroy() {

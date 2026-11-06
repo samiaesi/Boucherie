@@ -200,6 +200,11 @@ export class ShopLayout implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private navigation?: Subscription;
   private readonly onResize = () => this.movePill();
+  /** Changer de langue change la largeur des liens : la pastille se replace. */
+  private readonly pillOnLang = effect(() => {
+    this.i18n.lang();
+    setTimeout(() => this.movePill(), 80);
+  });
 
   // Directement sur le DOM : inutile de redessiner la page à chaque pixel de défilement
   private readonly onScroll = () => {
