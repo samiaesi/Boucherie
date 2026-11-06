@@ -277,7 +277,13 @@ app-shop-layout {
   @keyframes stepWiggle { 30% { transform: rotate(-12deg) scale(1.15); } 65% { transform: rotate(8deg); } }
 
   /* Boutique */
-  .page-head { padding: 56px 0; text-align: center; background: var(--ink) radial-gradient(circle at 80% 0, rgba(208, 16, 42, .45), transparent 55%); }
+  .page-head { position: relative; padding: 56px 0; overflow: hidden; text-align: center; background: var(--ink); isolation: isolate; }
+  .page-head::before, .page-head::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; filter: blur(36px); will-change: transform; }
+  .page-head::before { top: -60%; inset-inline-end: 4%; width: 520px; height: 420px; background: rgba(208, 16, 42, .6); animation: headDrift 11s ease-in-out infinite alternate; }
+  .page-head::after { bottom: -80%; inset-inline-start: 6%; width: 420px; height: 360px; background: rgba(234, 164, 43, .22); animation: headDrift 14s ease-in-out -4s infinite alternate-reverse; }
+  @keyframes headDrift { from { transform: translate(-40px, 10px) scale(.92); } to { transform: translate(90px, 40px) scale(1.12); } }
+  .word-mask { display: inline-block; margin-inline-end: .22em; padding-bottom: .1em; overflow: hidden; vertical-align: bottom; }
+  .word-mask > span { display: inline-block; animation: lineUp .8s calc(var(--i) * 90ms) var(--ease) both; }
   .page-head h1 { color: #fff; font-size: clamp(2.1rem, 5vw, 3.2rem); font-weight: 800; animation: fadeUp .6s var(--ease) both; }
   .page-head p { color: #d0c4bc; margin-top: 8px; animation: fadeUp .6s .1s var(--ease) both; }
   .shop { padding: 36px 0 90px; }

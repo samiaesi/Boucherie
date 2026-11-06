@@ -196,7 +196,7 @@ export const ICONS: Record<string, string> = {
   abats: lineIcon('M12 20.5S4 15.5 4 9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 6-8 11-8 11z'),
   chouwa: lineIcon('M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 1-3-1-5 1-9zM6 21h12'),
   poisson: lineIcon('M3 12c3-5 8-6 12-4 2 1 3 2.5 4 4-1 1.5-2 3-4 4-4 2-9 1-12-4zM19 12l3-3v6zM14 10.5v.01'),
-  legumes: lineIcon('M14 10l-9 10c-.6.6-1.6-.3-1-1l9-10zM11 7a4 4 0 0 1 6 6zM17 7l4-4M16 6c0-2 1-3 3-4M18 8c2 0 3-1 4-3'),
+  legumes: lineIcon('M4.5 20c-1-1 3.5-9 6.5-12a4.2 4.2 0 0 1 6 6c-3 3-11 7-12.5 6zM9 11l2 2M7.5 14l2 2M13 9l2 2M15 6c-.5-1.8.3-3.2 1.5-4M18 9c1.8.5 3.2-.3 4-1.5M16.5 7.5L20 4'),
 };
 
 /** Illustrations disponibles pour un rayon */

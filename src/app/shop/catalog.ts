@@ -13,8 +13,10 @@ import { ProductCard } from './product-card';
   template: `
     <section class="page-head">
       <div class="wrap">
-        <h1>{{ title() }}</h1>
-        <p>{{ i18n.t('shopText') }}</p>
+        @for (t of [title()]; track t) {
+          <h1>@for (w of titleWords(t); track $index) { <span class="word-mask"><span [style.--i]="$index">{{ w }}</span></span> }</h1>
+          <p>{{ i18n.t('shopText') }}</p>
+        }
       </div>
     </section>
 
@@ -151,6 +153,10 @@ export class Catalog {
 
   protected goTo(cat: string) {
     this.router.navigate(['/boutique'], { queryParams: cat ? { cat } : {} });
+  }
+
+  protected titleWords(title: string) {
+    return title.split(' ');
   }
 
   protected readonly title = computed(() => {
