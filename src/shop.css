@@ -607,4 +607,62 @@ app-shop-layout {
     .add { width: 38px; height: 38px; font-size: 1.3rem; }
     .card-icon.big svg { width: 170px; height: 170px; }
   }
+
+  /* ---------- Verre miroir sur toute la boutique ----------
+     Fond de lumière fixe. Les cartes répétées sont translucides sans flou, pour rester fluides
+     sur téléphone ; le vrai flou est réservé à ce qui passe au-dessus des photos ou du contenu. */
+  --g-bg: rgba(255, 255, 255, .56);
+  --g-strong: rgba(255, 255, 255, .74);
+  --g-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 0 0 1px rgba(255, 255, 255, .5), 0 20px 40px -28px rgba(70, 30, 15, .42);
+  --g-blur: blur(24px) saturate(185%);
+  position: relative; isolation: isolate; background: none;
+
+  &::before { content: ""; position: fixed; z-index: -1; inset: 0; background: radial-gradient(44vw 44vw at 88% 6%, rgba(208, 16, 42, .17), transparent 70%), radial-gradient(40vw 40vw at 6% 34%, rgba(234, 164, 43, .2), transparent 70%), radial-gradient(46vw 46vw at 78% 78%, rgba(208, 16, 42, .11), transparent 70%), radial-gradient(38vw 38vw at 18% 96%, rgba(234, 164, 43, .16), transparent 70%), #f8f0e7; }
+
+  .today-card, .card, .about-block.soft, .about-card, .about-cert, .origin-card, .buy, .rayons, .filters, .mode, .qty,
+  .co-form, .summary, .track-head, .steps-line, .done, .offer:not(.featured), .info-block, .install-card, .head-badge {
+    border-color: transparent; background: var(--g-bg); box-shadow: var(--g-shadow);
+  }
+  .card:hover, .offer:not(.featured):hover, .today-card:hover { box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(255, 255, 255, .7), 0 30px 50px -28px rgba(70, 30, 15, .55); }
+  .card-img, .detail-img { background: rgba(255, 255, 255, .4); }
+  .detail-img { box-shadow: var(--g-shadow); }
+  .modes { background: rgba(255, 255, 255, .4); box-shadow: inset 0 1px 3px rgba(70, 30, 15, .12); }
+  .mode-slider, .menu-pill { background: rgba(255, 255, 255, .9); box-shadow: inset 0 1px 0 #fff, 0 6px 14px -6px rgba(60, 25, 15, .4); }
+  .menu { background: rgba(255, 255, 255, .28); box-shadow: inset 0 1px 2px rgba(70, 30, 15, .1); }
+  .contact { background: none; }
+  input, select, textarea { background: rgba(255, 255, 255, .6); }
+
+  /* Commandes translucides */
+  .chip { border-color: transparent; background: var(--g-bg); box-shadow: var(--g-shadow); }
+  .chip.on { background: linear-gradient(180deg, #e8223e, #aa0c20); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 10px 18px -10px rgba(208, 16, 42, .85); }
+  .btn-red, .sticky-cart { background: linear-gradient(180deg, #e8223e, #aa0c20); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 14px 24px -14px rgba(208, 16, 42, .9); }
+  .btn-red:hover:not(:disabled) { background: linear-gradient(180deg, #f0304b, #b80f26); }
+  .add { background: linear-gradient(180deg, #3b2e29, #17110e); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 8px 14px -8px rgba(0, 0, 0, .6); }
+  .add:hover { background: linear-gradient(180deg, #e8223e, #aa0c20); }
+  .kicker { background: var(--g-strong); box-shadow: var(--g-shadow); }
+
+  /* Flou réel au-dessus du contenu */
+  .drawer, .pick-list, .news-panel, .news-pop, .added {
+    background: var(--g-strong); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(255, 255, 255, .55), 0 30px 60px -24px rgba(40, 20, 10, .55);
+  }
+  .fat-tag, .sold-out { -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5); }
+  .fat-tag { background: rgba(208, 16, 42, .72); }
+  .sold-out { background: rgba(29, 22, 19, .66); }
+  .tile { box-shadow: var(--g-shadow); }
+  .tile::after { background: linear-gradient(to top, rgba(20, 12, 9, .4), transparent 45%); }
+  .tile-text { inset-inline: 10px; bottom: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(255, 255, 255, .16); -webkit-backdrop-filter: blur(16px) saturate(170%) brightness(.72); backdrop-filter: blur(16px) saturate(170%) brightness(.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55); }
+
+  /* Grands blocs sombres : plaques de verre fumé, avec un bord de lumière */
+  .steps, .page-head, .aid, footer { margin-inline: 14px; border-radius: 34px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), inset 0 0 0 1px rgba(255, 255, 255, .08), 0 30px 60px -36px rgba(40, 15, 8, .7); }
+  .steps, .page-head, footer { background: radial-gradient(70% 120% at 85% 0%, rgba(208, 16, 42, .34), transparent 70%), linear-gradient(160deg, #2f2420, #17110e); }
+  .page-head { margin-top: 14px; }
+  .aid { background: linear-gradient(120deg, #aa0c20, #e8223e); }
+  footer { margin-bottom: 14px; }
+  .step-icon { background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28); }
+  .offer.featured { background: linear-gradient(160deg, rgba(232, 34, 62, .95), rgba(150, 10, 28, .95)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 30px 50px -26px rgba(208, 16, 42, .75); }
+
+  @media (max-width: 960px) {
+    .menu { background: var(--g-strong); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); }
+    .steps, .page-head, .aid, footer { margin-inline: 8px; border-radius: 26px; }
+  }
 }
