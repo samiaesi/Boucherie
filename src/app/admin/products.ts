@@ -116,7 +116,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
               </select>
             </label>
           }
-          <label>{{ draft.custom ? 'Prix de base avec main-d\'œuvre (DA), jamais affiché au client' : 'Prix (DA)' }}<input name="price" type="number" min="0" step="10" [(ngModel)]="draft.price"></label>
+          <label>{{ draft.custom ? 'Prix de base avec main-d\'œuvre (DA), jamais affiché au client" : 'Prix (DA)' }}<input name="price" type="number" min="0" step="10" [(ngModel)]="draft.price"></label>
           @if (draft.special && draft.custom; as c) {
             <div class="origin-rows">
               <b>Viande hachée : prix au kg</b>
