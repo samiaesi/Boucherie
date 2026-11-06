@@ -20,7 +20,7 @@ async function render() {
   TestBed.configureTestingModule({
     providers: [provideRouter([]), {
       provide: Shop,
-      useValue: { campaigns: signal([aid]), products: signal([mouton]), clock: () => new Date('2098-12-01T10:00:00Z'), createOrder },
+      useValue: { campaigns: signal([aid]), products: signal([mouton]), clock: () => new Date('2098-12-01T10:00:00Z'), createOrder, customer: { name: '', tel: '' }, rememberCustomer: vi.fn() },
     }],
   });
   const fixture = TestBed.createComponent(ReservationPage);

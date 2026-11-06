@@ -20,6 +20,24 @@ const ORDER_TIMEOUT_MS = 15000;
 const CLOCK_TICK_MS = 30000;
 
 const MY_TEL = 'loyaltyTel';
+const CUSTOMER = 'customer';
+
+/** Coordonnées gardées sur l'appareil du client, pour ne pas les retaper. */
+export interface Customer {
+  name: string;
+  tel: string;
+  zone: string;
+  address: string;
+}
+
+function savedCustomer(): Customer {
+  const empty = { name: '', tel: '', zone: '', address: '' };
+  try {
+    return { ...empty, ...JSON.parse(localStorage.getItem(CUSTOMER) ?? '{}') };
+  } catch {
+    return empty;
+  }
+}
 
 function savedTel() {
   try {
@@ -61,6 +79,7 @@ export class Shop {
   readonly lastOrder = signal(savedLastOrder());
   /** Numéro du client sur cet appareil, pour retrouver ses points sans le retaper */
   readonly myTel = signal(savedTel());
+  customer = savedCustomer();
 
   private readonly announcements = signal<Announcement[]>([]);
   /** Annonces en ligne aujourd'hui */
@@ -172,6 +191,13 @@ export class Shop {
     } catch (e) {
       console.warn('Annonces indisponibles', e);
     }
+  }
+
+  /** Une adresse vide ne remplace pas celle déjà connue : un retrait n'efface pas la livraison. */
+  rememberCustomer(c: Partial<Customer>) {
+    const known = Object.fromEntries(Object.entries(c).filter(([, v]) => !!v?.trim()));
+    this.customer = { ...this.customer, ...known };
+    try { localStorage.setItem(CUSTOMER, JSON.stringify(this.customer)); } catch {}
   }
 
   rememberTel(tel: string) {

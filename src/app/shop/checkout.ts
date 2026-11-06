@@ -1,6 +1,6 @@
 import { Suggest } from './suggest';
 import { pointsFor } from '../core/loyalty';
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, afterNextRender, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Cart, CartLine, lineTotal } from '../core/cart';
@@ -130,7 +130,12 @@ export class Checkout {
   protected readonly sending = signal(false);
   protected readonly total = lineTotal;
   protected readonly today = this.localDate();
-  protected form = { name: '', tel: '', zone: '', address: '', date: this.today, notes: '', marketing: false };
+  /** Le formulaire valide les champs préremplis après l'affichage : le bouton doit alors se rafraîchir. */
+  private readonly view = inject(ChangeDetectorRef);
+  private readonly refreshButton = afterNextRender(() => setTimeout(() => this.view.markForCheck()));
+
+  /** Les coordonnées reviennent seules ; l'accord WhatsApp reste à cocher à chaque fois. */
+  protected form = { ...this.shop.customer, date: this.today, notes: '', marketing: false };
   protected readonly mode = signal<'retrait' | 'livraison'>('retrait');
   protected readonly hasSpecial = computed(() => this.cart.lines().some(l => l.special));
   protected readonly minSpecialDate = computed(() => firstSpecialDate(this.shop.orderingRules(), this.shop.clock()));
@@ -237,6 +242,7 @@ export class Checkout {
         ...(f.marketing ? { marketing: true } : {}), delivery: this.fee(), total: this.grandTotal(), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
         typeLabel: `${special ? `${t('specialOrder')} ${this.slot()} · ` : ''}${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
       }));
+      this.shop.rememberCustomer({ name: f.name, tel: f.tel, ...(delivery ? { zone: f.zone, address: f.address } : {}) });
       this.cart.remember();
       this.cart.clear();
     } catch (err) {

@@ -89,7 +89,7 @@ export class ReservationPage {
   protected readonly sending = signal(false);
   protected readonly error = signal<'resBadTel' | 'resBadDate' | 'orderFail' | null>(null);
   protected readonly ref = signal('');
-  protected form = { name: '', tel: '', date: '' };
+  protected form = { name: this.shop.customer.name, tel: this.shop.customer.tel, date: '' };
 
   protected readonly line = computed(() => {
     const p = this.product();
@@ -138,10 +138,12 @@ export class ReservationPage {
       c.deposit > 0 ? this.i18n.t('resDeposit').replace('{x}', this.i18n.money(c.deposit * line.qty)) : '',
     ].filter(Boolean).join('\n');
     try {
-      this.ref.set(await this.shop.createOrder({
+      const ref = await this.shop.createOrder({
         name: f.name.trim(), tel: normalizeTel(f.tel), type: 'retrait', date: f.date, details, lang: this.i18n.lang(),
         items: [item], delivery: 0, total, typeLabel: `${name} · ${amount}`.slice(0, MAX_LABEL),
-      }));
+      });
+      this.shop.rememberCustomer({ name: f.name, tel: f.tel });
+      this.ref.set(ref);
     } catch (e) {
       console.error('Réservation non enregistrée', e);
       this.error.set('orderFail');
