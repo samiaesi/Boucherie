@@ -1,3 +1,4 @@
+import { countdown, secondsLeft } from '../core/promo';
 import { openCampaigns } from '../core/campaigns';
 import { algeriaClock } from '../core/ordering';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
@@ -5,7 +6,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { Announcement, KIND_LABELS } from '../core/announcements';
 import { Cart } from '../core/cart';
-import { HERO_PHOTOS, Offer, formatNumber } from '../core/data';
+import { HERO_PHOTOS, formatNumber } from '../core/data';
 import { I18n, TKey } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -123,6 +124,21 @@ const STEP_MS = 2200;
       </div>
     </section>
 
+    @if (promos().length) {
+      <section class="products promo-sec">
+        <div class="wrap">
+          <div class="section-head" appReveal>
+            <span class="kicker">{{ i18n.t('promoEyebrow') }}</span>
+            <h2>{{ i18n.t('promoTitle') }}</h2>
+            @if (promoTime(); as t) { <p class="promo-count"><span>{{ i18n.t('promoEnds') }}</span> <b dir="ltr">{{ t }}</b></p> }
+          </div>
+          <div class="grid">
+            @for (p of promos(); track p.id) { <app-product-card [product]="p" /> }
+          </div>
+        </div>
+      </section>
+    }
+
     <section class="products">
       <div class="wrap">
         <div class="section-head" appReveal>
@@ -156,29 +172,6 @@ const STEP_MS = 2200;
               <b>{{ i18n.t(s.t) }}</b>
               <p>{{ i18n.t(s.d === 'step4' && shop.settings().deliveryEnabled ? 'stepBoth' : s.d) }}</p>
             </button>
-          }
-        </div>
-      </div>
-    </section>
-
-    <section id="formules" class="offers-sec">
-      <div class="wrap">
-        <div class="section-head" appReveal>
-          <span class="kicker">{{ i18n.t('offEyebrow') }}</span>
-          <h2>{{ i18n.t('offTitle') }}</h2>
-          <p>{{ i18n.t('offText') }}</p>
-        </div>
-        <div class="offers">
-          @for (o of shop.offers(); track o.id; let i = $index) {
-            <div class="offer" [class.featured]="o.featured" appReveal [revealDelay]="i * 100" appTilt>
-              @if (o.featured) { <span class="tag">{{ i18n.t('popular') }}</span> }
-              <h3>{{ i18n.pick(o, 'name') }}</h3>
-              <div class="price">{{ num(o.price) }} <span>{{ i18n.t('currency') }}</span> <small>{{ i18n.pick(o, 'unit') }}</small></div>
-              <ul>
-                @for (item of items(o); track $index) { <li>{{ item }}</li> }
-              </ul>
-              <button class="btn" [class.btn-red]="!o.featured" [class.btn-white]="o.featured" (click)="addOffer(o)">{{ i18n.t('addCart') }}</button>
-            </div>
           }
         </div>
       </div>
@@ -301,6 +294,18 @@ export class Home implements OnInit, OnDestroy {
     this.resumeSteps();
   }
 
+  protected readonly promos = this.shop.promos;
+  private readonly tick = signal(Date.now());
+  /** Compte à rebours de la promotion qui se termine le plus tôt */
+  protected readonly promoTime = computed(() => {
+    const ends = this.promos().map(p => p.promoUntil!).sort()[0];
+    if (!ends) return '';
+    const left = secondsLeft(ends, new Date(this.tick() + this.clockGap));
+    return left ? countdown(left) : '';
+  });
+  private readonly clockGap = this.shop.clock().getTime() - Date.now();
+  private readonly promoTimer = setInterval(() => this.tick.set(Date.now()), 1000);
+
   protected readonly reservation = computed(() => openCampaigns(this.shop.campaigns(), algeriaClock(this.shop.clock()).date)[0]);
 
   protected reorder() {
@@ -316,6 +321,7 @@ export class Home implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    clearInterval(this.promoTimer);
     clearInterval(this.stepTimer);
   }
 
@@ -336,15 +342,6 @@ export class Home implements OnInit, OnDestroy {
 
   protected kind(a: Announcement) {
     return KIND_LABELS[a.kind];
-  }
-
-  protected items(o: Offer) {
-    const list = this.i18n.lang() === 'ar' ? o.items_ar : o.items_fr;
-    return list?.length ? list : o.items_fr;
-  }
-
-  protected addOffer(o: Offer) {
-    this.cart.add({ productId: `offre-${o.id}`, name_fr: o.name_fr, name_ar: o.name_ar, unit: 'piece', price: o.price, qty: 1 }, this.i18n.pick(o, 'name'));
   }
 
   protected addAid() {

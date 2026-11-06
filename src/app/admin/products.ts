@@ -4,6 +4,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { COUNTRIES, Category, CustomChoice, DEFAULT_CATEGORIES, DEFAULT_CUSTOM, DEFAULT_PRODUCTS, ICONS, Product, ProductOrigin, formatNumber, isCabinet, originLabel, originsOf } from '../core/data';
 import { productRef, referenceTakenBy, searchProducts } from '../core/product-search';
+import { MAX_PROMO } from '../core/promo';
 import { customReady } from '../core/special-custom';
 import { AdminData } from './admin-data';
 import { resizeImage } from './image';
@@ -44,7 +45,8 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
           </div>
           <div class="info">
             <b>{{ p.name_fr }} <span class="ar">· {{ p.name_ar }}</span>
-              @if (!p.available) { <span class="pill">Masqué</span> }</b>
+              @if (!p.available) { <span class="pill">Masqué</span> }
+              @if (p.promoPercent) { <span class="pill">-{{ p.promoPercent }}% jusqu'au {{ p.promoUntil }}</span> }</b>
             <small>Réf. {{ ref(p) }} · {{ rayonName(p) }}{{ origin(p) ? ' · ' + origin(p) : '' }}</small>
           </div>
           <div class="price">{{ price(p) }}</div>
@@ -143,6 +145,10 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
               }
               <div><button type="button" class="btn light small" (click)="addChoice(c.extras)">+ Ajouter un ingrédient</button></div>
             </div>
+          }
+          @if (!draft.custom) {
+            <label>Promotion (%, vide = aucune)<input name="promoPercent" type="number" min="0" max="90" [(ngModel)]="draft.promoPercent"></label>
+            <label>Dernier jour de promotion<input name="promoUntil" type="date" [(ngModel)]="draft.promoUntil"></label>
           }
           <label>Ordre d'affichage<input name="order" type="number" min="0" [(ngModel)]="draft.order"></label>
           @if (draft.unit === 'kg') {
@@ -309,6 +315,17 @@ export class Products implements OnInit {
       weights: d.weights.split(/[,;\s]+/).map(Number).filter(w => w > 0),
       options_fr: lines(d.options_fr), options_ar: lines(d.options_ar),
     };
+    const percent = Number(d.promoPercent) || 0;
+    if (percent && (percent > MAX_PROMO || !d.promoUntil)) {
+      this.error.set(`Indiquez une promotion de ${MAX_PROMO} % au maximum, avec son dernier jour.`);
+      return;
+    }
+    if (percent && !d.custom) {
+      data.promoPercent = percent;
+    } else {
+      delete data.promoPercent;
+      delete data.promoUntil;
+    }
     if (!data.source) delete data.source;
     if (!data.fat) delete data.fat;
     if (!data.special) delete data.special;

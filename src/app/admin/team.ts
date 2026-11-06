@@ -56,7 +56,7 @@ export class Team implements OnInit {
   protected readonly roles = Object.entries(ROLE_LABELS) as [Role, string][];
   protected readonly help: Record<Role, string> = {
     admin: 'Accès complet : paramètres, équipe, rayons et toutes les pages.',
-    manager: 'Commandes, factures, rapport, stock, frigo, produits et formules.',
+    manager: 'Commandes, factures, rapport, stock, frigo et produits.',
     commandes: 'Suivi des commandes et factures uniquement.',
   };
   protected draft: { email: string; password: string; role: Role } = { email: '', password: '', role: 'commandes' };

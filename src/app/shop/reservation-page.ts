@@ -127,7 +127,7 @@ export class ReservationPage {
     this.sending.set(true);
     const name = this.i18n.pick(c, 'name'), total = this.total();
     const item: OrderItem = {
-      productId: p.id, unit: line.unit, qty: line.qty, name_fr: p.name_fr, name_ar: p.name_ar, price: line.price, total,
+      productId: p.id, unit: line.unit, qty: line.qty, name_fr: p.name_fr, name_ar: p.name_ar, price: line.price, total, special: true,
       ...(line.grams ? { grams: line.grams } : {}),
       ...(line.origin ? { origin: line.origin } : {}),
     };

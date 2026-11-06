@@ -14,7 +14,7 @@ describe('Menu selon le rôle', () => {
   });
 
   it('limite le suivi aux commandes, factures et étiquettes', () => {
-    expect(pagesFor('commandes').map(p => p.path)).toEqual(['commandes', 'factures', 'etiquettes']);
+    expect(pagesFor('commandes').map(p => p.path)).toEqual(['commandes', 'factures', 'planning', 'etiquettes']);
   });
 
   it('refuse tout sans rôle', () => {

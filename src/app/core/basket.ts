@@ -1,9 +1,8 @@
 import { CartLine } from './cart';
-import { DEFAULT_WEIGHTS, Offer, Product, availableOrigins, isOutOfStock, noOriginLeft } from './data';
+import { DEFAULT_WEIGHTS, Product, availableOrigins, isOutOfStock, noOriginLeft } from './data';
 import { customTotal } from './special-custom';
 
 const MAX_SUGGESTIONS = 3;
-const OFFER_PREFIX = 'offre-';
 
 /** Rayons qui se complètent bien, du plus logique au moins logique. */
 const GOES_WITH: Record<string, string[]> = {
@@ -47,11 +46,7 @@ export function suggestProducts(lines: Pick<CartLine, 'productId'>[], products: 
   return mixed.slice(0, MAX_SUGGESTIONS);
 }
 
-function rebuildLine(line: CartLine, products: Product[], offers: Offer[]): CartLine | null {
-  if (line.productId.startsWith(OFFER_PREFIX)) {
-    const offer = offers.find(o => `${OFFER_PREFIX}${o.id}` === line.productId);
-    return offer ? { ...line, price: offer.price } : null;
-  }
+function rebuildLine(line: CartLine, products: Product[]): CartLine | null {
   const p = products.find(x => x.id === line.productId);
   if (!p || !p.available || isOutOfStock(p) || noOriginLeft(p)) return null;
   if (p.custom) {
@@ -67,7 +62,7 @@ function rebuildLine(line: CartLine, products: Product[], offers: Offer[]): Cart
 }
 
 /** Refait une commande avec les prix du jour, sans ce qui n'est plus disponible. */
-export function rebuildBasket(saved: CartLine[], products: Product[], offers: Offer[]) {
-  const lines = saved.map(l => rebuildLine(l, products, offers)).filter((l): l is CartLine => !!l);
+export function rebuildBasket(saved: CartLine[], products: Product[]) {
+  const lines = saved.map(l => rebuildLine(l, products)).filter((l): l is CartLine => !!l);
   return { lines, missing: saved.length - lines.length };
 }

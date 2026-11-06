@@ -37,6 +37,11 @@ export interface Product {
   custom?: SpecialCustom;
   /** Étiquette choisie par la boucherie : faible en gras ou sans gras */
   fat?: FatLabel;
+  /** Promotion : pourcentage et dernier jour inclus (AAAA-MM-JJ) */
+  promoPercent?: number;
+  promoUntil?: string;
+  /** Prix avant promotion, calculé pour l'affichage */
+  oldPrice?: number;
   price: number;
   unit: Unit;
   name_fr: string;

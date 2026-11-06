@@ -1,7 +1,7 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Cart } from '../core/cart';
-import { DEFAULT_WEIGHTS, Product, availableOrigins, isOutOfStock, noOriginLeft } from '../core/data';
+import { DEFAULT_WEIGHTS, Product, availableOrigins, formatNumber, isOutOfStock, noOriginLeft } from '../core/data';
 import { Favorites } from '../core/favorites';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
@@ -15,7 +15,8 @@ import { Tilt } from './effects';
     <article class="card" [class.out]="out()" appTilt>
       @if (out()) { <span class="sold-out">{{ i18n.t('soldOut') }} · {{ i18n.comeback(product()) }}</span> }
       <a class="card-img" [routerLink]="['/produit', product().id]">
-        @if (product().special) { <span class="fat-tag">{{ i18n.t('specialTag') }}</span> }
+        @if (product().oldPrice; as old) { <span class="fat-tag promo-tag">-{{ product().promoPercent }}%</span> }
+        @else if (product().special) { <span class="fat-tag">{{ i18n.t('specialTag') }}</span> }
         @else if (i18n.fat(product()); as fat) { <span class="fat-tag">{{ fat }}</span> }
         @if (product().image) {
           <img [src]="product().image" [alt]="i18n.pick(product(), 'name')" loading="lazy">
@@ -44,7 +45,9 @@ import { Tilt } from './effects';
           }
         </div></div>
         <div class="card-foot">
-          @for (t of [priceText()]; track t) { <span class="price-tag">{{ t }}</span> }
+          @for (t of [priceText()]; track t) {
+            <span class="price-tag">@if (product().oldPrice && !grams()) { <s>{{ formatOld(product().oldPrice!) }}</s> }{{ t }}</span>
+          }
           <button class="add" [class.off]="out()" [class.done]="added()" (click)="quickAdd($event)" [attr.aria-label]="i18n.t('quickAdd')">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="added() ? 'M5 12.5l4.5 4.5L19 7.5' : 'M12 5v14M5 12h14'" /></svg>
             <span class="add-text">{{ i18n.t('addShort') }}</span>
@@ -78,6 +81,10 @@ export class ProductCard {
     if (!g) return this.i18n.price(p);
     return this.i18n.money(Math.round(((availableOrigins(p)[0]?.price ?? p.price) * g) / 1000));
   });
+
+  protected formatOld(price: number) {
+    return formatNumber(price);
+  }
 
   protected pickWeight(w: number) {
     this.grams.update(g => (g === w ? 0 : w));

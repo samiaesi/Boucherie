@@ -1,3 +1,5 @@
+import { algeriaClock } from './ordering';
+import { applyPromos } from './promo';
 import { normalizeTel, validTel } from './loyalty';
 import type { Campaign } from './campaigns';
 import { rebuildBasket } from './basket';
@@ -12,8 +14,8 @@ import { TKey } from './i18n';
 import { DEFAULT_ORDERING, OrderingRules, orderingState } from './ordering';
 import { localDay } from './stats';
 import {
-  Category, DEFAULT_CATEGORIES, DEFAULT_OFFERS, DEFAULT_PRODUCTS, DEFAULT_SETTINGS, FridgeItem,
-  Offer, Order, Product, Settings, applyPools, byOrder, orderRef, readFridge,
+  Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, DEFAULT_SETTINGS, FridgeItem,
+  Order, Product, Settings, applyPools, byOrder, orderRef, readFridge,
 } from './data';
 
 const ORDER_TIMEOUT_MS = 15000;
@@ -68,8 +70,9 @@ export class Shop {
   private readonly catalog = signal<Product[]>(DEFAULT_PRODUCTS);
   private readonly fridge = signal<FridgeItem[]>([]);
   /** Catalogue avec le stock des réserves du frigo */
-  readonly products = computed(() => applyPools(this.catalog(), this.fridge()));
-  readonly offers = signal<Offer[]>(DEFAULT_OFFERS);
+  readonly products = computed(() => applyPromos(applyPools(this.catalog(), this.fridge()), algeriaClock(this.now()).date));
+  /** Produits en promotion aujourd'hui */
+  readonly promos = computed(() => this.products().filter(p => p.oldPrice !== undefined));
   readonly campaigns = signal<Campaign[]>([]);
   readonly settings = signal<Settings>(DEFAULT_SETTINGS);
   /** Le message d'accroche suit le paramétrage de la livraison */
@@ -154,9 +157,8 @@ export class Shop {
     this.loadAnnouncements();
     this.loadCampaigns();
     try {
-      const [ps, os, ss, cs, fs] = await Promise.all([
+      const [ps, ss, cs, fs] = await Promise.all([
         getDocs(collection(db, 'products')),
-        getDocs(collection(db, 'offers')),
         getDoc(doc(db, 'settings', 'main')),
         getDoc(doc(db, 'settings', 'categories')),
         getDoc(doc(db, 'settings', 'fridge')),
@@ -165,7 +167,6 @@ export class Shop {
         list.filter(x => x.available !== false).sort(byOrder);
       // Tant que l'admin n'a rien saisi, on garde les données par défaut
       if (!ps.empty) this.catalog.set(visible(ps.docs.map(d => ({ ...d.data(), id: d.id }) as Product)));
-      if (!os.empty) this.offers.set(visible(os.docs.map(d => ({ ...d.data(), id: d.id }) as Offer)));
       if (ss.exists()) this.settings.set({ ...DEFAULT_SETTINGS, ...(ss.data() as Partial<Settings>) });
       if (fs.exists()) this.fridge.set(readFridge(fs.data()['list']));
       if (cs.exists()) this.categories.set((cs.data()['list'] as Category[]).map(withDefaultImage).sort(byOrder));
@@ -208,7 +209,7 @@ export class Shop {
 
   /** Remet la dernière commande dans le panier, aux prix du jour. */
   reorder(cart: Cart, i18n: I18n) {
-    const { lines, missing } = rebuildBasket(cart.lastBasket(), this.products(), this.offers());
+    const { lines, missing } = rebuildBasket(cart.lastBasket(), this.products());
     if (lines.length) {
       cart.refill(lines);
       cart.open.set(true);

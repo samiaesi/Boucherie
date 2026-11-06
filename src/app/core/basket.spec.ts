@@ -35,34 +35,30 @@ describe('Compléter le panier', () => {
 
 describe('Recommander', () => {
   it('reprend la commande avec le prix du jour', () => {
-    const { lines, missing } = rebuildBasket([line({ productId: 'a' })], [product('a', 'poulet', { price: 1200 })], []);
+    const { lines, missing } = rebuildBasket([line({ productId: 'a' })], [product('a', 'poulet', { price: 1200 })]);
     expect(missing).toBe(0);
     expect(lines[0]).toMatchObject({ price: 1200, qty: 2, grams: 500 });
   });
 
   it('retire ce qui n\'est plus disponible et le signale', () => {
     const saved = [line({ productId: 'a' }), line({ productId: 'b' }), line({ productId: 'gone' })];
-    const { lines, missing } = rebuildBasket(saved, [product('a', 'poulet'), product('b', 'poulet', { trackStock: true, stock: 0 })], []);
+    const { lines, missing } = rebuildBasket(saved, [product('a', 'poulet'), product('b', 'poulet', { trackStock: true, stock: 0 })]);
     expect(lines.map(l => l.productId)).toEqual(['a']);
     expect(missing).toBe(2);
   });
 
   it('retire un pays qui n\'est plus en vente', () => {
     const p = product('a', 'boeuf', { origins: [{ country: 'Algérie', price: 3000 }] });
-    expect(rebuildBasket([line({ productId: 'a', origin: 'Brésil' })], [p], []).missing).toBe(1);
-    expect(rebuildBasket([line({ productId: 'a', origin: 'Algérie' })], [p], []).lines[0].price).toBe(3000);
+    expect(rebuildBasket([line({ productId: 'a', origin: 'Brésil' })], [p]).missing).toBe(1);
+    expect(rebuildBasket([line({ productId: 'a', origin: 'Algérie' })], [p]).lines[0].price).toBe(3000);
   });
 
   it('recalcule une commande personnalisée', () => {
     const p = product('f', 'speciales', { unit: 'order', special: true, price: 1500, custom: { ...DEFAULT_CUSTOM, meats: [{ fr: 'Poulet', ar: 'دجاج', price: 1000 }] } });
     const saved = line({ productId: 'f', unit: 'piece', grams: undefined, price: 1, pick: { meat: 0, grams: 500, extras: [] } });
-    expect(rebuildBasket([saved], [p], []).lines[0]).toMatchObject({ unit: 'piece', price: 2000 });
+    expect(rebuildBasket([saved], [p]).lines[0]).toMatchObject({ unit: 'piece', price: 2000 });
   });
 
-  it('garde une formule encore proposée', () => {
-    const offer = { id: 'o1', price: 9000 } as never;
-    expect(rebuildBasket([line({ productId: 'offre-o1', unit: 'piece' })], [], [offer]).lines[0].price).toBe(9000);
-  });
 });
 
 describe('Carte de fidélité', () => {

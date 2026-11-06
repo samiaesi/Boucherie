@@ -34,6 +34,7 @@ const MIN_GRAMS = 100;
                 <button type="button" class="fav" [class.on]="favorites.has(p.id)" [attr.aria-pressed]="favorites.has(p.id)" [attr.aria-label]="i18n.t(favorites.has(p.id) ? 'favRemove' : 'favAdd')" (click)="favorites.toggle(p.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.5 7.3 3.8 4.5 6.9 4.5c2 0 3.7 1.1 5.1 3 1.4-1.9 3.1-3 5.1-3 3.1 0 5.4 2.8 4.2 6.3C19.5 15.4 12 20 12 20z" /></svg></button>
               </div>
               <div class="detail-price">
+                @if (p.oldPrice) { <span class="promo-tag inline-promo">-{{ p.promoPercent }}%</span><s>{{ oldText(p.oldPrice) }}</s> }
                 {{ p.custom ? (customPrice() === null ? i18n.t('customPrice') : i18n.money(customPrice()!)) : chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}
                 @if (origins().length > 1 && chosenOrigin(); as o) {
                   <span class="price-country">
@@ -290,6 +291,10 @@ export class ProductPage {
 
   protected toggleExtra(i: number) {
     this.extras.update(all => (all.includes(i) ? all.filter(x => x !== i) : [...all, i].sort((a, b) => a - b)));
+  }
+
+  protected oldText(price: number) {
+    return formatNumber(price);
   }
 
   protected money(price: number) {

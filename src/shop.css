@@ -831,4 +831,12 @@ app-shop-layout {
   .hero-res { background: linear-gradient(180deg, rgba(232, 34, 62, .92), rgba(170, 12, 32, .92)); transition: transform .3s var(--ease); }
   .hero-res:hover { transform: translateY(-2px); }
   @media (min-width: 961px) and (max-width: 1440px) { .menu-res { display: none; } }
+
+  /* Promotions */
+  .promo-sec { padding-bottom: 0; }
+  .promo-tag { background: linear-gradient(180deg, #e8223e, #aa0c20); color: #fff; font-weight: 800; }
+  .inline-promo { display: inline-block; margin-inline-end: 8px; padding: 2px 9px; border-radius: 999px; font-size: .86rem; vertical-align: middle; }
+  .price-tag s, .detail-price s { margin-inline-end: 7px; color: var(--text); font-size: .8em; font-weight: 600; opacity: .75; }
+  .promo-count { display: inline-flex; align-items: center; gap: 10px; margin: 6px 0 0; padding: 8px 16px; border-radius: 999px; background: var(--g-strong); box-shadow: var(--g-shadow); }
+  .promo-count b { color: var(--red); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 }

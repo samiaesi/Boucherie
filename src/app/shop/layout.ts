@@ -38,7 +38,6 @@ function savedSeen(): Set<string> {
           <span class="menu-pill" #pill aria-hidden="true"></span>
           <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">{{ i18n.t('navHome') }}</a>
           <a routerLink="/boutique" routerLinkActive="on">{{ i18n.t('navShop') }}</a>
-          <a routerLink="/" fragment="formules">{{ i18n.t('navOffers') }}</a>
           @if (shop.category('speciales')) {
             <a routerLink="/boutique" [queryParams]="{ cat: 'speciales' }">{{ i18n.t('specialOrder') }}</a>
           }
