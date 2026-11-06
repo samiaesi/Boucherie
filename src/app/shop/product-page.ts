@@ -26,6 +26,7 @@ const MIN_GRAMS = 100;
               }
             </div>
             <div class="detail-info">
+              @if (i18n.fat(p); as fat) { <span class="fat-tag inline">{{ fat }}</span> }
               <h1>{{ i18n.pick(p, 'name') }}</h1>
               <div class="detail-price">
                 {{ chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}

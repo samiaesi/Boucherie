@@ -67,7 +67,13 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
         <h3>{{ editingId ? 'Modifier le produit' : 'Nouveau produit' }}</h3>
         <div class="grid2">
           <label>Référence<input name="reference" autocomplete="off" [placeholder]="editingId ? editingId.toUpperCase() : 'Automatique'" [(ngModel)]="draft.reference"></label>
-          <span></span>
+          <label>Étiquette de gras
+            <select name="fat" [ngModel]="draft.fat ?? ''" (ngModelChange)="draft.fat = $event || undefined">
+              <option value="">Aucune</option>
+              <option value="low">Low fat</option>
+              <option value="none">Sans gras</option>
+            </select>
+          </label>
           <div class="origin-rows">
             <b>Pays d'origine et prix</b>
             <datalist id="countries">@for (c of countries; track c.fr) { <option [value]="c.fr"></option> }</datalist>
@@ -256,6 +262,7 @@ export class Products implements OnInit {
       options_fr: lines(d.options_fr), options_ar: lines(d.options_ar),
     };
     if (!data.source) delete data.source;
+    if (!data.fat) delete data.fat;
     if (reference) data.reference = reference;
     else delete data.reference;
     const rows = this.rows.filter(r => r.country.trim()).map(r => ({

@@ -1,4 +1,4 @@
-import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, availableOrigins, countriesIn, defaultOriginIndex, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, moveCountryStock, sumCountries, noOriginLeft, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
+import { DEFAULT_PRODUCTS, FAT_LABELS, FridgeItem, OrderItem, Product, animals, applyPools, availableOrigins, countriesIn, defaultOriginIndex, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, moveCountryStock, sumCountries, noOriginLeft, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
 
 const sheep: FridgeItem = { id: 'moutons', name: 'Moutons', tracked: true, kg: 66, min: 100, max: 300, kgEach: 20 };
 const find = (id: string) => DEFAULT_PRODUCTS.find(p => p.id === id)!;
@@ -190,5 +190,12 @@ describe('defaultOriginIndex', () => {
     expect(defaultOriginIndex([es, { ...dz, stock: 0 }, br])).toBe(0);
     expect(defaultOriginIndex([{ ...es, available: false }, { ...dz, available: false }, br])).toBe(2);
     expect(defaultOriginIndex([])).toBe(0);
+  });
+});
+
+describe('Étiquette de gras', () => {
+  it('existe en français et en arabe', () => {
+    expect(FAT_LABELS.low.fr).toBe('Low fat');
+    expect(FAT_LABELS.none.ar).toBe('بدون دهن');
   });
 });

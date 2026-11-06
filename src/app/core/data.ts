@@ -16,6 +16,8 @@ export interface Product {
   origin?: string;
   /** Pays d'origine proposés au client, chacun avec son prix */
   origins?: ProductOrigin[];
+  /** Étiquette choisie par la boucherie : faible en gras ou sans gras */
+  fat?: FatLabel;
   price: number;
   unit: Unit;
   name_fr: string;
@@ -200,6 +202,13 @@ export const ICONS: Record<string, string> = {
 };
 
 /** Illustrations disponibles pour un rayon */
+export type FatLabel = 'low' | 'none';
+
+export const FAT_LABELS: Record<FatLabel, { fr: string; ar: string }> = {
+  low: { fr: 'Low fat', ar: 'قليل الدهن' },
+  none: { fr: 'Sans gras', ar: 'بدون دهن' },
+};
+
 export interface ProductOrigin {
   /** Nom en français */
   country: string;

@@ -1,5 +1,5 @@
 import { Injectable, effect, signal } from '@angular/core';
-import { Lang, Product, availableOrigins, countryFlag, countryName, formatNumber, formatWeight, hasPriceRange, lowestPrice, originsOf } from './data';
+import { FAT_LABELS, Lang, Product, availableOrigins, countryFlag, countryName, formatNumber, formatWeight, hasPriceRange, lowestPrice, originsOf } from './data';
 import { DaySchedule, OrderingState, algeriaClock, scheduleLines } from './ordering';
 
 const FR = {
@@ -242,6 +242,11 @@ export class I18n {
   countries(p: Product) {
     const inSale = availableOrigins(p);
     return (inSale.length ? inSale : originsOf(p)).map(o => ({ flag: countryFlag(o.country), name: this.country(o.country) }));
+  }
+
+  /** Étiquette de gras, vide si le produit n'en a pas */
+  fat(p: Product) {
+    return p.fat ? FAT_LABELS[p.fat][this.lang()] : '';
   }
 
   /** Pays dans la langue du client */
