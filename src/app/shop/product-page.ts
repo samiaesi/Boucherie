@@ -1,3 +1,5 @@
+import { arrivalAge } from '../core/delivery-slots';
+import { algeriaClock } from '../core/ordering';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Cart, lineTotal } from '../core/cart';
@@ -42,6 +44,7 @@ const MIN_GRAMS = 100;
                   </span>
                 }
               </div>
+              @if (arrived(); as text) { <p class="arrived">{{ text }}</p> }
               <p class="lead">{{ i18n.pick(p, 'desc') }}</p>
               @if (p.special) { <p class="special-note">{{ i18n.t('specialNote') }}</p> }
 
@@ -283,6 +286,14 @@ export class ProductPage {
       this.meatOther.set(false);
       this.extras.set([]);
     });
+    // Titre propre à chaque produit, pour les recherches Google et le partage
+    effect(() => {
+      const p = this.product();
+      if (!p) return;
+      const shop = this.i18n.pick(this.shop.settings(), 'name');
+      document.title = `${this.i18n.pick(p, 'name')} — ${shop}`;
+      document.querySelector('meta[name="description"]')?.setAttribute('content', `${this.i18n.pick(p, 'name')} halal à Aïn El Berd. ${this.i18n.pick(p, 'desc')}`.trim());
+    });
   }
 
   protected setMeatGrams(value: string) {
@@ -292,6 +303,13 @@ export class ProductPage {
   protected toggleExtra(i: number) {
     this.extras.update(all => (all.includes(i) ? all.filter(x => x !== i) : [...all, i].sort((a, b) => a - b)));
   }
+
+  protected readonly arrived = computed(() => {
+    const age = arrivalAge(this.product()?.lastArrival, algeriaClock(this.shop.clock()).date);
+    if (age === null) return '';
+    if (age < 2) return this.i18n.t(age ? 'arrivedYesterday' : 'arrivedToday');
+    return this.i18n.t('arrivedDays').replace('{n}', String(age));
+  });
 
   protected oldText(price: number) {
     return formatNumber(price);

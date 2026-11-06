@@ -23,6 +23,8 @@ export interface Page {
 export const PAGES: Page[] = [
   { path: 'tableau', label: 'Tableau de bord', group: 'Pilotage', roles: MANAGERS,
     icon: 'M4 13h6v7H4zM14 4h6v16h-6zM4 4h6v5H4z' },
+  { path: 'ventes', label: 'Ventes par produit', group: 'Pilotage', roles: MANAGERS,
+    icon: 'M4 20h16M7 20v-7M12 20V6M17 20v-10' },
   { path: 'rapport', label: 'Rapport du jour', group: 'Pilotage', roles: MANAGERS,
     icon: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6' },
   { path: 'commandes', label: 'Commandes', group: 'Ventes', roles: EVERYONE,

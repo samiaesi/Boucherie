@@ -1,3 +1,4 @@
+import { slotKey } from './delivery-slots';
 import { algeriaClock } from './ordering';
 import { applyPromos } from './promo';
 import { normalizeTel, validTel } from './loyalty';
@@ -6,7 +7,7 @@ import { rebuildBasket } from './basket';
 import type { Cart } from './cart';
 import type { I18n } from './i18n';
 import { Injectable, computed, signal } from '@angular/core';
-import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, increment, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AboutInfo, Certificate, DEFAULT_ABOUT, hasAboutContent } from './about';
 import { Announcement, liveAnnouncements } from './announcements';
 import { db } from './firebase';
@@ -222,7 +223,17 @@ export class Shop {
   }
 
   /** Enregistre la commande et sa fiche de suivi, puis renvoie son identifiant. Rejette si Firestore ne répond pas. */
-  async createOrder(order: Omit<Order, 'id' | 'status' | 'createdAt'>): Promise<string> {
+  /** Occupation des créneaux d'un jour, quand un maximum est réglé */
+  async slotCounts(date: string, slots: string[]) {
+    const counts: Record<string, number> = {};
+    await Promise.all(slots.map(async slot => {
+      const snap = await getDoc(doc(db, 'slotLoad', slotKey(date, slot)));
+      counts[slot] = (snap.data()?.['count'] as number) ?? 0;
+    }));
+    return counts;
+  }
+
+  async createOrder(order: Omit<Order, 'id' | 'status' | 'createdAt'>, deliverySlot = ''): Promise<string> {
     const ref = doc(collection(db, 'orders'));
     const batch = writeBatch(db);
     batch.set(ref, { ...order, status: 'nouveau', createdAt: serverTimestamp() });
@@ -230,6 +241,10 @@ export class Shop {
       status: 'nouveau', delivery: order.type === 'livraison', date: order.date, ref: orderRef(ref.id),
       steps: { nouveau: serverTimestamp() },
     });
+    // Compté seulement avec un maximum : sans limite, rien n'est écrit
+    if (deliverySlot && this.settings().deliverySlotMax > 0) {
+      batch.set(doc(db, 'slotLoad', slotKey(order.date, deliverySlot)), { count: increment(1) }, { merge: true });
+    }
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('timeout')), ORDER_TIMEOUT_MS));
     await Promise.race([batch.commit(), timeout]);

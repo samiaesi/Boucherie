@@ -1,6 +1,7 @@
+import { slotFull } from '../core/delivery-slots';
 import { Suggest } from './suggest';
 import { pointsFor } from '../core/loyalty';
-import { ChangeDetectorRef, afterNextRender, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, afterNextRender, effect, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Cart, CartLine, lineTotal } from '../core/cart';
@@ -75,7 +76,17 @@ const PHONE = /^0[567]\d{8}$/;
                   </div>
                 </div>
               } @else {
-                <label>{{ i18n.t(mode() === 'livraison' ? 'deliveryDate' : 'pickupDate') }}<input required name="date" type="date" [min]="today" [(ngModel)]="form.date"></label>
+                <label>{{ i18n.t(mode() === 'livraison' ? 'deliveryDate' : 'pickupDate') }}<input required name="date" type="date" [min]="today" [(ngModel)]="form.date" (ngModelChange)="pickDeliveryDate()"></label>
+                @if (needsDeliverySlot()) {
+                  <div class="pick-group slide-in">
+                    <span class="pick-label">{{ i18n.t('deliverySlot') }}</span>
+                    <div class="chips small">
+                      @for (s of shop.settings().deliverySlots; track s) {
+                        <button type="button" class="chip" [class.on]="deliverySlot() === s" [disabled]="isFull(s)" (click)="deliverySlot.set(s)">{{ s }}@if (isFull(s)) { · {{ i18n.t('slotFull') }} }</button>
+                      }
+                    </div>
+                  </div>
+                }
               }
               <label class="optin"><input type="checkbox" name="marketing" [(ngModel)]="form.marketing"> <span>{{ i18n.t('marketing') }}</span></label>
               <label>{{ i18n.t('notes') }}<textarea name="notes" [(ngModel)]="form.notes"></textarea></label>
@@ -149,6 +160,30 @@ export class Checkout {
   /** Frais si le client choisit la livraison */
   protected readonly cost = computed(() => deliveryCost(this.shop.settings(), this.cart.total()));
   protected readonly fee = computed(() => (this.mode() === 'livraison' ? this.cost() : 0));
+  protected readonly deliverySlot = signal('');
+  private readonly slotLoad = signal<Record<string, number>>({});
+  protected readonly needsDeliverySlot = computed(() =>
+    this.mode() === 'livraison' && !this.hasSpecial() && this.shop.settings().deliverySlots.length > 0);
+  private readonly loadSlots = effect(() => {
+    if (this.needsDeliverySlot()) this.pickDeliveryDate();
+  });
+
+  protected isFull(slot: string) {
+    return slotFull(this.slotLoad()[slot] ?? 0, this.shop.settings().deliverySlotMax);
+  }
+
+  /** Le choix dépend du jour : un créneau complet ne doit plus rester sélectionné. */
+  protected async pickDeliveryDate() {
+    const s = this.shop.settings();
+    if (!s.deliverySlotMax) return;
+    try {
+      this.slotLoad.set(await this.shop.slotCounts(this.form.date, s.deliverySlots));
+      if (this.isFull(this.deliverySlot())) this.deliverySlot.set('');
+    } catch (e) {
+      console.warn('Créneaux indisponibles', e);
+    }
+  }
+
   /** Points gagnés quand la commande sera remise au client */
   protected readonly earn = computed(() => {
     const s = this.shop.settings();
@@ -211,6 +246,11 @@ export class Checkout {
     if (!this.canSend()) return;
     const special = this.hasSpecial();
     const date = special ? this.specialDate() : f.date;
+    const chosenSlot = this.needsDeliverySlot() ? this.deliverySlot() : '';
+    if (this.needsDeliverySlot() && (!chosenSlot || this.isFull(chosenSlot))) {
+      this.error.set(t('slotRequired'));
+      return;
+    }
     if (!dayIsOpen(this.shop.orderingRules(), date)) {
       this.error.set(t('dayClosed'));
       return;
@@ -230,6 +270,7 @@ export class Checkout {
       delivery && `${t('delivery')} : ${this.feeLabel(this.fee())}`,
       `${t('total')} : ${total}`,
       special && `${t('specialOrder')} · ${slotText}`,
+      chosenSlot && `${t('deliverySlot')} : ${date} ${chosenSlot}`,
       delivery && `${t('address')} : ${f.zone} — ${f.address.trim()}`,
       f.notes.trim() && `${t('notes')} : ${f.notes.trim()}`,
     ].filter(Boolean).join('\n').slice(0, MAX_DETAILS);
@@ -240,8 +281,8 @@ export class Checkout {
       this.ref.set(await this.shop.createOrder({
         name: f.name.trim(), tel, type: this.mode(), date, details, lang: this.i18n.lang(), items: this.items(),
         ...(f.marketing ? { marketing: true } : {}), delivery: this.fee(), total: this.grandTotal(), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
-        typeLabel: `${special ? `${t('specialOrder')} ${this.slot()} · ` : ''}${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
-      }));
+        typeLabel: `${special ? `${t('specialOrder')} ${this.slot()} · ` : ''}${chosenSlot ? `${t('modeDelivery')} ${chosenSlot} · ` : ''}${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
+      }, chosenSlot));
       this.shop.rememberCustomer({ name: f.name, tel: f.tel, ...(delivery ? { zone: f.zone, address: f.address } : {}) });
       this.cart.remember();
       this.cart.clear();

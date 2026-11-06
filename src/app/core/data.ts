@@ -40,6 +40,8 @@ export interface Product {
   /** Promotion : pourcentage et dernier jour inclus (AAAA-MM-JJ) */
   promoPercent?: number;
   promoUntil?: string;
+  /** Dernier arrivage (AAAA-MM-JJ), renseigné par la page Arrivages */
+  lastArrival?: string;
   /** Prix avant promotion, calculé pour l'affichage */
   oldPrice?: number;
   price: number;
@@ -149,6 +151,10 @@ export interface Settings {
   loyaltyGoal: number;
   loyaltyReward_fr: string;
   loyaltyReward_ar: string;
+  /** Créneaux de livraison au choix, ex. « 10:00-12:00 » (vide = pas de choix) */
+  deliverySlots: string[];
+  /** Livraisons maximum par créneau, 0 = sans limite */
+  deliverySlotMax: number;
   /** Livraison proposée au client */
   deliveryEnabled: boolean;
   /** Lieux de livraison proposés au client */
@@ -604,6 +610,7 @@ export const isCabinet = (f: FridgeItem) => !!f.rayons?.length;
 export const animals = (f: FridgeItem, kg = f.kg) => (f.kgEach ? roundStock(kg / f.kgEach) : 0);
 
 export const DEFAULT_SETTINGS: Settings = {
+  deliverySlots: [], deliverySlotMax: 0,
   loyaltyEnabled: false, loyaltyEvery: 100, loyaltyGoal: 500, loyaltyReward_fr: '', loyaltyReward_ar: '',
   name_fr: 'Boucherie Hallem',
   name_ar: 'جزارة حلّام',

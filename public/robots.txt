@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin
+Disallow: /facture/
+Disallow: /suivi/
+Disallow: /commande
+
+Sitemap: https://boucherie-hallem.web.app/sitemap.xml

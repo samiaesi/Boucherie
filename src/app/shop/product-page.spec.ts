@@ -22,7 +22,7 @@ async function render() {
   TestBed.configureTestingModule({
     providers: [provideRouter([]), {
       provide: Shop,
-      useValue: { products: signal([product]), category: () => undefined, pickupKey: () => 'pickup', settings: signal({ whatsapp: '' }) },
+      useValue: { products: signal([product]), category: () => undefined, pickupKey: () => 'pickup', settings: signal({ whatsapp: '' }), clock: () => new Date() },
     }],
   });
   const fixture = TestBed.createComponent(ProductPage);

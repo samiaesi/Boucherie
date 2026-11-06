@@ -4,7 +4,7 @@ describe('Menu selon le rôle', () => {
   it('donne tout à l\'administrateur, groupé par thème', () => {
     const menu = menuFor('admin');
     expect(menu.map(g => g.name)).toEqual(['Pilotage', 'Ventes', 'Stock et catalogue', 'Administration']);
-    expect(menu.flatMap(g => g.pages)).toHaveLength(22);
+    expect(menu.flatMap(g => g.pages)).toHaveLength(23);
   });
 
   it('cache l\'administration au manager', () => {

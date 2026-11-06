@@ -845,4 +845,7 @@ app-shop-layout {
 
   /* Peu de promotions : les cartes restent centrées */
   @media (min-width: 601px) { .promo-sec .grid { grid-template-columns: repeat(auto-fit, minmax(240px, 290px)); justify-content: center; } }
+
+  /* Arrivage récent sur la fiche produit */
+  .arrived { display: inline-block; margin: 0 0 8px; padding: 4px 12px; border-radius: 999px; background: rgba(31, 157, 85, .13); color: #14713c; font-size: .84rem; font-weight: 700; }
 }

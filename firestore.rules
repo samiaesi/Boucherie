@@ -61,6 +61,17 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
+    // Créneaux de livraison : le site compte +1 par commande, sans dépasser le maximum réglé
+    match /slotLoad/{id} {
+      allow get: if true;
+      allow create: if request.resource.data.keys().hasOnly(['count']) && request.resource.data.count == 1;
+      allow update: if isMember()
+        || (request.resource.data.keys().hasOnly(['count'])
+            && request.resource.data.count == resource.data.count + 1
+            && request.resource.data.count <= get(/databases/$(database)/documents/settings/main).data.get('deliverySlotMax', 1000));
+      allow delete: if isManager();
+    }
+
     // Carte de fidélité : lue avec le numéro du client, écrite seulement par l'équipe
     match /loyalty/{tel} {
       allow get: if true;

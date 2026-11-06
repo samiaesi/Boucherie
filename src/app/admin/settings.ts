@@ -1,3 +1,4 @@
+import { parseSlots } from '../core/delivery-slots';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -34,6 +35,8 @@ type PhotoKey = 'heroImage' | 'aboutImage';
             <div class="grid2">
               <label>Frais de livraison (DA, 0 = toujours gratuite)<input name="deliveryFee" type="number" min="0" step="50" [(ngModel)]="s.deliveryFee"></label>
               <label>Gratuite à partir de (DA, 0 = jamais)<input name="deliveryFreeFrom" type="number" min="0" step="500" [(ngModel)]="s.deliveryFreeFrom"></label>
+              <label>Créneaux de livraison (un par ligne, ex. 10:00-12:00)<textarea name="slots" rows="3" [(ngModel)]="slots"></textarea></label>
+              <label>Livraisons maximum par créneau (0 = sans limite)<input name="deliverySlotMax" type="number" min="0" [(ngModel)]="s.deliverySlotMax"></label>
               <label style="grid-column:1/-1">Lieux de livraison (un par ligne)<textarea name="zones" rows="3" [(ngModel)]="zones"></textarea></label>
             </div>
           }
@@ -97,6 +100,7 @@ export class Settings implements OnInit {
   protected readonly images = signal<Partial<Record<PhotoKey, string>>>({});
   protected s: ShopSettings = structuredClone(DEFAULT_SETTINGS);
   protected zones = '';
+  protected slots = '';
   protected readonly photos: { key: PhotoKey; label: string; size: number; hint: string }[] = [
     { key: 'heroImage', label: 'Photo de la bannière', size: 1600, hint: "Grande photo en fond d'accueil (format paysage)." },
     { key: 'aboutImage', label: 'Photo « Notre engagement »', size: 900, hint: 'Votre boutique, votre étal ou le boucher au travail.' },
@@ -107,6 +111,7 @@ export class Settings implements OnInit {
     this.s = structuredClone(rest);
     this.images.set({ heroImage, aboutImage });
     this.zones = rest.deliveryZones.join('\n');
+    this.slots = (rest.deliverySlots ?? []).join('\n');
     this.loaded.set(true);
   }
 
@@ -136,6 +141,8 @@ export class Settings implements OnInit {
     trimmed.vatRate = Number(this.s.vatRate) || 0;
     trimmed.stampRate = Number(this.s.stampRate) || 0;
     trimmed.deliveryZones = this.zones.split('\n').map(z => z.trim()).filter(Boolean);
+    trimmed.deliverySlots = parseSlots(this.slots);
+    trimmed.deliverySlotMax = Number(trimmed.deliverySlotMax) || 0;
     trimmed.deliveryFee = Number(this.s.deliveryFee) || 0;
     trimmed.deliveryFreeFrom = Number(this.s.deliveryFreeFrom) || 0;
     this.saving.set(true);

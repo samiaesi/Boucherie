@@ -1,3 +1,4 @@
+import { slotInLabel, slotKey } from '../core/delivery-slots';
 import type { Campaign } from '../core/campaigns';
 import { LoyaltyCard, normalizeTel, pointsFor, validTel } from '../core/loyalty';
 import { MENU_RECIPES, MenuRecipe } from '../core/menu-planner';
@@ -214,6 +215,7 @@ export class AdminData {
   async changeStatus(o: Order, status: OrderStatus): Promise<string | undefined> {
     const invoiceId = await this.applyStatus(o, status);
     await this.awardPoints(o, status);
+    await this.releaseSlot(o, status);
     return invoiceId;
   }
 
@@ -614,8 +616,34 @@ export class AdminData {
       this.moveLot(tx, input, input.qty, fridge, product);
       return matricule;
     }));
+    await this.markArrival(input);
     this.audit('lot.created', created, `${input.target.name} · ${input.qty} ${input.target.unit}${input.origin ? ` · ${input.origin}` : ''} · ${input.supplierName} · réf. ${input.supplierRef}`);
     return created;
+  }
+
+  /** Les arrivages sont privés : seule la date passe sur la fiche des produits concernés. */
+  private async markArrival(input: LotInput) {
+    try {
+      const products = await this.list<Product>('products');
+      const fridge = this.fridge();
+      const touched = products.filter(p => (input.target.kind === 'product' ? p.id === input.target.id : poolOf(p, fridge)?.id === input.target.id));
+      const batch = writeBatch(db);
+      touched.forEach(p => batch.update(doc(db, 'products', p.id), { lastArrival: input.arrivalDate }));
+      await batch.commit();
+    } catch (e) {
+      console.warn('Date d\'arrivage non affichée', e);
+    }
+  }
+
+  /** Un créneau annulé redevient libre pour les autres clients. */
+  private async releaseSlot(o: Order, status: OrderStatus) {
+    const slot = slotInLabel(o.typeLabel);
+    if (status !== 'annulé' || o.status === 'annulé' || !slot || !this.settings().deliverySlotMax) return;
+    try {
+      await setDoc(doc(db, 'slotLoad', slotKey(o.date, slot)), { count: increment(-1) }, { merge: true });
+    } catch (e) {
+      console.warn('Créneau non libéré', e);
+    }
   }
 
   /** Un arrivage annulé reste dans l'historique : son matricule n'est jamais réutilisé. */
