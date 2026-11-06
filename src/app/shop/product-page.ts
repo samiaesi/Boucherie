@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Cart, lineTotal } from '../core/cart';
 import { DEFAULT_WEIGHTS, countryFlag, defaultOriginIndex, formatNumber, isLowStock, isOutOfStock, itemQty, noOriginLeft, originInSale, originsOf, roundStock } from '../core/data';
 import { I18n } from '../core/i18n';
+import { customText, customTotal } from '../core/special-custom';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
 import { ProductCard } from './product-card';
@@ -29,7 +30,7 @@ const MIN_GRAMS = 100;
               @if (i18n.fat(p); as fat) { <span class="fat-tag inline">{{ fat }}</span> }
               <h1>{{ i18n.pick(p, 'name') }}</h1>
               <div class="detail-price">
-                {{ chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}
+                {{ p.custom ? (customPrice() === null ? i18n.t('customPrice') : i18n.money(customPrice()!)) : chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}
                 @if (origins().length > 1 && chosenOrigin(); as o) {
                   <span class="price-country">
                     @if (flag(o.country); as src) { <img class="flag" [src]="src" alt="" width="20" height="15"> }{{ i18n.country(o.country) }}
@@ -83,6 +84,39 @@ const MIN_GRAMS = 100;
                 </div>
               }
 
+              @if (p.custom; as c) {
+                @if (c.meats.length) {
+                  <div class="pick-group">
+                    <span class="pick-label">{{ i18n.t('meatKind') }}</span>
+                    <div class="chips small">
+                      @for (m of c.meats; track m.fr; let i = $index) {
+                        <button class="chip" [class.on]="meat() === i" [attr.aria-pressed]="meat() === i" (click)="meat.set(i)">{{ i18n.lang() === 'ar' ? m.ar : m.fr }}</button>
+                      }
+                    </div>
+                  </div>
+                  <div class="pick-group">
+                    <span class="pick-label">{{ i18n.t('meatWeight') }}</span>
+                    <div class="chips small">
+                      @for (w of c.grams; track w) {
+                        <button class="chip" [class.on]="meatGrams() === w" [attr.aria-pressed]="meatGrams() === w" (click)="meatGrams.set(w)">{{ i18n.weight(w) }}</button>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (c.extras.length) {
+                  <div class="pick-group">
+                    <span class="pick-label">{{ i18n.t('extras') }}</span>
+                    <div class="chips small">
+                      @for (x of c.extras; track x.fr; let i = $index) {
+                        <button class="chip" [class.on]="extras().includes(i)" [attr.aria-pressed]="extras().includes(i)" (click)="toggleExtra(i)">
+                          {{ i18n.lang() === 'ar' ? x.ar : x.fr }}@if (x.price) { <small class="chip-price">+{{ i18n.money(x.price) }}</small> }
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+
               @if (options().length) {
                 <div class="pick-group">
                   <span class="pick-label">{{ i18n.t('cutShort') }}</span>
@@ -108,7 +142,7 @@ const MIN_GRAMS = 100;
                   <button (click)="qty.set(qty() + 1)" aria-label="+">+</button>
                 </div>
                 @for (t of [total()]; track t) {
-                  <b class="buy-total pulse">{{ p.unit === 'order' ? i18n.t('toConfirm') : i18n.money(t) }}</b>
+                  <b class="buy-total pulse">{{ line().unit === 'order' ? i18n.t('toConfirm') : i18n.money(t) }}</b>
                 }
                 <button class="btn btn-red" [disabled]="out() || tooMuch() || (p.unit === 'kg' && grams() < minGrams)" (click)="add($event)">
                   {{ out() ? i18n.t('soldOut') : i18n.t('addCart') }}
@@ -155,9 +189,13 @@ export class ProductPage {
   protected readonly qty = signal(1);
   protected readonly mode = signal<'weight' | 'amount'>('weight');
   protected readonly amount = signal(0);
+  protected readonly meat = signal(0);
+  protected readonly meatGrams = signal(0);
+  protected readonly extras = signal<number[]>([]);
 
   protected readonly product = computed(() => this.shop.products().find(p => p.id === this.id()));
-  protected readonly origins = computed(() => { const p = this.product(); return p ? originsOf(p) : []; });
+  /** Un produit personnalisé a un seul prix, calculé : pas de prix par pays, qui montrerait le prix de base */
+  protected readonly origins = computed(() => { const p = this.product(); return p && !p.custom ? originsOf(p) : []; });
   protected readonly chosenOrigin = computed(() => this.origins()[this.originIndex()]);
   private readonly unitPrice = computed(() => this.chosenOrigin()?.price ?? this.product()?.price ?? 0);
   protected readonly icon = computed(() => this.shop.category(this.product()?.category ?? '')?.icon);
@@ -176,15 +214,22 @@ export class ProductPage {
     return this.shop.products().filter(x => x.category === p?.category && x.id !== p?.id).slice(0, 4);
   });
 
-  private readonly line = computed(() => {
+  private readonly pick = computed(() => ({ meat: this.meat(), grams: this.meatGrams(), extras: this.extras() }));
+  /** Prix final de la personnalisation, null tant qu'un prix manque */
+  protected readonly customPrice = computed(() => { const p = this.product(); return p?.custom ? customTotal(p, this.pick()) : null; });
+
+  protected readonly line = computed(() => {
     const p = this.product()!;
     const i = this.option();
+    const custom = this.customPrice();
+    const note = (lang: 'fr' | 'ar', cut?: string) => [cut, customText(p, this.pick(), lang)].filter(Boolean).join(' · ') || undefined;
     return {
-      productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, unit: p.unit, price: this.unitPrice(), qty: this.qty(),
+      productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, qty: this.qty(),
+      unit: custom === null ? p.unit : 'piece' as const, price: custom ?? (p.custom ? 0 : this.unitPrice()),
       ...(p.special ? { special: true } : {}),
       ...(this.chosenOrigin() ? { origin: this.chosenOrigin()!.country } : {}),
       grams: p.unit === 'kg' ? this.grams() : undefined,
-      option_fr: p.options_fr?.[i], option_ar: p.options_ar?.[i] ?? p.options_fr?.[i],
+      option_fr: note('fr', p.options_fr?.[i]), option_ar: note('ar', p.options_ar?.[i] ?? p.options_fr?.[i]),
     };
   });
 
@@ -219,7 +264,14 @@ export class ProductPage {
       this.qty.set(1);
       this.mode.set('weight');
       this.amount.set(0);
+      this.meat.set(0);
+      this.meatGrams.set(this.product()?.custom?.grams[0] ?? 0);
+      this.extras.set([]);
     });
+  }
+
+  protected toggleExtra(i: number) {
+    this.extras.update(all => (all.includes(i) ? all.filter(x => x !== i) : [...all, i].sort((a, b) => a - b)));
   }
 
   protected money(price: number) {

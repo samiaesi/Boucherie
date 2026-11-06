@@ -5,6 +5,21 @@ export type Lang = 'fr' | 'ar';
 export type Unit = 'kg' | 'piece' | 'order';
 export type OrderStatus = 'nouveau' | 'confirmé' | 'prêt' | 'en livraison' | 'livré' | 'récupéré' | 'annulé';
 
+/** Choix proposé au client. Viande : prix au kg ; ingrédient : prix fixe, 0 = offert. */
+export interface CustomChoice {
+  fr: string;
+  ar: string;
+  price: number;
+}
+
+/** Ce que le client choisit pour une commande spéciale */
+export interface SpecialCustom {
+  meats: CustomChoice[];
+  /** Poids de viande hachée proposés, en grammes */
+  grams: number[];
+  extras: CustomChoice[];
+}
+
 export interface Product {
   id: string;
   category: string;
@@ -18,6 +33,8 @@ export interface Product {
   origins?: ProductOrigin[];
   /** Commande spéciale : préparée sur réservation, avec un créneau de retrait */
   special?: boolean;
+  /** Personnalisation d'une commande spéciale ; price est alors le prix de base, jamais affiché au client */
+  custom?: SpecialCustom;
   /** Étiquette choisie par la boucherie : faible en gras ou sans gras */
   fat?: FatLabel;
   price: number;
@@ -320,6 +337,16 @@ const seed = (list: Seed[]): Product[] => list.map((p, i) => ({
   unit: 'kg', desc_fr: '', desc_ar: '', ...p, order: i + 1, available: true,
 }));
 
+/** Farces proposées par défaut : les prix restent à saisir dans la fiche produit. */
+export const DEFAULT_CUSTOM: SpecialCustom = {
+  meats: [{ fr: 'Poulet', ar: 'دجاج', price: 0 }, { fr: 'Bœuf', ar: 'لحم بقر', price: 0 }],
+  grams: [250, 500, 750, 1000],
+  extras: [
+    { fr: 'Champignons', ar: 'فطر', price: 0 }, { fr: 'Fromage', ar: 'جبن', price: 0 },
+    { fr: 'Oignon', ar: 'بصل', price: 0 }, { fr: 'Olives', ar: 'زيتون', price: 0 },
+  ],
+};
+
 const CUT_CHICKEN = { options_fr: ['Entier', 'Coupé en 4', 'Coupé en 8'], options_ar: ['كامل', 'مقطع إلى 4', 'مقطع إلى 8'] };
 const CUT_BREAST = { options_fr: ['Entier', 'Escalopes', 'Émincé', 'En cubes'], options_ar: ['كامل', 'إسكالوب', 'شرائح', 'مكعبات'] };
 const CUT_BONE = { options_fr: ['Avec os', 'Désossées'], options_ar: ['بالعظم', 'بدون عظم'] };
@@ -345,6 +372,9 @@ export const DEFAULT_PRODUCTS: Product[] = seed([
   { id: 'demi-poulet', image: photo('1672787153652-b3b9d92f3e8c'), category: 'poulet', price: 480, weights: [500, 750, 1000], ...CUT_CHICKEN,
     name_fr: 'Demi-poulet', name_ar: 'نصف دجاجة',
     desc_fr: 'La bonne quantité pour un petit repas.', desc_ar: 'الكمية المناسبة لوجبة صغيرة.' },
+  { id: 'poulet-sans-os', image: photo('1672787153655-0c19308dcc60'), category: 'poulet', price: 0, unit: 'order', weights: [1000, 1500, 2000],
+    name_fr: 'Poulet entier sans os', name_ar: 'دجاجة كاملة بدون عظم',
+    desc_fr: 'Entier et désossé, prêt à farcir ou à rôtir.', desc_ar: 'كاملة ومنزوعة العظم، جاهزة للحشو أو الشواء.' },
   { id: 'blanc-poulet', image: photo('1682991136736-a2b44623eeba'), category: 'poulet', price: 1100, featured: true, weights: [250, 500, 1000, 2000], ...CUT_BREAST,
     name_fr: 'Blanc de poulet', name_ar: 'صدر الدجاج',
     desc_fr: 'Viande tendre et maigre, en escalopes, émincé ou en cubes.', desc_ar: 'لحم طري وقليل الدهن، إسكالوب أو شرائح أو مكعبات.' },
@@ -445,12 +475,20 @@ export const DEFAULT_PRODUCTS: Product[] = seed([
   { id: 'epinards', category: 'legumes', price: 500, weights: FROZEN_VEG,
     name_fr: 'Épinards surgelés', name_ar: 'سبانخ مجمدة',
     desc_fr: 'Pour vos tourtes et plats en sauce.', desc_ar: 'لفطائركم وأطباقكم بالمرق.' },
-  { id: 'poulet-farci', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Poulet farci", name_ar: 'دجاج محشي', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
-  { id: 'epaule-farcie', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Épaule farcie (ktaf)", name_ar: 'كتف محشية', desc_fr: 'Préparée à la commande.', desc_ar: 'تحضر عند الطلب.' },
-  { id: 'cuisses-farcies', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Cuisses farcies", name_ar: 'أفخاذ محشية', desc_fr: 'Préparées à la commande.', desc_ar: 'تحضر عند الطلب.' },
-  { id: 'tayhane-farci', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Tayhane farci", name_ar: 'طيحان محشي', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
+  { id: 'poulet-farci', image: photo('1598103442097-8b74394b95c6'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Poulet farci", name_ar: 'دجاج محشي', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
+  { id: 'epaule-farcie', image: photo('1760462898692-a3d8c077ddd9'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Épaule farcie (ktaf)", name_ar: 'كتف محشية', desc_fr: 'Préparée à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'cuisses-farcies', image: photo('1762631383439-18ca3151e825'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Cuisses farcies", name_ar: 'أفخاذ محشية', desc_fr: 'Préparées à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'tayhane-farci', category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Tayhane farci", name_ar: 'طيحان محشي', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
   { id: 'boudin-special', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Boudin", name_ar: 'بودان', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
   { id: 'merguez-speciale', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Merguez spéciale", name_ar: 'مرقاز خاص', desc_fr: 'Préparée à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'gigot-farci', image: photo('1594041680534-e8c8cdebd659'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Gigot d'agneau farci", name_ar: 'فخذ خروف محشي', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
+  { id: 'poitrine-farcie', image: photo('1529692236671-f1f6cf9683ba'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Poitrine d'agneau farcie", name_ar: 'صدر خروف محشي', desc_fr: 'Préparée à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'roti-boeuf-farci', image: photo('1729934318691-e8996b902a56'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Rôti de bœuf farci", name_ar: 'روستي بقر محشي', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
+  { id: 'dinde-farcie', image: photo('1763689454945-4b0f3b151969'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Dinde farcie", name_ar: 'ديك رومي محشي', desc_fr: 'Préparée à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'kefta-farcie', image: photo('1763647818263-62a9256f097c'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Kefta farcie", name_ar: 'كفتة محشية', desc_fr: 'Préparée à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'paupiettes-boeuf', category: 'speciales', price: 0, unit: 'order', available: true, special: true, custom: DEFAULT_CUSTOM, name_fr: "Paupiettes de bœuf", name_ar: 'لفائف لحم بقري', desc_fr: 'Préparées à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'brochettes-marinees', image: photo('1626323109252-0adb3b46692b'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Brochettes marinées", name_ar: 'أسياخ متبلة', desc_fr: 'Marinées à la commande.', desc_ar: 'تتبل عند الطلب.' },
+  { id: 'mechoui-mouton', image: photo('1595356161904-6708c97be89c'), category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Mouton pour méchoui", name_ar: 'خروف للمشوي', desc_fr: 'Préparé et assaisonné à la commande.', desc_ar: 'يحضر ويتبل عند الطلب.' },
 ]);
 
 export const DEFAULT_OFFERS: Offer[] = [

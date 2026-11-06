@@ -2,8 +2,9 @@ import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } fr
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
-import { COUNTRIES, Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, ICONS, Product, ProductOrigin, formatNumber, isCabinet, originLabel, originsOf } from '../core/data';
+import { COUNTRIES, Category, CustomChoice, DEFAULT_CATEGORIES, DEFAULT_CUSTOM, DEFAULT_PRODUCTS, ICONS, Product, ProductOrigin, formatNumber, isCabinet, originLabel, originsOf } from '../core/data';
 import { productRef, referenceTakenBy, searchProducts } from '../core/product-search';
+import { customReady } from '../core/special-custom';
 import { AdminData } from './admin-data';
 import { resizeImage } from './image';
 
@@ -106,14 +107,16 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
               @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name_fr }}</option> }
             </select>
           </label>
-          <label>Prix
-            <select name="unit" [(ngModel)]="draft.unit">
-              <option value="kg">Prix au kg</option>
-              <option value="piece">Prix à la pièce</option>
-              <option value="order">Sur commande (sans prix)</option>
-            </select>
-          </label>
-          <label>Prix (DA)<input name="price" type="number" min="0" step="10" [(ngModel)]="draft.price"></label>
+          @if (!draft.custom) {
+            <label>Prix
+              <select name="unit" [(ngModel)]="draft.unit">
+                <option value="kg">Prix au kg</option>
+                <option value="piece">Prix à la pièce</option>
+                <option value="order">Sur commande (sans prix)</option>
+              </select>
+            </label>
+          }
+          <label>{{ draft.custom ? 'Prix de base avec main-d\'œuvre (DA), jamais affiché au client' : 'Prix (DA)' }}<input name="price" type="number" min="0" step="10" [(ngModel)]="draft.price"></label>
           <label>Ordre d'affichage<input name="order" type="number" min="0" [(ngModel)]="draft.order"></label>
           @if (draft.unit === 'kg') {
             <label style="grid-column:1/-1">Poids proposés en grammes, séparés par des virgules
@@ -133,6 +136,36 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
         <label class="check"><input type="checkbox" name="available" [(ngModel)]="draft.available"> Visible sur le site</label>
         <label class="check"><input type="checkbox" name="featured" [(ngModel)]="draft.featured"> Afficher dans « Les coupes préférées »</label>
         <label class="check"><input type="checkbox" name="special" [(ngModel)]="draft.special"> Commande spéciale : réservation au moins 6 h à l'avance, avec créneau de retrait</label>
+        @if (draft.special) {
+          <label class="check"><input type="checkbox" name="customOn" [ngModel]="!!draft.custom" (ngModelChange)="setCustom($event)"> Le client personnalise : viande hachée, poids et ingrédients</label>
+        }
+        @if (draft.special && draft.custom; as c) {
+          <div class="origin-rows">
+            <b>Viande hachée : prix au kg</b>
+            @for (m of c.meats; track m; let i = $index) {
+              <div class="custom-row">
+                <input [name]="'meatFr' + i" required placeholder="Poulet" aria-label="Viande en français" [(ngModel)]="m.fr">
+                <input [name]="'meatAr' + i" dir="rtl" required aria-label="Viande en arabe" [(ngModel)]="m.ar">
+                <input [name]="'meatPrice' + i" type="number" min="0" step="10" aria-label="Prix au kg en DA" [(ngModel)]="m.price">
+                <button type="button" class="btn danger small" aria-label="Retirer cette viande" (click)="c.meats.splice(i, 1)">✕</button>
+              </div>
+            }
+            <div><button type="button" class="btn light small" (click)="addChoice(c.meats)">+ Ajouter une viande</button></div>
+            <label>Poids de viande proposés en grammes, séparés par des virgules
+              <input name="customGrams" placeholder="250, 500, 750, 1000" [(ngModel)]="customGrams">
+            </label>
+            <b>Ingrédients supplémentaires : prix en DA (0 = offert)</b>
+            @for (x of c.extras; track x; let i = $index) {
+              <div class="custom-row">
+                <input [name]="'extraFr' + i" required placeholder="Champignons" aria-label="Ingrédient en français" [(ngModel)]="x.fr">
+                <input [name]="'extraAr' + i" dir="rtl" required aria-label="Ingrédient en arabe" [(ngModel)]="x.ar">
+                <input [name]="'extraPrice' + i" type="number" min="0" step="10" aria-label="Prix en DA" [(ngModel)]="x.price">
+                <button type="button" class="btn danger small" aria-label="Retirer cet ingrédient" (click)="c.extras.splice(i, 1)">✕</button>
+              </div>
+            }
+            <div><button type="button" class="btn light small" (click)="addChoice(c.extras)">+ Ajouter un ingrédient</button></div>
+          </div>
+        }
         @if (error()) { <div class="msg">{{ error() }}</div> }
         <div class="modal-actions">
           <button type="button" class="btn light" (click)="dialog.close()">Annuler</button>
@@ -144,6 +177,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
   styles: `
     .origin-rows { grid-column: 1 / -1; display: grid; gap: 8px; }
     .origin-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto auto; gap: 8px; align-items: center; }
+    .custom-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 110px auto; gap: 8px; align-items: center; }
     .finder { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 10px; align-items: center; margin-bottom: 14px; max-width: 760px; }
     .finder span { color: var(--muted); font-size: .86rem; white-space: nowrap; }
     @media (max-width: 600px) { .finder { grid-template-columns: 1fr auto; } .finder input { grid-column: 1 / -1; } }
@@ -165,6 +199,7 @@ export class Products implements OnInit {
   protected readonly countries = COUNTRIES;
   protected originAll = false;
   protected rows: ProductOrigin[] = [];
+  protected customGrams = '';
   protected readonly origin = originLabel;
   protected readonly search = signal('');
   protected readonly rayon = signal('');
@@ -196,6 +231,7 @@ export class Products implements OnInit {
     return {
       ...rest, source: p.source ?? '', featured: !!p.featured, weights: (p.weights ?? [250, 500, 1000, 2000]).join(', '),
       options_fr: (p.options_fr ?? []).join('\n'), options_ar: (p.options_ar ?? []).join('\n'),
+      custom: p.custom ? structuredClone(p.custom) : undefined,
     };
   }
 
@@ -217,11 +253,21 @@ export class Products implements OnInit {
     this.rows.splice(i, 1);
   }
 
+  protected setCustom(on: boolean) {
+    this.draft.custom = on ? structuredClone(DEFAULT_CUSTOM) : undefined;
+    this.customGrams = on ? DEFAULT_CUSTOM.grams.join(', ') : '';
+  }
+
+  protected addChoice(list: CustomChoice[]) {
+    list.push({ fr: '', ar: '', price: 0 });
+  }
+
   protected rayonName(p: Product) {
     return this.categories().find(c => c.id === p.category)?.name_fr ?? p.category;
   }
 
   protected price(p: Product) {
+    if (p.custom) return customReady(p) ? 'Prix personnalisé' : 'Prix à compléter';
     if (p.unit === 'order' || !p.price) return 'Sur commande';
     return `${formatNumber(p.price)} DA / ${p.unit === 'piece' ? 'pièce' : 'kg'}`;
   }
@@ -231,6 +277,7 @@ export class Products implements OnInit {
     this.draft = this.toDraft(p ?? this.blank());
     this.originAll = false;
     this.rows = p ? originsOf(p).map(o => ({ ...o })) : [];
+    this.customGrams = p?.custom?.grams.join(', ') ?? '';
     this.image.set(p?.image ?? null);
     this.error.set('');
     this.dialog().nativeElement.showModal();
@@ -265,6 +312,14 @@ export class Products implements OnInit {
     if (!data.source) delete data.source;
     if (!data.fat) delete data.fat;
     if (!data.special) delete data.special;
+    if (data.special && d.custom) {
+      const choices = (list: CustomChoice[]) => list.map(c => ({ fr: c.fr.trim(), ar: c.ar.trim(), price: Number(c.price) || 0 }));
+      data.custom = {
+        meats: choices(d.custom.meats), extras: choices(d.custom.extras),
+        grams: this.customGrams.split(/[,;\s]+/).map(Number).filter(w => w > 0),
+      };
+      data.unit = 'order';
+    } else delete data.custom;
     if (reference) data.reference = reference;
     else delete data.reference;
     const rows = this.rows.filter(r => r.country.trim()).map(r => ({

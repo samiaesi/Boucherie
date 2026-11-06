@@ -57,8 +57,8 @@ export class ProductCard {
       return;
     }
     const origins = availableOrigins(p);
-    // Plusieurs pays : le client doit choisir sur la page du produit
-    if (origins.length > 1) {
+    // Plusieurs pays ou personnalisation : le client choisit sur la page du produit
+    if (origins.length > 1 || p.custom) {
       this.router.navigate(['/produit', p.id]);
       return;
     }
