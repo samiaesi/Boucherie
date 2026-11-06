@@ -278,9 +278,18 @@ app-shop-layout {
 
   /* Boutique */
   .page-head { position: relative; padding: 56px 0; overflow: hidden; text-align: center; background: var(--ink); isolation: isolate; }
-  .page-head::before, .page-head::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; filter: blur(36px); will-change: transform; }
-  .page-head::before { top: -60%; inset-inline-end: 4%; width: 520px; height: 420px; background: rgba(208, 16, 42, .6); animation: headDrift 11s ease-in-out infinite alternate; }
-  .page-head::after { bottom: -80%; inset-inline-start: 6%; width: 420px; height: 360px; background: rgba(234, 164, 43, .22); animation: headDrift 14s ease-in-out -4s infinite alternate-reverse; }
+  .page-head::before, .page-head::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; will-change: transform; }
+  .page-head::before { top: -90%; inset-inline-end: -4%; width: 620px; height: 560px; background: radial-gradient(circle, rgba(208, 16, 42, .6), transparent 68%); animation: headDrift 11s ease-in-out infinite alternate; }
+  .page-head::after { bottom: -120%; inset-inline-start: -2%; width: 560px; height: 520px; background: radial-gradient(circle, rgba(234, 164, 43, .2), transparent 68%); animation: headDrift 14s ease-in-out -4s infinite alternate-reverse; }
+  .head-icons { position: absolute; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; }
+  .float-icon { position: absolute; width: var(--size); height: var(--size); color: rgba(255, 255, 255, .34); animation: floatIn .7s calc(var(--n) * 90ms) var(--ease) both, floatMove var(--t) ease-in-out calc(var(--n) * -1.3s) infinite alternate; }
+  .float-icon :is(svg) { display: block; width: 100%; height: 100%; }
+  @keyframes floatIn { from { opacity: 0; scale: .4; } }
+  @keyframes floatMove { from { transform: translate(-16px, 10px) rotate(-10deg); } to { transform: translate(22px, -16px) rotate(12deg); } }
+  .head-badge { display: inline-grid; place-items: center; width: 60px; height: 60px; margin-bottom: 10px; padding: 11px; border-radius: 50%; background: #fff; color: #8f0a1e; box-shadow: 0 10px 24px -10px rgba(0, 0, 0, .6); animation: badgeIn .7s cubic-bezier(.34, 1.56, .64, 1) both, badgeBob 4s ease-in-out .7s infinite alternate; }
+  .head-badge :is(svg) { display: block; width: 100%; height: 100%; }
+  @keyframes badgeIn { from { opacity: 0; scale: .3; rotate: -30deg; } }
+  @keyframes badgeBob { to { transform: translateY(-6px) rotate(4deg); } }
   @keyframes headDrift { from { transform: translate(-40px, 10px) scale(.92); } to { transform: translate(90px, 40px) scale(1.12); } }
   .word-mask { display: inline-block; margin-inline-end: .22em; padding-bottom: .1em; overflow: hidden; vertical-align: bottom; }
   .word-mask > span { display: inline-block; animation: lineUp .8s calc(var(--i) * 90ms) var(--ease) both; }
@@ -521,6 +530,7 @@ app-shop-layout {
     .menu.open { display: flex; animation: fadeUp .3s var(--ease) both; }
     .burger { display: grid; }
     .shop-layout { grid-template-columns: minmax(0, 1fr); }
+    .float-icon:nth-child(n + 5) { display: none; }
     .rayons { display: none; }
     .rayon-select { display: block; }
     .filters { flex-wrap: wrap; }

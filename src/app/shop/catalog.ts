@@ -6,14 +6,28 @@ import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
 import { ProductCard } from './product-card';
 
+/** Place, taille et vitesse de chaque pictogramme de la bannière */
+const HEAD_ICONS = [
+  { x: 4, y: 18, size: 54, time: 9 }, { x: 13, y: 60, size: 36, time: 12 }, { x: 22, y: 12, size: 30, time: 10 },
+  { x: 76, y: 14, size: 34, time: 11 }, { x: 85, y: 58, size: 56, time: 8 }, { x: 94, y: 16, size: 32, time: 13 },
+];
+
 @Component({
   selector: 'app-catalog',
   host: { '(document:click)': "openMenu.set('')" },
   imports: [RouterLink, IconPipe, ProductCard],
   template: `
     <section class="page-head">
+      @for (t of [title()]; track t) {
+        <div class="head-icons" aria-hidden="true">
+          @for (d of headIcons(); track $index) {
+            <span class="float-icon" [style.left.%]="d.x" [style.top.%]="d.y" [style.--size]="d.size + 'px'" [style.--t]="d.time + 's'" [style.--n]="$index" [innerHTML]="d.icon | icon"></span>
+          }
+        </div>
+      }
       <div class="wrap">
         @for (t of [title()]; track t) {
+          <span class="head-badge" aria-hidden="true" [innerHTML]="mainIcon() | icon"></span>
           <h1>@for (w of titleWords(t); track $index) { <span class="word-mask"><span [style.--i]="$index">{{ w }}</span></span> }</h1>
           <p>{{ i18n.t('shopText') }}</p>
         }
@@ -154,6 +168,16 @@ export class Catalog {
   protected goTo(cat: string) {
     this.router.navigate(['/boutique'], { queryParams: cat ? { cat } : {} });
   }
+
+  /** Pictogramme du rayon ouvert, ou le premier rayon pour la boutique complète */
+  protected readonly mainIcon = computed(() => this.shop.category(this.cat() ?? '')?.icon ?? this.shop.categories()[0]?.icon);
+
+  /** Les pictogrammes flottent sur les côtés, pour laisser le titre lisible. */
+  protected readonly headIcons = computed(() => {
+    const open = this.shop.category(this.cat() ?? '')?.icon;
+    const all = this.shop.categories().map(c => c.icon);
+    return HEAD_ICONS.map((spot, i) => ({ ...spot, icon: open ?? all[i % all.length] }));
+  });
 
   protected titleWords(title: string) {
     return title.split(' ');
