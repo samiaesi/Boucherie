@@ -743,7 +743,8 @@ app-shop-layout {
   .plan-price small { color: var(--text); font-size: .82rem; }
   .plan-note { margin-top: 18px; text-align: center; }
   .plan-more { margin-top: 22px; text-align: center; }
-  .plan-more .btn { background: var(--g-strong); box-shadow: var(--g-shadow); }
+  .plan-more .btn { border-color: transparent; background: var(--g-strong); box-shadow: var(--g-shadow); color: var(--red); }
+  .plan-more .btn:hover { background: #fff; color: var(--red-dark); }
   @media (max-width: 960px) {
     .plan-form { grid-template-columns: 1fr; gap: 16px; padding: 18px; }
     .plan-results { grid-template-columns: 1fr; }
