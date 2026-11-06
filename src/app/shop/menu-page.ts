@@ -1,8 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { doc, getDoc } from 'firebase/firestore';
 import { Cart } from '../core/cart';
+import { db } from '../core/firebase';
 import { I18n } from '../core/i18n';
-import { MenuProposal, MenuStyle, planMenus } from '../core/menu-planner';
+import { MENU_RECIPES, MenuProposal, MenuRecipe, MenuStyle, planMenus } from '../core/menu-planner';
 import { Shop } from '../core/shop';
 
 const MIN_GUESTS = 2;
@@ -73,7 +75,7 @@ const PAGE_SIZE = 6;
     </section>
   `,
 })
-export class MenuPage {
+export class MenuPage implements OnInit {
   protected readonly i18n = inject(I18n);
   private readonly shop = inject(Shop);
   private readonly cart = inject(Cart);
@@ -91,10 +93,22 @@ export class MenuPage {
   protected readonly step = PAGE_SIZE;
   protected readonly shown = signal(PAGE_SIZE);
 
+  /** Menus créés dans l'admin, sinon ceux par défaut */
+  private readonly recipes = signal<MenuRecipe[]>(MENU_RECIPES);
+
   protected readonly menus = computed(() => planMenus(this.shop.products(), {
     guests: this.guests(), style: this.style(), budget: this.budget() >= NO_LIMIT ? 0 : this.budget(),
-  }));
+  }, this.recipes()));
   protected readonly budgetText = computed(() => (this.budget() >= NO_LIMIT ? this.i18n.t('menuNoLimit') : this.i18n.money(this.budget())));
+
+  async ngOnInit() {
+    try {
+      const snap = await getDoc(doc(db, 'settings', 'menus'));
+      if (snap.exists()) this.recipes.set(snap.data()['list'] as MenuRecipe[]);
+    } catch (e) {
+      console.warn('Menus indisponibles, affichage des menus par défaut', e);
+    }
+  }
 
   protected setGuests(n: number) {
     this.guests.set(Math.min(MAX_GUESTS, Math.max(MIN_GUESTS, n)));

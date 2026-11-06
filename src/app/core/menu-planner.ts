@@ -4,8 +4,13 @@ import { customText, customTotal } from './special-custom';
 
 export type MenuStyle = 'fete' | 'simple' | 'grill' | 'mer';
 
+export const MENU_STYLES: { id: MenuStyle; label: string }[] = [
+  { id: 'fete', label: 'Repas de fête' }, { id: 'simple', label: 'Menu simple' },
+  { id: 'grill', label: 'Grillades' }, { id: 'mer', label: 'Poisson' },
+];
+
 /** Un plat du menu : à la pièce pour X personnes, ou au poids par personne. */
-interface Dish {
+export interface Dish {
   product: string;
   /** Pièce entière : nombre de personnes servies */
   serves?: number;
@@ -17,7 +22,7 @@ interface Dish {
   side?: boolean;
 }
 
-interface MenuRecipe {
+export interface MenuRecipe {
   id: string;
   style: MenuStyle;
   name_fr: string;
@@ -25,6 +30,8 @@ interface MenuRecipe {
   dishes: Dish[];
   /** En dessous, le plat serait trop grand pour la table */
   minGuests?: number;
+  /** Masqué depuis l'admin */
+  hidden?: boolean;
 }
 
 const side = (product: string, gramsEach = 120): Dish => ({ product, gramsEach, side: true });
@@ -120,6 +127,7 @@ function dishLine(p: Product, dish: Dish, guests: number): Omit<CartLine, 'key'>
     return { ...base, unit: 'kg', price: origin?.price ?? p.price, grams, qty: 1 };
   }
 
+  if (p.unit === 'kg') return null;
   const qty = Math.ceil(guests / (dish.serves ?? 1));
   if (!p.custom) return { ...base, unit: p.unit, price: p.unit === 'piece' ? (origin?.price ?? p.price) : 0, qty };
   const pick = {
@@ -169,9 +177,9 @@ function alternate(menus: MenuProposal[]) {
  * Menus possibles avec ce qui est disponible aujourd'hui : ceux au prix connu qui tiennent
  * dans le budget, du plus généreux au plus simple. Si aucun ne tient, le moins cher.
  */
-export function planMenus(products: Product[], request: MenuRequest): MenuProposal[] {
-  const all = MENU_RECIPES
-    .filter(r => matchesStyle(r, request.style) && request.guests >= (r.minGuests ?? 1))
+export function planMenus(products: Product[], request: MenuRequest, recipes = MENU_RECIPES): MenuProposal[] {
+  const all = recipes
+    .filter(r => !r.hidden && matchesStyle(r, request.style) && request.guests >= (r.minGuests ?? 1))
     .map(r => propose(r, products, request))
     .filter((m): m is MenuProposal => !!m);
   const fitting = all.filter(m => !m.over)

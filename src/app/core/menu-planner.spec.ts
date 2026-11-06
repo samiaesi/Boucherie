@@ -93,4 +93,17 @@ describe('Proposition de menu', () => {
     expect(ids).toContain('poisson');
     expect(ids).toContain('tajine');
   });
+
+  it('utilise les menus créés dans l\'admin et cache ceux qui sont masqués', () => {
+    const recipes = [
+      { id: 'a', style: 'simple' as const, name_fr: 'A', name_ar: 'أ', dishes: [{ product: 'merguez', gramsEach: 100 }] },
+      { id: 'b', style: 'simple' as const, name_fr: 'B', name_ar: 'ب', hidden: true, dishes: [{ product: 'merguez', gramsEach: 100 }] },
+    ];
+    expect(planMenus(catalogue, { guests: 4, budget: 0, style: 'all' }, recipes).map(m => m.id)).toEqual(['a']);
+  });
+
+  it('écarte un produit passé au kg sans poids par personne', () => {
+    const recipes = [{ id: 'a', style: 'fete' as const, name_fr: 'A', name_ar: 'أ', dishes: [{ product: 'merguez', serves: 4 }] }];
+    expect(planMenus(catalogue, { guests: 4, budget: 0, style: 'all' }, recipes)).toEqual([]);
+  });
 });

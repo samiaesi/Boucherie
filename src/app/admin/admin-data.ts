@@ -1,3 +1,4 @@
+import { MENU_RECIPES, MenuRecipe } from '../core/menu-planner';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   Timestamp, Transaction, addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, increment, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch,
@@ -461,6 +462,16 @@ export class AdminData {
   async saveCategories(list: Category[]) {
     await this.guarded(setDoc(doc(db, 'settings', 'categories'), { list }));
     this.audit('categories.updated', 'Rayons', list.map(c => c.name_fr).join(', '));
+  }
+
+  async getMenus(): Promise<MenuRecipe[]> {
+    const snap = await getDoc(doc(db, 'settings', 'menus'));
+    return structuredClone(snap.exists() ? (snap.data()['list'] as MenuRecipe[]) : MENU_RECIPES);
+  }
+
+  async saveMenus(list: MenuRecipe[]) {
+    await this.guarded(setDoc(doc(db, 'settings', 'menus'), { list }));
+    this.audit('menus.updated', 'Menus', `${list.length} menus`);
   }
 
   async saveFridge(list: FridgeItem[]) {
