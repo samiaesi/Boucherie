@@ -11,6 +11,8 @@ export interface CartLine {
   grams?: number;
   option_fr?: string;
   option_ar?: string;
+  /** Pays choisi par le client, en français */
+  origin?: string;
   qty: number;
 }
 
@@ -53,7 +55,7 @@ export class Cart {
   }
 
   add(line: Omit<CartLine, 'key'>, label: string, from?: HTMLElement) {
-    const key = [line.productId, line.grams ?? '', line.option_fr ?? ''].join('|');
+    const key = [line.productId, line.grams ?? '', line.option_fr ?? '', line.origin ?? ''].join('|');
     this.lines.update(all => all.some(l => l.key === key)
       ? all.map(l => (l.key === key ? { ...l, qty: l.qty + line.qty } : l))
       : [...all, { ...line, key }]);

@@ -91,3 +91,17 @@ describe('Dates du ticket', () => {
     expect(list).toEqual([{ label: 'Date', value: '11-05' }]);
   });
 });
+
+describe('Origine sur le ticket', () => {
+  const beef = { id: 'b', name_fr: 'Bœuf', name_ar: 'بقر', category: 'boeuf', price: 3000, unit: 'kg', origins: [{ country: 'Espagne', price: 3000 }, { country: 'Brésil', price: 2800 }] } as Product;
+
+  it('laisse la ligne à remplir à la main si le produit a plusieurs pays', () => {
+    const [label] = morningLabels([beef], { b: 1 });
+    expect([label.origin, label.originBlank]).toEqual([undefined, true]);
+  });
+
+  it('imprime le pays choisi par le client sur une commande', () => {
+    const order = { id: 'abcdefgh', name: 'Karim', items: [{ productId: 'b', unit: 'kg', grams: 500, qty: 1, name_fr: 'Bœuf', origin: 'Brésil' }] } as Order;
+    expect(labelsFromOrder(order, [beef])[0].origin).toBe('Brésil');
+  });
+});

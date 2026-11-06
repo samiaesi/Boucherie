@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Cart, lineTotal } from '../core/cart';
-import { DEFAULT_WEIGHTS, isLowStock, isOutOfStock, itemQty, roundStock } from '../core/data';
+import { DEFAULT_WEIGHTS, formatNumber, isLowStock, isOutOfStock, itemQty, originsOf, roundStock } from '../core/data';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -27,9 +27,18 @@ const MIN_GRAMS = 100;
             </div>
             <div class="detail-info">
               <h1>{{ i18n.pick(p, 'name') }}</h1>
-              <div class="detail-price">{{ i18n.price(p) }}</div>
+              <div class="detail-price">{{ chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}</div>
               @if (i18n.origin(p); as origin) { <div class="origin">{{ origin }}</div> }
               <p class="lead">{{ i18n.pick(p, 'desc') }}</p>
+
+              @if (origins().length > 1) {
+                <h3>{{ i18n.t('chooseOrigin') }}</h3>
+                <div class="chips">
+                  @for (o of origins(); track o.country; let i = $index) {
+                    <button class="chip" [class.on]="originIndex() === i" (click)="chooseOrigin(i)">{{ i18n.country(o.country) }} · {{ priceText(o.price) }}</button>
+                  }
+                </div>
+              }
 
               @if (p.unit === 'kg') {
                 <div class="mode">
@@ -122,11 +131,15 @@ export class ProductPage {
   protected readonly minGrams = MIN_GRAMS;
   protected readonly grams = signal(0);
   protected readonly option = signal(0);
+  protected readonly originIndex = signal(0);
   protected readonly qty = signal(1);
   protected readonly mode = signal<'weight' | 'amount'>('weight');
   protected readonly amount = signal(0);
 
   protected readonly product = computed(() => this.shop.products().find(p => p.id === this.id()));
+  protected readonly origins = computed(() => { const p = this.product(); return p ? originsOf(p) : []; });
+  protected readonly chosenOrigin = computed(() => this.origins()[this.originIndex()]);
+  private readonly unitPrice = computed(() => this.chosenOrigin()?.price ?? this.product()?.price ?? 0);
   protected readonly icon = computed(() => this.shop.category(this.product()?.category ?? '')?.icon);
   protected readonly weights = computed(() => {
     const w = this.product()?.weights;
@@ -147,7 +160,8 @@ export class ProductPage {
     const p = this.product()!;
     const i = this.option();
     return {
-      productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, unit: p.unit, price: p.price, qty: this.qty(),
+      productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, unit: p.unit, price: this.unitPrice(), qty: this.qty(),
+      ...(this.chosenOrigin() ? { origin: this.chosenOrigin()!.country } : {}),
       grams: p.unit === 'kg' ? this.grams() : undefined,
       option_fr: p.options_fr?.[i], option_ar: p.options_ar?.[i] ?? p.options_fr?.[i],
     };
@@ -179,10 +193,22 @@ export class ProductPage {
       this.id();
       this.grams.set(this.weights()[0]);
       this.option.set(0);
+      this.originIndex.set(0);
       this.qty.set(1);
       this.mode.set('weight');
       this.amount.set(0);
     });
+  }
+
+  protected priceText(price: number) {
+    const unit = this.product()?.unit === 'piece' ? this.i18n.t('perPiece') : this.i18n.t('perKg');
+    return `${formatNumber(price)} ${unit}`;
+  }
+
+  /** Changer de pays change le prix : un achat « par montant » garde son montant. */
+  protected chooseOrigin(i: number) {
+    this.originIndex.set(i);
+    if (this.mode() === 'amount') this.setAmount(String(this.amount()));
   }
 
   protected setMode(mode: 'weight' | 'amount') {
@@ -194,7 +220,7 @@ export class ProductPage {
   protected setAmount(value: string) {
     const amount = Math.max(0, Math.round(Number(value)) || 0);
     this.amount.set(amount);
-    this.grams.set((amount * 1000) / this.product()!.price);
+    this.grams.set((amount * 1000) / this.unitPrice());
   }
 
   protected setCustom(value: string) {

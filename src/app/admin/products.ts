@@ -2,7 +2,7 @@ import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } fr
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
-import { COUNTRIES, Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, ICONS, Product, formatNumber, isCabinet } from '../core/data';
+import { COUNTRIES, Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, ICONS, Product, ProductOrigin, formatNumber, isCabinet, originLabel, originsOf } from '../core/data';
 import { productRef, referenceTakenBy, searchProducts } from '../core/product-search';
 import { AdminData } from './admin-data';
 import { resizeImage } from './image';
@@ -44,7 +44,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
           <div class="info">
             <b>{{ p.name_fr }} <span class="ar">· {{ p.name_ar }}</span>
               @if (!p.available) { <span class="pill">Masqué</span> }</b>
-            <small>Réf. {{ ref(p) }} · {{ rayonName(p) }}{{ p.origin ? ' · ' + p.origin : '' }}</small>
+            <small>Réf. {{ ref(p) }} · {{ rayonName(p) }}{{ origin(p) ? ' · ' + origin(p) : '' }}</small>
           </div>
           <div class="price">{{ price(p) }}</div>
           <div class="item-actions">
@@ -67,11 +67,22 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
         <h3>{{ editingId ? 'Modifier le produit' : 'Nouveau produit' }}</h3>
         <div class="grid2">
           <label>Référence<input name="reference" autocomplete="off" [placeholder]="editingId ? editingId.toUpperCase() : 'Automatique'" [(ngModel)]="draft.reference"></label>
-          <label>Pays d'origine
-            <input name="origin" list="countries" autocomplete="off" placeholder="Algérie, Inde, Espagne…" [(ngModel)]="draft.origin">
+          <span></span>
+          <div class="origin-rows">
+            <b>Pays d'origine et prix</b>
             <datalist id="countries">@for (c of countries; track c.fr) { <option [value]="c.fr"></option> }</datalist>
-          </label>
-          <label class="check" style="grid-column:1/-1"><input type="checkbox" name="originAll" [(ngModel)]="originAll"> Mettre ce pays sur tous les produits de ce rayon</label>
+            @for (r of rows; track r; let i = $index) {
+              <div class="origin-row">
+                <input [name]="'country' + i" list="countries" autocomplete="off" required placeholder="Espagne" aria-label="Pays" [(ngModel)]="r.country">
+                <input [name]="'countryPrice' + i" type="number" min="0" step="10" aria-label="Prix en DA" [(ngModel)]="r.price">
+                <button type="button" class="btn danger small" aria-label="Retirer ce pays" (click)="removeRow(i)">✕</button>
+              </div>
+            }
+            <div><button type="button" class="btn light small" (click)="addRow()">+ Ajouter un pays</button></div>
+            @if (rows.length) {
+              <label class="check"><input type="checkbox" name="originAll" [(ngModel)]="originAll"> Mettre ces pays sur tous les produits de ce rayon, avec les mêmes écarts de prix</label>
+            }
+          </div>
           <label>Nom (français)<input name="name_fr" required [(ngModel)]="draft.name_fr"></label>
           <label>Nom (arabe)<input name="name_ar" dir="rtl" required [(ngModel)]="draft.name_ar"></label>
           <label>Description (français)<textarea name="desc_fr" rows="2" [(ngModel)]="draft.desc_fr"></textarea></label>
@@ -123,6 +134,8 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
     </dialog>
   `,
   styles: `
+    .origin-rows { grid-column: 1 / -1; display: grid; gap: 8px; }
+    .origin-row { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto; gap: 8px; }
     .finder { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 10px; align-items: center; margin-bottom: 14px; max-width: 760px; }
     .finder span { color: var(--muted); font-size: .86rem; white-space: nowrap; }
     @media (max-width: 600px) { .finder { grid-template-columns: 1fr auto; } .finder input { grid-column: 1 / -1; } }
@@ -143,6 +156,8 @@ export class Products implements OnInit {
   protected readonly reserves = computed(() => this.data.fridge().filter(f => !isCabinet(f)));
   protected readonly countries = COUNTRIES;
   protected originAll = false;
+  protected rows: ProductOrigin[] = [];
+  protected readonly origin = originLabel;
   protected readonly search = signal('');
   protected readonly rayon = signal('');
   protected readonly ref = productRef;
@@ -186,6 +201,14 @@ export class Products implements OnInit {
     return this.icons[name] ?? this.icons['boeuf'];
   }
 
+  protected addRow() {
+    this.rows.push({ country: '', price: Number(this.draft.price) || 0 });
+  }
+
+  protected removeRow(i: number) {
+    this.rows.splice(i, 1);
+  }
+
   protected rayonName(p: Product) {
     return this.categories().find(c => c.id === p.category)?.name_fr ?? p.category;
   }
@@ -199,6 +222,7 @@ export class Products implements OnInit {
     this.editingId = p?.id ?? null;
     this.draft = this.toDraft(p ?? this.blank());
     this.originAll = false;
+    this.rows = p ? originsOf(p).map(o => ({ ...o })) : [];
     this.image.set(p?.image ?? null);
     this.error.set('');
     this.dialog().nativeElement.showModal();
@@ -233,16 +257,19 @@ export class Products implements OnInit {
     if (!data.source) delete data.source;
     if (reference) data.reference = reference;
     else delete data.reference;
-    const origin = (d.origin ?? '').trim();
-    if (origin) data.origin = origin;
-    else delete data.origin;
+    const rows = this.rows.map(r => ({ country: r.country.trim(), price: Number(r.price) || 0 })).filter(r => r.country);
+    delete data.origin;
+    if (rows.length) data.origins = rows;
+    else delete data.origins;
     const image = this.image();
     if (image) data.image = image;
     try {
       await this.data.save('products', this.editingId, data);
-      if (this.originAll && origin) {
-        const others = this.products().filter(p => p.category === data.category && p.id !== this.editingId && p.origin !== origin);
-        await Promise.all(others.map(p => this.data.update('products', p.id, { origin })));
+      if (this.originAll && rows.length) {
+        const others = this.products().filter(p => p.category === data.category && p.id !== this.editingId);
+        await Promise.all(others.map(p => this.data.update('products', p.id, {
+          origins: rows.map(r => ({ country: r.country, price: Math.max(0, p.price + r.price - data.price) })),
+        })));
       }
     } catch (e) {
       this.error.set((e as Error).message);

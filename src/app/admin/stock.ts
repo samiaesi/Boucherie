@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Category, Product, byOrder } from '../core/data';
+import { Category, Product, byOrder, originLabel } from '../core/data';
 import { productRef, searchProducts } from '../core/product-search';
 import { AdminData } from './admin-data';
 import { STATE_ICONS, STATE_LABELS, StockLine, StockState, stockCounts, stockLines } from './stock-lines';
@@ -53,7 +53,7 @@ interface Draft {
         <div class="row" [class.off]="l.state === 'untracked'">
           <div class="name">
             <b>{{ l.product.name_fr }}</b>
-            <small>Réf. {{ ref(l.product) }} · {{ rayonName(l.product) }}{{ l.product.origin ? ' · ' + l.product.origin : '' }}</small>
+            <small>Réf. {{ ref(l.product) }} · {{ rayonName(l.product) }}{{ origin(l.product) ? ' · ' + origin(l.product) : '' }}</small>
             @if (l.pool) { <small>Réserve : {{ l.pool.name }}</small> }
           </div>
           <div>
@@ -133,6 +133,7 @@ export class Stock implements OnInit {
   protected readonly categories = signal<Category[]>([]);
   protected readonly rayon = signal('');
   protected readonly ref = productRef;
+  protected readonly origin = originLabel;
   protected readonly filter = signal<Filter>('tous');
   protected readonly search = signal('');
   protected readonly draft = signal<Draft | null>(null);

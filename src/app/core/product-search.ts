@@ -1,4 +1,4 @@
-import { Category, Product } from './data';
+import { Category, Product, originLabel } from './data';
 
 /** Sans accents ni majuscules : « Bœuf » se trouve en tapant « boeuf ». */
 export const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/œ/gi, 'oe').toLowerCase();
@@ -8,7 +8,7 @@ export const productRef = (p: Pick<Product, 'id' | 'reference'>) => p.reference?
 
 export function matchesProduct(p: Product, text: string, categories: Category[]) {
   const c = categories.find(x => x.id === p.category);
-  const haystack = normalize([p.name_fr, p.name_ar, productRef(p), p.category, p.origin, c?.name_fr, c?.name_ar].filter(Boolean).join(' '));
+  const haystack = normalize([p.name_fr, p.name_ar, productRef(p), p.category, originLabel(p), c?.name_fr, c?.name_ar].filter(Boolean).join(' '));
   return normalize(text).split(/\s+/).filter(Boolean).every(word => haystack.includes(word));
 }
 

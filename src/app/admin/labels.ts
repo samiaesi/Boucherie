@@ -155,7 +155,7 @@ const pageStyle = (format: Format, s: LabelSize) =>
             </header>
             <div class="name"><b>{{ l.name_fr }}</b><span dir="rtl">{{ l.name_ar }}</span></div>
             @if (l.detail) { <small class="detail">{{ l.detail }}</small> }
-            @if (fields().origin && l.origin) { <small class="origin">Origine : {{ l.origin }}</small> }
+            @if (fields().origin && (l.origin || l.originBlank)) { <small class="origin">Origine : {{ l.origin || '............' }}</small> }
             <div class="numbers">
               @if (fields().weight) {
                 @if (weightOf(l); as w) { <b>{{ w }}</b> } @else { <span class="blank">Poids : ............ kg</span> }

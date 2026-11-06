@@ -12,8 +12,10 @@ export interface Product {
   available: boolean;
   /** Référence interne, saisie dans la fiche produit */
   reference?: string;
-  /** Pays d'origine, en français : Algérie, Inde, Espagne… */
+  /** Ancien champ : un seul pays d'origine */
   origin?: string;
+  /** Pays d'origine proposés au client, chacun avec son prix */
+  origins?: ProductOrigin[];
   price: number;
   unit: Unit;
   name_fr: string;
@@ -152,6 +154,8 @@ export interface Order {
 
 export interface OrderItem {
   productId: string;
+  /** Pays choisi par le client */
+  origin?: string;
   unit: Unit;
   grams?: number;
   qty: number;
@@ -190,6 +194,28 @@ export const ICONS: Record<string, string> = {
 };
 
 /** Illustrations disponibles pour un rayon */
+export interface ProductOrigin {
+  /** Nom en français */
+  country: string;
+  price: number;
+}
+
+/** Pays d'un produit, avec le prix de base pour une fiche à un seul ancien pays. */
+export const originsOf = (p: Pick<Product, 'origin' | 'origins' | 'price'>): ProductOrigin[] =>
+  (p.origins?.length ? p.origins : p.origin ? [{ country: p.origin, price: p.price }] : []);
+
+/** Prix le plus bas à afficher sur une carte. */
+export const lowestPrice = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => {
+  const prices = originsOf(p).map(o => o.price);
+  return prices.length ? Math.min(...prices) : p.price;
+};
+
+/** Plusieurs prix différents selon le pays */
+export const hasPriceRange = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => new Set(originsOf(p).map(o => o.price)).size > 1;
+
+/** « Espagne, Algérie, Brésil » */
+export const originLabel = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => originsOf(p).map(o => o.country).join(', ');
+
 /** Pays proposés à la saisie ; un autre pays peut être écrit à la main. */
 export const COUNTRIES: { fr: string; ar: string }[] = [
   { fr: 'Algérie', ar: 'الجزائر' }, { fr: 'Inde', ar: 'الهند' }, { fr: 'Espagne', ar: 'إسبانيا' }, { fr: 'Brésil', ar: 'البرازيل' },

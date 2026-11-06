@@ -1,4 +1,4 @@
-import { Lang, Order, OrderItem, Settings } from './data';
+import { Lang, Order, OrderItem, Settings, countryName } from './data';
 import { ProDetails } from './pro-invoice';
 
 export interface InvoiceLine {
@@ -57,7 +57,8 @@ export const vatPart = (total: number, rate: number) => (rate ? Math.round(total
 function detail(i: OrderItem, lang: Lang) {
   const weight = i.grams ? `${Math.round(i.grams)} ${lang === 'ar' ? 'غ' : 'g'}` : '';
   const option = lang === 'ar' ? i.option_ar || i.option_fr : i.option_fr;
-  return [weight, option].filter(Boolean).join(' · ');
+  const origin = i.origin ? countryName(i.origin, lang) : '';
+  return [weight, option, origin].filter(Boolean).join(' · ');
 }
 
 export function buildInvoice(o: Order, s: Settings, number: string, date: string): Omit<Invoice, 'id'> {

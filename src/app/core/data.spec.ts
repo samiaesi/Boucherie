@@ -1,4 +1,4 @@
-import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, countryName, itemQty, poolOf, readFridge, stockShortages } from './data';
+import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, countryName, hasPriceRange, itemQty, lowestPrice, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
 
 const sheep: FridgeItem = { id: 'moutons', name: 'Moutons', tracked: true, kg: 66, min: 100, max: 300, kgEach: 20 };
 const find = (id: string) => DEFAULT_PRODUCTS.find(p => p.id === id)!;
@@ -80,5 +80,26 @@ describe('countryName', () => {
     expect(countryName('Inde', 'ar')).toBe('الهند');
     expect(countryName('Inde', 'fr')).toBe('Inde');
     expect(countryName('Australie', 'ar')).toBe('Australie');
+  });
+});
+
+describe('Pays et prix', () => {
+  const beef = { price: 3200, origins: [{ country: 'Espagne', price: 3800 }, { country: 'Algérie', price: 4200 }, { country: 'Brésil', price: 3200 }] };
+
+  it('liste les pays avec leur prix', () => {
+    expect(originsOf(beef)).toHaveLength(3);
+    expect(originLabel(beef)).toBe('Espagne, Algérie, Brésil');
+    expect(lowestPrice(beef)).toBe(3200);
+    expect(hasPriceRange(beef)).toBe(true);
+  });
+
+  it('reprend l\'ancien champ à un seul pays et le prix du produit', () => {
+    expect(originsOf({ price: 900, origin: 'Inde' })).toEqual([{ country: 'Inde', price: 900 }]);
+    expect(hasPriceRange({ price: 900, origin: 'Inde' })).toBe(false);
+  });
+
+  it('garde le prix de base sans pays', () => {
+    expect(originsOf({ price: 900 })).toEqual([]);
+    expect(lowestPrice({ price: 900 })).toBe(900);
   });
 });

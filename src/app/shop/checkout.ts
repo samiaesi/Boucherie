@@ -133,6 +133,7 @@ export class Checkout {
       this.i18n.pick(l, 'name'),
       l.grams ? this.i18n.weight(l.grams) : '',
       l.option_fr ? this.i18n.pick(l, 'option') : '',
+      l.origin ? this.i18n.country(l.origin) : '',
     ].filter(Boolean).join(' · ');
   }
 
@@ -142,6 +143,7 @@ export class Checkout {
       productId: l.productId, unit: l.unit, qty: l.qty, name_fr: l.name_fr, name_ar: l.name_ar, price: l.price, total: lineTotal(l),
       ...(l.grams ? { grams: l.grams } : {}),
       ...(l.option_fr ? { option_fr: l.option_fr, option_ar: l.option_ar ?? l.option_fr } : {}),
+      ...(l.origin ? { origin: l.origin } : {}),
     }));
   }
 

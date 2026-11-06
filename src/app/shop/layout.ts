@@ -108,6 +108,7 @@ function savedSeen(): Set<string> {
               <small>
                 @if (l.grams) { {{ i18n.weight(l.grams) }} }
                 @if (l.option_fr) { · {{ i18n.pick(l, 'option') }} }
+                @if (l.origin) { · {{ i18n.country(l.origin) }} }
               </small>
               <div class="qty small">
                 <button (click)="cart.setQty(l.key, l.qty - 1)" aria-label="-">−</button>

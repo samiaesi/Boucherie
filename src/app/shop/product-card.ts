@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Cart } from '../core/cart';
-import { DEFAULT_WEIGHTS, Product, isOutOfStock } from '../core/data';
+import { DEFAULT_WEIGHTS, Product, isOutOfStock, originsOf } from '../core/data';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -36,6 +36,7 @@ export class ProductCard {
   protected readonly i18n = inject(I18n);
   private readonly shop = inject(Shop);
   private readonly cart = inject(Cart);
+  private readonly router = inject(Router);
   readonly product = input.required<Product>();
   protected readonly out = computed(() => isOutOfStock(this.product()));
   protected readonly icon = computed(() => this.shop.category(this.product().category)?.icon);
@@ -47,10 +48,17 @@ export class ProductCard {
       this.cart.warn(`${this.i18n.pick(p, 'name')} : ${this.i18n.comeback(p)}`);
       return;
     }
+    const origins = originsOf(p);
+    // Plusieurs pays : le client doit choisir sur la page du produit
+    if (origins.length > 1) {
+      this.router.navigate(['/produit', p.id]);
+      return;
+    }
     const card = (e.currentTarget as HTMLElement).closest('.card');
     const thumb = card?.querySelector<HTMLElement>('.card-img img, .card-icon') ?? undefined;
     this.cart.add({
-      productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, unit: p.unit, price: p.price, qty: 1,
+      productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, unit: p.unit, price: origins[0]?.price ?? p.price, qty: 1,
+      ...(origins[0] ? { origin: origins[0].country } : {}),
       grams: p.unit === 'kg' ? (p.weights?.length ? p.weights : DEFAULT_WEIGHTS)[0] : undefined,
       option_fr: p.options_fr?.[0], option_ar: p.options_ar?.[0] ?? p.options_fr?.[0],
     }, this.i18n.pick(p, 'name'), thumb);
