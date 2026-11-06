@@ -51,6 +51,28 @@ describe('Page d\'une commande spéciale personnalisée', () => {
     expect(page.textContent!.replace(/\s/g, '')).not.toMatch(/1234|1334/);
   });
 
+  it('accepte un autre poids de viande, comme 600 g', async () => {
+    const { page, click } = await render();
+    await click('Bœuf');
+    await click('Autre');
+    const box = page.querySelector<HTMLInputElement>('.inline-field input')!;
+    box.value = '600';
+    box.dispatchEvent(new Event('input'));
+    await click('Ajouter au panier');
+    expect(TestBed.inject(Cart).lines()[0]).toMatchObject({ price: LABOUR + 1200, option_fr: 'Bœuf 600 g' });
+  });
+
+  it('refuse un poids de viande trop petit', async () => {
+    const { page, click } = await render();
+    await click('Autre');
+    const box = page.querySelector<HTMLInputElement>('.inline-field input')!;
+    box.value = '50';
+    box.dispatchEvent(new Event('input'));
+    await click('Olives');
+    const add = [...page.querySelectorAll('button')].find(b => b.textContent!.includes('Ajouter au panier'))!;
+    expect(add.disabled).toBe(true);
+  });
+
   it('met dans le panier le prix final et le détail des choix', async () => {
     const { click } = await render();
     await click('Bœuf');

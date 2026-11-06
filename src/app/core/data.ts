@@ -212,6 +212,11 @@ const lineIcon = (d: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 
 export const ICONS: Record<string, string> = {
+  champignon: lineIcon('M3.5 12a8.5 8.5 0 0 1 17 0zM9 12v6a3 3 0 0 0 6 0v-6M9 8h.01M14 6.5h.01'),
+  fromage: lineIcon('M3 13 15.5 5.5C19 6.5 21 9.5 21 13v6H3zM3 13h18M8 16.5h.01M13 15.5h1M17 17h.01'),
+  oignon: lineIcon('M12 3c0 2.5 1.200 3.5 3.5 5.5C18 10.700 19.5 12.800 19.5 15c0 3.800-3.200 6-7.5 6s-7.5-2.200-7.5-6c0-2.200 1.5-4.300 4-6.5C10.800 6.5 12 5.5 12 3zM12 8.5C10 11 9 13 9 15s1 4 3 6M12 8.5c2 2.5 3 4.5 3 6.5s-1 4-3 6'),
+  olive: lineIcon('M5.5 15c0-4 3.200-7.5 7-7.5 3 0 5 2.200 5 5 0 4-3.200 7.5-7 7.5-3 0-5-2.200-5-5zM13 7.5C13 5 14.5 3.5 17 3M17 3c1.5 1 3 1.200 4 .5-.800 2-2.800 3-4 2.5M14.5 11.5h.01'),
+  supplement: lineIcon('M12 3v18M3 12h18'),
   agneau: lineIcon('M8 7C5 5 2 7 3 10c.7 2 3 2 4 .5M16 7c3-2 6 0 5 3-.7 2-3 2-4 .5M8 6h8l1 6c0 4-2 7-5 8-3-1-5-4-5-8zM10 12v.01M14 12v.01M10.5 16.5c1 .7 2 .7 3 0'),
   boeuf: lineIcon('M4 4c0 3 2 5 5 5h6c3 0 5-2 5-5M7 9v5c0 4 2 7 5 7s5-3 5-7V9M3 10c1.5 1 3 1 4 .5M21 10c-1.5 1-3 1-4 .5M10 13v.01M14 13v.01M10 18h4'),
   poulet: lineIcon('M14 4a6 6 0 0 1 4 10c-2 2-5 2-6.5 1L8 18.5a2 2 0 1 1-3-1 2 2 0 1 1 1.5-3L10 11c-1-2-.5-5 1.5-6.5A6 6 0 0 1 14 4z'),

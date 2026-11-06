@@ -243,6 +243,10 @@ app-shop-layout {
   .origin-card:disabled { background: #f1eeea; color: #9b948c; cursor: not-allowed; filter: grayscale(1); opacity: .65; }
   .origin-one { margin: 12px 0 0; color: var(--text); font-size: .86rem; font-weight: 600; }
   .chips.small { gap: 6px; }
+  .chip:has(.chip-ico) { display: inline-flex; align-items: center; gap: 7px; }
+  .chip-ico { display: inline-flex; flex: none; width: 20px; height: 20px; transition: transform .3s var(--ease); }
+  .chip-ico svg { width: 100%; height: 100%; }
+  .chip:hover .chip-ico { transform: scale(1.15) rotate(-6deg); }
   .chip-price { margin-inline-start: 6px; font-size: .76rem; font-weight: 600; opacity: .8; }
   .chips.small .chip { padding: 8px 14px; font-size: .86rem; }
   .inline-field { display: flex; align-items: center; gap: 8px; max-width: 180px; margin-top: 8px; }

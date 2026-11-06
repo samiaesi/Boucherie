@@ -7,6 +7,15 @@ export interface CustomPick {
   extras: number[];
 }
 
+const CHOICE_ICONS: [RegExp, string][] = [
+  [/poulet|dinde/, 'poulet'], [/b(œ|oe)uf|veau/, 'boeuf'], [/agneau|mouton/, 'agneau'],
+  [/champignon/, 'champignon'], [/fromage/, 'fromage'], [/oignon/, 'oignon'], [/olive/, 'olive'],
+];
+
+/** Pictogramme d'un choix d'après son nom : un ingrédient ajouté dans l'admin garde un pictogramme neutre. */
+export const choiceIcon = (name: string) =>
+  CHOICE_ICONS.find(([pattern]) => pattern.test(name.toLowerCase()))?.[1] ?? 'supplement';
+
 /** Vrai quand tous les prix nécessaires sont saisis ; sinon le prix reste à confirmer. */
 export const customReady = (p: Product) => p.price > 0 && !!p.custom?.meats.every(m => m.price > 0);
 

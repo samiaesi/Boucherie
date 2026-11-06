@@ -1,5 +1,5 @@
 import { DEFAULT_PRODUCTS, Product } from './data';
-import { customReady, customText, customTotal } from './special-custom';
+import { choiceIcon, customReady, customText, customTotal } from './special-custom';
 
 const product = (price: number, meat: number, extra: number): Product => ({
   id: 'x', category: 'speciales', order: 1, available: true, special: true, unit: 'order', price,
@@ -40,6 +40,11 @@ describe('Personnalisation des commandes spéciales', () => {
     expect(custom.meats.map(m => m.fr)).toEqual(['Poulet', 'Bœuf']);
     expect(custom.extras.map(e => e.fr)).toEqual(['Champignons', 'Fromage', 'Oignon', 'Olives']);
     expect(DEFAULT_PRODUCTS.find(p => p.id === 'boudin-special')!.custom).toBeUndefined();
+  });
+
+  it('donne un pictogramme à chaque choix, même ajouté dans l\'admin', () => {
+    expect(['Poulet', 'Bœuf', 'Champignons', 'Fromage', 'Oignon', 'Olives', 'Persil'].map(choiceIcon))
+      .toEqual(['poulet', 'boeuf', 'champignon', 'fromage', 'oignon', 'olive', 'supplement']);
   });
 
   it('ajoute le poulet entier sans os au rayon poulet', () => {

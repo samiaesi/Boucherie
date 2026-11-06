@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Cart, lineTotal } from '../core/cart';
 import { DEFAULT_WEIGHTS, countryFlag, defaultOriginIndex, formatNumber, isLowStock, isOutOfStock, itemQty, noOriginLeft, originInSale, originsOf, roundStock } from '../core/data';
 import { I18n } from '../core/i18n';
-import { customText, customTotal } from '../core/special-custom';
+import { choiceIcon, customText, customTotal } from '../core/special-custom';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
 import { ProductCard } from './product-card';
@@ -90,7 +90,7 @@ const MIN_GRAMS = 100;
                     <span class="pick-label">{{ i18n.t('meatKind') }}</span>
                     <div class="chips small">
                       @for (m of c.meats; track m.fr; let i = $index) {
-                        <button class="chip" [class.on]="meat() === i" [attr.aria-pressed]="meat() === i" (click)="meat.set(i)">{{ i18n.lang() === 'ar' ? m.ar : m.fr }}</button>
+                        <button class="chip" [class.on]="meat() === i" [attr.aria-pressed]="meat() === i" (click)="meat.set(i)"><span class="chip-ico" [innerHTML]="choiceIcon(m.fr) | icon"></span>{{ i18n.lang() === 'ar' ? m.ar : m.fr }}</button>
                       }
                     </div>
                   </div>
@@ -98,9 +98,13 @@ const MIN_GRAMS = 100;
                     <span class="pick-label">{{ i18n.t('meatWeight') }}</span>
                     <div class="chips small">
                       @for (w of c.grams; track w) {
-                        <button class="chip" [class.on]="meatGrams() === w" [attr.aria-pressed]="meatGrams() === w" (click)="meatGrams.set(w)">{{ i18n.weight(w) }}</button>
+                        <button class="chip" [class.on]="!meatOther() && meatGrams() === w" [attr.aria-pressed]="!meatOther() && meatGrams() === w" (click)="meatOther.set(false); meatGrams.set(w)">{{ i18n.weight(w) }}</button>
                       }
+                      <button class="chip" [class.on]="meatOther()" [attr.aria-pressed]="meatOther()" (click)="meatOther.set(true)">{{ i18n.t('otherWeight') }}</button>
                     </div>
+                    @if (meatOther()) {
+                      <label class="inline-field slide-in"><input type="number" [min]="minGrams" step="50" [attr.aria-label]="i18n.t('meatWeight')" [value]="meatGrams()" (input)="setMeatGrams($any($event.target).value)"><span>g</span></label>
+                    }
                   </div>
                 }
                 @if (c.extras.length) {
@@ -109,7 +113,7 @@ const MIN_GRAMS = 100;
                     <div class="chips small">
                       @for (x of c.extras; track x.fr; let i = $index) {
                         <button class="chip" [class.on]="extras().includes(i)" [attr.aria-pressed]="extras().includes(i)" (click)="toggleExtra(i)">
-                          {{ i18n.lang() === 'ar' ? x.ar : x.fr }}@if (x.price) { <small class="chip-price">+{{ i18n.money(x.price) }}</small> }
+                          <span class="chip-ico" [innerHTML]="choiceIcon(x.fr) | icon"></span>{{ i18n.lang() === 'ar' ? x.ar : x.fr }}@if (x.price) { <small class="chip-price">+{{ i18n.money(x.price) }}</small> }
                         </button>
                       }
                     </div>
@@ -144,7 +148,7 @@ const MIN_GRAMS = 100;
                 @for (t of [total()]; track t) {
                   <b class="buy-total pulse">{{ line().unit === 'order' ? i18n.t('toConfirm') : i18n.money(t) }}</b>
                 }
-                <button class="btn btn-red" [disabled]="out() || tooMuch() || (p.unit === 'kg' && grams() < minGrams)" (click)="add($event)">
+                <button class="btn btn-red" [disabled]="out() || tooMuch() || (p.unit === 'kg' && grams() < minGrams) || (!!p.custom?.meats?.length && meatGrams() < minGrams)" (click)="add($event)">
                   {{ out() ? i18n.t('soldOut') : i18n.t('addCart') }}
                 </button>
               </div>
@@ -189,8 +193,10 @@ export class ProductPage {
   protected readonly qty = signal(1);
   protected readonly mode = signal<'weight' | 'amount'>('weight');
   protected readonly amount = signal(0);
+  protected readonly choiceIcon = choiceIcon;
   protected readonly meat = signal(0);
   protected readonly meatGrams = signal(0);
+  protected readonly meatOther = signal(false);
   protected readonly extras = signal<number[]>([]);
 
   protected readonly product = computed(() => this.shop.products().find(p => p.id === this.id()));
@@ -266,8 +272,13 @@ export class ProductPage {
       this.amount.set(0);
       this.meat.set(0);
       this.meatGrams.set(this.product()?.custom?.grams[0] ?? 0);
+      this.meatOther.set(false);
       this.extras.set([]);
     });
+  }
+
+  protected setMeatGrams(value: string) {
+    this.meatGrams.set(Math.max(0, Math.round(Number(value)) || 0));
   }
 
   protected toggleExtra(i: number) {
