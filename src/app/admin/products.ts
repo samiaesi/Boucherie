@@ -117,6 +117,33 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
             </label>
           }
           <label>{{ draft.custom ? 'Prix de base avec main-d\'œuvre (DA), jamais affiché au client' : 'Prix (DA)' }}<input name="price" type="number" min="0" step="10" [(ngModel)]="draft.price"></label>
+          @if (draft.special && draft.custom; as c) {
+            <div class="origin-rows">
+              <b>Viande hachée : prix au kg</b>
+              @for (m of c.meats; track m; let i = $index) {
+                <div class="custom-row">
+                  <input [name]="'meatFr' + i" required placeholder="Poulet" aria-label="Viande en français" [(ngModel)]="m.fr">
+                  <input [name]="'meatAr' + i" dir="rtl" required aria-label="Viande en arabe" [(ngModel)]="m.ar">
+                  <input [name]="'meatPrice' + i" type="number" min="0" step="10" aria-label="Prix au kg en DA" [(ngModel)]="m.price">
+                  <button type="button" class="btn danger small" aria-label="Retirer cette viande" (click)="c.meats.splice(i, 1)">✕</button>
+                </div>
+              }
+              <div><button type="button" class="btn light small" (click)="addChoice(c.meats)">+ Ajouter une viande</button></div>
+              <label>Poids de viande proposés en grammes, séparés par des virgules
+                <input name="customGrams" placeholder="250, 500, 750, 1000" [(ngModel)]="customGrams">
+              </label>
+              <b>Ingrédients supplémentaires : prix en DA (0 = offert)</b>
+              @for (x of c.extras; track x; let i = $index) {
+                <div class="custom-row">
+                  <input [name]="'extraFr' + i" required placeholder="Champignons" aria-label="Ingrédient en français" [(ngModel)]="x.fr">
+                  <input [name]="'extraAr' + i" dir="rtl" required aria-label="Ingrédient en arabe" [(ngModel)]="x.ar">
+                  <input [name]="'extraPrice' + i" type="number" min="0" step="10" aria-label="Prix en DA" [(ngModel)]="x.price">
+                  <button type="button" class="btn danger small" aria-label="Retirer cet ingrédient" (click)="c.extras.splice(i, 1)">✕</button>
+                </div>
+              }
+              <div><button type="button" class="btn light small" (click)="addChoice(c.extras)">+ Ajouter un ingrédient</button></div>
+            </div>
+          }
           <label>Ordre d'affichage<input name="order" type="number" min="0" [(ngModel)]="draft.order"></label>
           @if (draft.unit === 'kg') {
             <label style="grid-column:1/-1">Poids proposés en grammes, séparés par des virgules
@@ -138,33 +165,6 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
         <label class="check"><input type="checkbox" name="special" [(ngModel)]="draft.special"> Commande spéciale : réservation au moins 6 h à l'avance, avec créneau de retrait</label>
         @if (draft.special) {
           <label class="check"><input type="checkbox" name="customOn" [ngModel]="!!draft.custom" (ngModelChange)="setCustom($event)"> Le client personnalise : viande hachée, poids et ingrédients</label>
-        }
-        @if (draft.special && draft.custom; as c) {
-          <div class="origin-rows">
-            <b>Viande hachée : prix au kg</b>
-            @for (m of c.meats; track m; let i = $index) {
-              <div class="custom-row">
-                <input [name]="'meatFr' + i" required placeholder="Poulet" aria-label="Viande en français" [(ngModel)]="m.fr">
-                <input [name]="'meatAr' + i" dir="rtl" required aria-label="Viande en arabe" [(ngModel)]="m.ar">
-                <input [name]="'meatPrice' + i" type="number" min="0" step="10" aria-label="Prix au kg en DA" [(ngModel)]="m.price">
-                <button type="button" class="btn danger small" aria-label="Retirer cette viande" (click)="c.meats.splice(i, 1)">✕</button>
-              </div>
-            }
-            <div><button type="button" class="btn light small" (click)="addChoice(c.meats)">+ Ajouter une viande</button></div>
-            <label>Poids de viande proposés en grammes, séparés par des virgules
-              <input name="customGrams" placeholder="250, 500, 750, 1000" [(ngModel)]="customGrams">
-            </label>
-            <b>Ingrédients supplémentaires : prix en DA (0 = offert)</b>
-            @for (x of c.extras; track x; let i = $index) {
-              <div class="custom-row">
-                <input [name]="'extraFr' + i" required placeholder="Champignons" aria-label="Ingrédient en français" [(ngModel)]="x.fr">
-                <input [name]="'extraAr' + i" dir="rtl" required aria-label="Ingrédient en arabe" [(ngModel)]="x.ar">
-                <input [name]="'extraPrice' + i" type="number" min="0" step="10" aria-label="Prix en DA" [(ngModel)]="x.price">
-                <button type="button" class="btn danger small" aria-label="Retirer cet ingrédient" (click)="c.extras.splice(i, 1)">✕</button>
-              </div>
-            }
-            <div><button type="button" class="btn light small" (click)="addChoice(c.extras)">+ Ajouter un ingrédient</button></div>
-          </div>
         }
         @if (error()) { <div class="msg">{{ error() }}</div> }
         <div class="modal-actions">
