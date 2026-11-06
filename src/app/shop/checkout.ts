@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Cart, CartLine, lineTotal } from '../core/cart';
 import { OrderItem, deliveryCost, orderRef } from '../core/data';
 import { I18n, TKey } from '../core/i18n';
-import { dayIsOpen } from '../core/ordering';
+import { canReserveSpecial, dayIsOpen, firstSpecialDate, specialSlots } from '../core/ordering';
 import { Shop } from '../core/shop';
 import { ClosedNotice } from './closed-notice';
 
@@ -37,16 +37,17 @@ const PHONE = /^0[567]\d{8}$/;
             <form class="co-form" #f="ngForm" (ngSubmit)="submit(f)">
               @if (shop.settings().deliveryEnabled) {
                 <h3>{{ i18n.t('modeTitle') }}</h3>
-                <div class="modes">
-                  <button type="button" class="mode-card" [class.on]="mode() === 'retrait'" (click)="mode.set('retrait')">
-                    <span>🏪</span><b>{{ i18n.t('modePickup') }}</b><small>{{ i18n.t('modePickupHint') }}</small>
+                <div class="modes" [class.second]="mode() === 'livraison'" role="radiogroup" [attr.aria-label]="i18n.t('modeTitle')">
+                  <span class="mode-slider" aria-hidden="true"></span>
+                  <button type="button" class="mode-card" role="radio" [attr.aria-checked]="mode() === 'retrait'" [class.on]="mode() === 'retrait'" (click)="mode.set('retrait')">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l1.5-5h13L20 10M4 10v10h16V10M4 10a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M10 20v-5h4v5" /></svg><span><b>{{ i18n.t('modePickup') }}</b><small>{{ i18n.t('modePickupHint') }}</small></span>
                   </button>
-                  <button type="button" class="mode-card" [class.on]="mode() === 'livraison'" (click)="mode.set('livraison')">
-                    <span>🚚</span><b>{{ i18n.t('modeDelivery') }}</b><small>{{ feeLabel(cost()) }}</small>
+                  <button type="button" class="mode-card" role="radio" [attr.aria-checked]="mode() === 'livraison'" [class.on]="mode() === 'livraison'" (click)="mode.set('livraison')">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7h12v10H2zM14 10h4l4 4v3h-8zM6.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg><span><b>{{ i18n.t('modeDelivery') }}</b><small>{{ feeLabel(cost()) }}</small></span>
                   </button>
                 </div>
               } @else {
-                <p class="pickup">🏪 {{ i18n.t(shop.pickupKey()) }}</p>
+                <p class="serve-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7h12v10H2zM14 10h4l4 4v3h-8zM6.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg>{{ i18n.t(shop.pickupKey()) }}</p>
               }
               <label>{{ i18n.t('fName') }}<input required name="name" [(ngModel)]="form.name"></label>
               <label>{{ i18n.t('fTel') }}<input required name="tel" type="tel" inputmode="tel" placeholder="05 55 12 34 56" dir="ltr" [(ngModel)]="form.tel"></label>
@@ -59,13 +60,27 @@ const PHONE = /^0[567]\d{8}$/;
                 </label>
                 <label class="slide-in">{{ i18n.t('address') }}<textarea required name="address" rows="2" [(ngModel)]="form.address"></textarea></label>
               }
-              <label>{{ i18n.t(mode() === 'livraison' ? 'deliveryDate' : 'pickupDate') }}<input required name="date" type="date" [min]="today" [(ngModel)]="form.date"></label>
+              @if (hasSpecial()) {
+                <p class="special-note">{{ i18n.t('specialCheckout') }}</p>
+                @if (!shop.ordering().open && canSend()) { <p class="special-note">{{ i18n.t('specialNight') }}</p> }
+                <label>{{ i18n.t(mode() === 'livraison' ? 'deliveryDate' : 'pickupDate') }}<input required name="date" type="date" [min]="minSpecialDate()" [ngModel]="specialDate()" (ngModelChange)="chooseSpecialDate($event)"></label>
+                <div class="pick-group">
+                  <span class="pick-label">{{ i18n.t('chooseSlot') }}</span>
+                  <div class="chips small">
+                    @for (s of slots(); track s) {
+                      <button type="button" class="chip" [class.on]="slot() === s" (click)="slot.set(s)">{{ s }}</button>
+                    } @empty { <small>{{ i18n.t('noSlot') }}</small> }
+                  </div>
+                </div>
+              } @else {
+                <label>{{ i18n.t(mode() === 'livraison' ? 'deliveryDate' : 'pickupDate') }}<input required name="date" type="date" [min]="today" [(ngModel)]="form.date"></label>
+              }
               <label class="optin"><input type="checkbox" name="marketing" [(ngModel)]="form.marketing"> <span>{{ i18n.t('marketing') }}</span></label>
               <label>{{ i18n.t('notes') }}<textarea name="notes" [(ngModel)]="form.notes"></textarea></label>
               @if (error()) { <div class="form-error" role="alert">{{ error() }}</div> }
-              <app-closed-notice />
-              <button class="btn btn-red block" type="submit" [disabled]="f.invalid || sending() || !shop.ordering().open">
-                {{ !shop.ordering().open ? i18n.t('closedBtn') : sending() ? i18n.t('sending') : i18n.t('sendOrder') }}
+              @if (!canSend()) { <app-closed-notice /> }
+              <button class="btn btn-red block" type="submit" [disabled]="f.invalid || sending() || !canSend()">
+                {{ !canSend() ? i18n.t('closedBtn') : sending() ? i18n.t('sending') : i18n.t('sendOrder') }}
               </button>
               <p class="note">{{ i18n.t(mode() === 'livraison' ? 'payDelivery' : 'fNote') }}</p>
             </form>
@@ -80,7 +95,7 @@ const PHONE = /^0[567]\d{8}$/;
               @if (mode() === 'livraison') {
                 <div class="sum-line"><span>{{ i18n.t('subtotal') }}</span><b>{{ i18n.money(cart.total()) }}</b></div>
                 <div class="sum-line"><span>{{ i18n.t('delivery') }}</span><b>{{ feeLabel(fee()) }}</b></div>
-                @if (freeLeft() > 0) { <p class="pickup">🎁 {{ freeLeftText() }}</p> }
+                @if (freeLeft() > 0) { <p class="serve-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7C10 3 7 3 7 5s3 2 5 2zM12 7c2-4 5-4 5-2s-3 2-5 2z" /></svg>{{ freeLeftText() }}</p> }
               }
               <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.money(grandTotal()) }}</b></div>
               <p class="note">{{ i18n.t('estimate') }}</p>
@@ -104,6 +119,14 @@ export class Checkout {
   protected readonly today = this.localDate();
   protected form = { name: '', tel: '', zone: '', address: '', date: this.today, notes: '', marketing: false };
   protected readonly mode = signal<'retrait' | 'livraison'>('retrait');
+  protected readonly hasSpecial = computed(() => this.cart.lines().some(l => l.special));
+  protected readonly minSpecialDate = computed(() => firstSpecialDate(this.shop.orderingRules(), this.shop.clock()));
+  /** Une réservation spéciale reste possible la nuit, sauf fermeture manuelle */
+  protected readonly canSend = computed(() => this.shop.ordering().open || (this.hasSpecial() && canReserveSpecial(this.shop.orderingRules())));
+  private readonly pickedDate = signal('');
+  protected readonly specialDate = computed(() => this.pickedDate() || this.minSpecialDate());
+  protected readonly slot = signal('');
+  protected readonly slots = computed(() => specialSlots(this.shop.orderingRules(), this.specialDate(), this.shop.clock()));
 
   /** Frais si le client choisit la livraison */
   protected readonly cost = computed(() => deliveryCost(this.shop.settings(), this.cart.total()));
@@ -114,6 +137,11 @@ export class Checkout {
     const s = this.shop.settings();
     return s.deliveryFreeFrom > 0 && s.deliveryFee > 0 ? s.deliveryFreeFrom - this.cart.total() : 0;
   });
+
+  protected chooseSpecialDate(date: string) {
+    this.pickedDate.set(date);
+    this.slot.set('');
+  }
 
   protected feeLabel(fee: number) {
     return fee ? this.i18n.money(fee) : this.i18n.t('free');
@@ -144,6 +172,7 @@ export class Checkout {
       ...(l.grams ? { grams: l.grams } : {}),
       ...(l.option_fr ? { option_fr: l.option_fr, option_ar: l.option_ar ?? l.option_fr } : {}),
       ...(l.origin ? { origin: l.origin } : {}),
+      ...(l.special ? { special: true } : {}),
     }));
   }
 
@@ -156,11 +185,19 @@ export class Checkout {
       return;
     }
     this.shop.refreshClock();
-    if (!this.shop.ordering().open) return;
-    if (!dayIsOpen(this.shop.orderingRules(), f.date)) {
+    if (!this.canSend()) return;
+    const special = this.hasSpecial();
+    const date = special ? this.specialDate() : f.date;
+    if (!dayIsOpen(this.shop.orderingRules(), date)) {
       this.error.set(t('dayClosed'));
       return;
     }
+    // Recalculé ici : le créneau choisi a pu passer pendant que le client remplissait le formulaire
+    if (special && !specialSlots(this.shop.orderingRules(), date, this.shop.clock()).includes(this.slot())) {
+      this.error.set(t('slotRequired'));
+      return;
+    }
+    const slotText = special ? `${t('slotLabel')} : ${date} ${this.slot()}` : '';
     const lines = this.cart.lines().map(l =>
       `- ${l.qty} × ${this.describe(l)} : ${l.unit === 'order' ? t('toConfirm') : this.i18n.money(lineTotal(l))}`);
     const delivery = this.mode() === 'livraison';
@@ -169,6 +206,7 @@ export class Checkout {
       ...lines,
       delivery && `${t('delivery')} : ${this.feeLabel(this.fee())}`,
       `${t('total')} : ${total}`,
+      special && `${t('specialOrder')} · ${slotText}`,
       delivery && `${t('address')} : ${f.zone} — ${f.address.trim()}`,
       f.notes.trim() && `${t('notes')} : ${f.notes.trim()}`,
     ].filter(Boolean).join('\n').slice(0, MAX_DETAILS);
@@ -177,9 +215,9 @@ export class Checkout {
     this.error.set('');
     try {
       this.ref.set(await this.shop.createOrder({
-        name: f.name.trim(), tel, type: this.mode(), date: f.date, details, lang: this.i18n.lang(), items: this.items(),
+        name: f.name.trim(), tel, type: this.mode(), date, details, lang: this.i18n.lang(), items: this.items(),
         ...(f.marketing ? { marketing: true } : {}), delivery: this.fee(), total: this.grandTotal(), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
-        typeLabel: `${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
+        typeLabel: `${special ? `${t('specialOrder')} ${this.slot()} · ` : ''}${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
       }));
       this.cart.clear();
     } catch (err) {

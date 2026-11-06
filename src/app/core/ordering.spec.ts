@@ -1,4 +1,4 @@
-import { DEFAULT_SCHEDULE, OrderingRules, algeriaClock, dayIsOpen, orderingState, scheduleLines } from './ordering';
+import { DEFAULT_SCHEDULE, OrderingRules, algeriaClock, canReserveSpecial, dayIsOpen, firstSpecialDate, orderingState, scheduleLines, specialReadyTime, specialSlots } from './ordering';
 
 const rules = (over: Partial<OrderingRules> = {}): OrderingRules => ({
   schedule: DEFAULT_SCHEDULE, closedSlots: [], closedDays: [], ordersPaused: false, pauseReason: '', ...over,
@@ -104,5 +104,57 @@ describe('dayIsOpen', () => {
     expect(dayIsOpen(r, '2026-11-04')).toBe(true);
     expect(dayIsOpen(r, '2026-11-05')).toBe(false);
     expect(dayIsOpen(r, '2026-11-06')).toBe(false);
+  });
+});
+
+describe('Commandes spéciales', () => {
+  it('garde 6 h de préparation le jour même', () => {
+    expect(specialSlots(rules(), '2026-11-04', at('2026-11-04', '10:00'))).toEqual(['16:00', '17:00', '18:00', '19:00']);
+  });
+
+  it('refuse le jour même à moins de 6 h de la fermeture', () => {
+    expect(specialSlots(rules(), '2026-11-04', at('2026-11-04', '14:30'))).toEqual([]);
+    expect(firstSpecialDate(rules(), at('2026-11-04', '14:30'))).toBe('2026-11-05');
+  });
+
+  it('propose toute la journée du lendemain', () => {
+    const slots = specialSlots(rules(), '2026-11-05', at('2026-11-04', '19:00'));
+    expect([slots[0], slots.at(-1), slots.length]).toEqual(['07:00', '19:00', 13]);
+  });
+
+  it('respecte les horaires courts, les créneaux et les jours fermés', () => {
+    expect(specialSlots(rules(), '2026-11-06', at('2026-11-05', '10:00')).at(-1)).toBe('11:00');
+    const closed = rules({ closedSlots: [{ date: '', from: '07:00', to: '09:00' }], closedDays: [{ date: '2026-11-07', reason: '' }] });
+    expect(specialSlots(closed, '2026-11-05', at('2026-11-04', '10:00'))[0]).toBe('09:00');
+    expect(specialSlots(closed, '2026-11-07', at('2026-11-04', '10:00'))).toEqual([]);
+  });
+
+  it('ne propose jamais une date passée', () => {
+    expect(specialSlots(rules(), '2026-11-03', at('2026-11-04', '10:00'))).toEqual([]);
+  });
+});
+
+describe('Réservation boutique fermée', () => {
+  it('compte les 6 h depuis la prochaine ouverture, quand la boutique pourra confirmer', () => {
+    const slots = specialSlots(rules(), '2026-11-05', at('2026-11-04', '22:00'));
+    expect([slots[0], firstSpecialDate(rules(), at('2026-11-04', '22:00'))]).toEqual(['13:00', '2026-11-05']);
+  });
+
+  it('compte depuis 7 h aussi tôt le matin', () => {
+    expect(specialSlots(rules(), '2026-11-04', at('2026-11-04', '05:00'))[0]).toBe('13:00');
+  });
+
+  it('passe au jour suivant si l\'ouverture est trop courte, comme le vendredi', () => {
+    expect(specialSlots(rules(), '2026-11-06', at('2026-11-05', '21:00'))).toEqual([]);
+    expect(firstSpecialDate(rules(), at('2026-11-05', '21:00'))).toBe('2026-11-07');
+  });
+
+  it('bloque la réservation pendant une fermeture manuelle', () => {
+    expect(canReserveSpecial(rules())).toBe(true);
+    expect(canReserveSpecial(rules({ ordersPaused: true }))).toBe(false);
+  });
+
+  it('annonce l\'heure où la commande sera prête après confirmation', () => {
+    expect(specialReadyTime(at('2026-11-04', '07:30'))).toBe('13:30');
   });
 });

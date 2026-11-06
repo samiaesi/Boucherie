@@ -35,6 +35,9 @@ function savedSeen(): Set<string> {
           <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">{{ i18n.t('navHome') }}</a>
           <a routerLink="/boutique" routerLinkActive="on">{{ i18n.t('navShop') }}</a>
           <a routerLink="/" fragment="formules">{{ i18n.t('navOffers') }}</a>
+          @if (shop.category('speciales')) {
+            <a routerLink="/boutique" [queryParams]="{ cat: 'speciales' }">{{ i18n.t('specialOrder') }}</a>
+          }
           @if (shop.hasAbout()) { <a routerLink="/notre-boucherie" routerLinkActive="on">{{ i18n.t('aboutNav') }}</a> }
           <a routerLink="/" fragment="contact">{{ i18n.t('navContact') }}</a>
           @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
@@ -132,7 +135,7 @@ function savedSeen(): Set<string> {
       @if (cart.lines().length) {
         <div class="drawer-foot">
           <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.money(cart.total()) }}</b></div>
-          <p class="pickup">🏪 {{ i18n.t(shop.pickupKey()) }}</p>
+          <p class="serve-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7h12v10H2zM14 10h4l4 4v3h-8zM6.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg>{{ i18n.t(shop.pickupKey()) }}</p>
           <p class="note">{{ i18n.t('estimate') }}</p>
           <a routerLink="/commande" class="btn btn-red block" (click)="cart.open.set(false)">{{ i18n.t('checkout') }}</a>
           <button class="btn-text" (click)="cart.open.set(false)">{{ i18n.t('keepShopping') }}</button>

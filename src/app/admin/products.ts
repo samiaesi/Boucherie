@@ -132,6 +132,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
         </div>
         <label class="check"><input type="checkbox" name="available" [(ngModel)]="draft.available"> Visible sur le site</label>
         <label class="check"><input type="checkbox" name="featured" [(ngModel)]="draft.featured"> Afficher dans « Les coupes préférées »</label>
+        <label class="check"><input type="checkbox" name="special" [(ngModel)]="draft.special"> Commande spéciale : réservation au moins 6 h à l'avance, avec créneau de retrait</label>
         @if (error()) { <div class="msg">{{ error() }}</div> }
         <div class="modal-actions">
           <button type="button" class="btn light" (click)="dialog.close()">Annuler</button>
@@ -263,6 +264,7 @@ export class Products implements OnInit {
     };
     if (!data.source) delete data.source;
     if (!data.fat) delete data.fat;
+    if (!data.special) delete data.special;
     if (reference) data.reference = reference;
     else delete data.reference;
     const rows = this.rows.filter(r => r.country.trim()).map(r => ({

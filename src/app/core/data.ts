@@ -16,6 +16,8 @@ export interface Product {
   origin?: string;
   /** Pays d'origine proposés au client, chacun avec son prix */
   origins?: ProductOrigin[];
+  /** Commande spéciale : préparée sur réservation, avec un créneau de retrait */
+  special?: boolean;
   /** Étiquette choisie par la boucherie : faible en gras ou sans gras */
   fat?: FatLabel;
   price: number;
@@ -160,6 +162,8 @@ export interface OrderItem {
   productId: string;
   /** Pays choisi par le client */
   origin?: string;
+  /** Commande spéciale : 6 h de préparation après confirmation */
+  special?: boolean;
   unit: Unit;
   grams?: number;
   qty: number;
@@ -308,6 +312,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'abats', order: 6, icon: 'abats', name_fr: 'Abats', name_ar: 'الأحشاء' },
   { id: 'poissons', image: photo('1534948216015-843149f72be3', 900), order: 7, icon: 'poisson', name_fr: 'Poissons surgelés', name_ar: 'أسماك مجمدة' },
   { id: 'legumes', image: photo('1790861286904-a5158b131c62', 900), order: 8, icon: 'legumes', name_fr: 'Légumes surgelés', name_ar: 'خضر مجمدة' },
+  { id: 'speciales', order: 9, icon: 'poulet', name_fr: 'Commandes spéciales', name_ar: 'طلبات خاصة' },
 ];
 
 type Seed = Omit<Product, 'order' | 'available' | 'unit' | 'desc_fr' | 'desc_ar'> & Partial<Product>;
@@ -440,6 +445,12 @@ export const DEFAULT_PRODUCTS: Product[] = seed([
   { id: 'epinards', category: 'legumes', price: 500, weights: FROZEN_VEG,
     name_fr: 'Épinards surgelés', name_ar: 'سبانخ مجمدة',
     desc_fr: 'Pour vos tourtes et plats en sauce.', desc_ar: 'لفطائركم وأطباقكم بالمرق.' },
+  { id: 'poulet-farci', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Poulet farci", name_ar: 'دجاج محشي', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
+  { id: 'epaule-farcie', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Épaule farcie (ktaf)", name_ar: 'كتف محشية', desc_fr: 'Préparée à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'cuisses-farcies', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Cuisses farcies", name_ar: 'أفخاذ محشية', desc_fr: 'Préparées à la commande.', desc_ar: 'تحضر عند الطلب.' },
+  { id: 'tayhane-farci', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Tayhane farci", name_ar: 'طيحان محشي', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
+  { id: 'boudin-special', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Boudin", name_ar: 'بودان', desc_fr: 'Préparé à la commande.', desc_ar: 'يحضر عند الطلب.' },
+  { id: 'merguez-speciale', category: 'speciales', price: 0, unit: 'order', available: true, special: true, name_fr: "Merguez spéciale", name_ar: 'مرقاز خاص', desc_fr: 'Préparée à la commande.', desc_ar: 'تحضر عند الطلب.' },
 ]);
 
 export const DEFAULT_OFFERS: Offer[] = [

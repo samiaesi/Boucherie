@@ -104,6 +104,50 @@ function nextOpening(r: OrderingRules, date: string, minutes: number) {
   return undefined;
 }
 
+/** Une commande spéciale se prépare : le retrait est au moins 6 h après la confirmation par la boutique. */
+export const SPECIAL_LEAD_MINUTES = 360;
+const SLOT_STEP = 60;
+
+/** Moment où la boutique pourra confirmer : maintenant si elle est ouverte, sinon à sa prochaine ouverture. */
+function confirmationMoment(r: OrderingRules, at: Date) {
+  const clock = algeriaClock(at);
+  const state = orderingState({ ...r, ordersPaused: false }, at);
+  return !state.open && state.reopens ? { date: state.reopens.date, minutes: toMinutes(state.reopens.time) } : clock;
+}
+
+/** Heure à partir de laquelle une commande confirmée maintenant sera prête, ex. « 16:00 ». */
+export function specialReadyTime(at: Date) {
+  const { minutes } = algeriaClock(at);
+  return toTime((minutes + SPECIAL_LEAD_MINUTES) % (24 * 60));
+}
+
+/** La réservation reste possible boutique fermée, sauf fermeture manuelle (maintenance). */
+export const canReserveSpecial = (r: OrderingRules) => !r.ordersPaused;
+
+/** Créneaux de retrait d'un jour pour une commande spéciale, en heures d'ouverture. */
+export function specialSlots(r: OrderingRules, date: string, at: Date) {
+  const confirm = confirmationMoment(r, at);
+  if (date < confirm.date || !dayIsOpen(r, date)) return [];
+  const day = r.schedule.find(d => d.day === weekday(date))!;
+  const earliest = date === confirm.date ? confirm.minutes + SPECIAL_LEAD_MINUTES : 0;
+  const closed = slotsOf(r, date);
+  const slots: string[] = [];
+  for (let m = toMinutes(day.from); m < toMinutes(day.to); m += SLOT_STEP) {
+    if (m >= earliest && !closed.some(s => m >= s.from && m < s.to)) slots.push(toTime(m));
+  }
+  return slots;
+}
+
+/** Premier jour où une commande spéciale peut être retirée. */
+export function firstSpecialDate(r: OrderingRules, at: Date) {
+  const { date } = algeriaClock(at);
+  for (let i = 0; i <= SEARCH_DAYS; i++) {
+    const d = addDays(date, i);
+    if (specialSlots(r, d, at).length) return d;
+  }
+  return date;
+}
+
 /** Jours consécutifs aux mêmes horaires, regroupés pour l'affichage. */
 export function scheduleLines(schedule: DaySchedule[]) {
   const lines: { first: number; last: number; open: boolean; from: string; to: string }[] = [];

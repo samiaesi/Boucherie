@@ -13,6 +13,8 @@ export interface CartLine {
   option_ar?: string;
   /** Pays choisi par le client, en français */
   origin?: string;
+  /** Commande spéciale : réservation avec créneau */
+  special?: boolean;
   qty: number;
 }
 

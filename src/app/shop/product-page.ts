@@ -37,6 +37,7 @@ const MIN_GRAMS = 100;
                 }
               </div>
               <p class="lead">{{ i18n.pick(p, 'desc') }}</p>
+              @if (p.special) { <p class="special-note">{{ i18n.t('specialNote') }}</p> }
 
               @if (origins().length > 1) {
                 <div class="pick-group">
@@ -180,6 +181,7 @@ export class ProductPage {
     const i = this.option();
     return {
       productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, unit: p.unit, price: this.unitPrice(), qty: this.qty(),
+      ...(p.special ? { special: true } : {}),
       ...(this.chosenOrigin() ? { origin: this.chosenOrigin()!.country } : {}),
       grams: p.unit === 'kg' ? this.grams() : undefined,
       option_fr: p.options_fr?.[i], option_ar: p.options_ar?.[i] ?? p.options_fr?.[i],

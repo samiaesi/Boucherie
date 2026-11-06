@@ -3,6 +3,7 @@ import { DatePipe, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Order, OrderStatus, STATUSES, orderRef } from '../core/data';
 import { Shop } from '../core/shop';
+import { specialReadyTime } from '../core/ordering';
 import { canDelete } from './roles';
 import { AdminData } from './admin-data';
 import { Auth } from './auth';
@@ -141,6 +142,7 @@ export class Orders implements OnInit {
       const invoiceId = await this.data.changeStatus(o, status);
       const url = `https://wa.me/${this.waNumber(o.tel)}?text=${encodeURIComponent(`${this.message(o, status, invoiceId)}\n\n${o.lang === 'ar' ? 'تتبع طلبكم' : 'Suivre votre commande'} : ${location.origin}/suivi/${o.id}`)}`;
       if (win) win.location.href = url;
+      if (status === 'confirmé' && o.items?.some(i => i.special)) this.data.notify(this.confirmedText(o, status), 7000);
       if (invoiceId && location.hostname === 'localhost') {
         this.data.notify('Le lien de facture ne marchera pour le client qu\'une fois le site en ligne.', 8000);
       }
@@ -159,10 +161,17 @@ export class Orders implements OnInit {
     return d.startsWith('0') ? '213' + d.slice(1) : d;
   }
 
+  /** Rappel à la confirmation : le temps de préparation court à partir de maintenant. */
+  private confirmedText(o: Order, status: OrderStatus) {
+    return status === 'confirmé' && o.items?.some(i => i.special)
+      ? `Commande spéciale confirmée : prête à partir de ${specialReadyTime(new Date())}.`
+      : 'Statut mis à jour';
+  }
+
   protected async setStatus(o: Order, status: OrderStatus, select: HTMLSelectElement) {
     try {
       await this.data.changeStatus(o, status);
-      this.data.notify('Statut mis à jour');
+      this.data.notify(this.confirmedText(o, status), 7000);
     } catch {
       // Le message d'erreur est déjà affiché : la liste revient au vrai statut
       select.value = o.status;

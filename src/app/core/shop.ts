@@ -53,6 +53,11 @@ export class Shop {
   readonly ordering = computed(() => orderingState(this.orderingRules(), this.now()));
   private watching = false;
 
+  /** Heure corrigée avec celle du serveur */
+  clock() {
+    return new Date(Date.now() + this.clockOffset);
+  }
+
   refreshClock() {
     this.now.set(new Date(Date.now() + this.clockOffset));
   }

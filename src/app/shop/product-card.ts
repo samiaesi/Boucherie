@@ -14,7 +14,8 @@ import { Tilt } from './effects';
     <article class="card" [class.out]="out()" appTilt>
       @if (out()) { <span class="sold-out">{{ i18n.t('soldOut') }} · {{ i18n.comeback(product()) }}</span> }
       <a class="card-img" [routerLink]="['/produit', product().id]">
-        @if (i18n.fat(product()); as fat) { <span class="fat-tag">{{ fat }}</span> }
+        @if (product().special) { <span class="fat-tag">{{ i18n.t('specialTag') }}</span> }
+        @else if (i18n.fat(product()); as fat) { <span class="fat-tag">{{ fat }}</span> }
         @if (product().image) {
           <img [src]="product().image" [alt]="i18n.pick(product(), 'name')" loading="lazy">
         } @else {
@@ -65,6 +66,7 @@ export class ProductCard {
     const thumb = card?.querySelector<HTMLElement>('.card-img img, .card-icon') ?? undefined;
     this.cart.add({
       productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, unit: p.unit, price: origins[0]?.price ?? p.price, qty: 1,
+      ...(p.special ? { special: true } : {}),
       ...(origins[0] ? { origin: origins[0].country } : {}),
       grams: p.unit === 'kg' ? (p.weights?.length ? p.weights : DEFAULT_WEIGHTS)[0] : undefined,
       option_fr: p.options_fr?.[0], option_ar: p.options_ar?.[0] ?? p.options_fr?.[0],
