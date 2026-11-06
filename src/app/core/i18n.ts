@@ -1,5 +1,5 @@
 import { Injectable, effect, signal } from '@angular/core';
-import { Lang, Product, formatNumber, formatWeight } from './data';
+import { Lang, Product, countryName, formatNumber, formatWeight } from './data';
 import { DaySchedule, OrderingState, algeriaClock, scheduleLines } from './ordering';
 
 const FR = {
@@ -7,7 +7,7 @@ const FR = {
   topOpen: 'Ouvert du samedi au jeudi',
   navHome: 'Accueil', navMeat: 'Nos viandes', navAbout: 'Notre engagement', navOffers: 'Formules', navContact: 'Contact', order: 'Commander',
   heroEyebrow: 'Boucherie halal · Aïn El Berd',
-  madeBy: 'Développé par', installApp: 'Application Boucherie Hallem', installText: 'Commandez directement depuis votre téléphone.', installBtn: 'Installer', installLater: 'Plus tard',
+  origin: 'Origine', madeBy: 'Développé par', installApp: 'Application Boucherie Hallem', installText: 'Commandez directement depuis votre téléphone.', installBtn: 'Installer', installLater: 'Plus tard',
   heroOpen: 'Commandes ouvertes', heroLine1: 'La viande fraîche,', heroLine2: 'coupée pour vous.', pointHalal: '100 % halal', pointCut: 'Découpe à la demande', pointDelivery: 'Retrait ou livraison',
   heroTitleA: 'Viande fraîche', heroTitleB: '& 100% halal',
   heroText: 'Agneau, bœuf et poulet frais chaque jour, abattus selon le rite musulman. Découpe sur mesure et préparations maison.',
@@ -85,7 +85,7 @@ const AR: Record<TKey, string> = {
   topOpen: 'مفتوح من السبت إلى الخميس',
   navHome: 'الرئيسية', navMeat: 'لحومنا', navAbout: 'التزامنا', navOffers: 'العروض', navContact: 'اتصل بنا', order: 'اطلب الآن',
   heroEyebrow: 'جزارة حلال · عين البرد',
-  madeBy: 'من تطوير', installApp: 'تطبيق جزارة حلّام', installText: 'اطلب مباشرة من هاتفك.', installBtn: 'تثبيت', installLater: 'لاحقا',
+  origin: 'المنشأ', madeBy: 'من تطوير', installApp: 'تطبيق جزارة حلّام', installText: 'اطلب مباشرة من هاتفك.', installBtn: 'تثبيت', installLater: 'لاحقا',
   heroOpen: 'الطلبات مفتوحة', heroLine1: 'لحم طازج،', heroLine2: 'مقطّع حسب طلبك.', pointHalal: 'حلال 100%', pointCut: 'تقطيع حسب الطلب', pointDelivery: 'استلام أو توصيل',
   heroTitleA: 'لحم طازج', heroTitleB: 'وحلال 100%',
   heroText: 'لحم الغنم والبقر والدجاج طازج كل يوم، مذبوح على الطريقة الإسلامية. تقطيع حسب الطلب ومستحضرات منزلية.',
@@ -214,6 +214,11 @@ export class I18n {
     if (!d || isNaN(d.getTime()) || d < startOfToday()) return this.t('backSoon');
     const day = d.toLocaleDateString(this.lang() === 'ar' ? 'ar-DZ' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     return this.t('backOn').replace('{d}', day);
+  }
+
+  /** « Origine : Algérie », vide si le pays n'est pas renseigné */
+  origin(p: Product) {
+    return p.origin ? `${this.t('origin')} : ${countryName(p.origin, this.lang())}` : '';
   }
 
   /** Horaires de la semaine pour le site, jours groupés */

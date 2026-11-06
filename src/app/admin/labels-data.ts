@@ -16,6 +16,8 @@ export interface Label {
   simple?: boolean;
   /** Rayon du produit, pour son pictogramme */
   category?: string;
+  /** Pays d'origine du produit */
+  origin?: string;
 }
 
 /** Ce que le boucher choisit d'imprimer sur le ticket */
@@ -26,9 +28,10 @@ export interface LabelFields {
   expiry: boolean;
   arrival: boolean;
   weight: boolean;
+  origin: boolean;
 }
 
-export const DEFAULT_LABEL_FIELDS: LabelFields = { company: true, rayon: true, date: true, expiry: true, arrival: true, weight: true };
+export const DEFAULT_LABEL_FIELDS: LabelFields = { company: true, rayon: true, date: true, expiry: true, arrival: true, weight: true, origin: true };
 
 /** Lignes de dates d'un ticket : une date vide ou décochée n'est pas imprimée. */
 export function labelDates(fields: LabelFields, dates: { date: string; expiry: string; arrival: string }, short: (day: string) => string) {
@@ -43,7 +46,7 @@ export function labelDates(fields: LabelFields, dates: { date: string; expiry: s
 export function morningLabels(products: Product[], counts: Record<string, number>): Label[] {
   return products.flatMap(p => {
     const label: Label = {
-      name_fr: p.name_fr, name_ar: p.name_ar, category: p.category, detail: '', weight: '', priceKg: 0, amount: 0, ref: '', client: '', simple: true,
+      name_fr: p.name_fr, name_ar: p.name_ar, category: p.category, origin: p.origin, detail: '', weight: '', priceKg: 0, amount: 0, ref: '', client: '', simple: true,
     };
     return Array.from({ length: Math.max(0, Math.floor(counts[p.id] ?? 0)) }, () => label);
   });
@@ -55,7 +58,7 @@ const weightText = (grams: number) => formatWeight(Math.round(grams), 'g', 'kg')
 export function labelsFromOrder(o: Order, products: Product[] = []): Label[] {
   return (o.items ?? []).filter(i => i.name_fr).flatMap(i => {
     const label: Label = {
-      name_fr: i.name_fr ?? '', name_ar: i.name_ar ?? '', category: products.find(p => p.id === i.productId)?.category, detail: i.option_fr ?? '',
+      name_fr: i.name_fr ?? '', name_ar: i.name_ar ?? '', category: products.find(p => p.id === i.productId)?.category, origin: products.find(p => p.id === i.productId)?.origin, detail: i.option_fr ?? '',
       weight: i.grams ? weightText(i.grams) : '',
       priceKg: i.unit === 'kg' ? (i.price ?? 0) : 0,
       amount: i.qty ? Math.round((i.total ?? 0) / i.qty) : 0,
@@ -68,7 +71,7 @@ export function labelsFromOrder(o: Order, products: Product[] = []): Label[] {
 /** Étiquette saisie à la main, pour la vitrine ou le frigo. */
 export function manualLabel(p: Product, grams: number): Label {
   return {
-    name_fr: p.name_fr, name_ar: p.name_ar, category: p.category, detail: '', weight: grams ? weightText(grams) : '',
+    name_fr: p.name_fr, name_ar: p.name_ar, category: p.category, origin: p.origin, detail: '', weight: grams ? weightText(grams) : '',
     priceKg: p.unit === 'kg' ? p.price : 0,
     amount: p.unit === 'kg' ? Math.round((p.price * grams) / 1000) : p.price,
     ref: '', client: '',

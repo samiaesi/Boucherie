@@ -6,7 +6,7 @@ const categories = [
   { id: 'agneau', name_fr: 'Agneau', name_ar: 'لحم الغنم' },
 ] as Category[];
 const products = [
-  { id: 'entrecote', name_fr: 'Entrecôte', name_ar: 'أنتريكوت', category: 'boeuf', reference: 'B-101' },
+  { id: 'entrecote', name_fr: 'Entrecôte', name_ar: 'أنتريكوت', category: 'boeuf', reference: 'B-101', origin: 'Espagne' },
   { id: 'gigot-agneau', name_fr: "Gigot d'agneau", name_ar: 'فخذ خروف', category: 'agneau' },
 ] as Product[];
 const find = (text: string, category = '') => searchProducts(products, p => p, text, category, categories).map(p => p.id);
@@ -26,6 +26,10 @@ describe('Recherche de produits', () => {
   it('cherche par nom de rayon', () => {
     expect(find('boeuf')).toEqual(['entrecote']);
     expect(find('الغنم')).toEqual(['gigot-agneau']);
+  });
+
+  it('cherche par pays d\'origine', () => {
+    expect(find('espagne')).toEqual(['entrecote']);
   });
 
   it('demande que tous les mots correspondent', () => {

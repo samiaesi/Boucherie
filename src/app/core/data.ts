@@ -12,6 +12,8 @@ export interface Product {
   available: boolean;
   /** Référence interne, saisie dans la fiche produit */
   reference?: string;
+  /** Pays d'origine, en français : Algérie, Inde, Espagne… */
+  origin?: string;
   price: number;
   unit: Unit;
   name_fr: string;
@@ -188,6 +190,18 @@ export const ICONS: Record<string, string> = {
 };
 
 /** Illustrations disponibles pour un rayon */
+/** Pays proposés à la saisie ; un autre pays peut être écrit à la main. */
+export const COUNTRIES: { fr: string; ar: string }[] = [
+  { fr: 'Algérie', ar: 'الجزائر' }, { fr: 'Inde', ar: 'الهند' }, { fr: 'Espagne', ar: 'إسبانيا' }, { fr: 'Brésil', ar: 'البرازيل' },
+  { fr: 'Argentine', ar: 'الأرجنتين' }, { fr: 'France', ar: 'فرنسا' }, { fr: 'Irlande', ar: 'أيرلندا' }, { fr: 'Pologne', ar: 'بولندا' },
+  { fr: 'Roumanie', ar: 'رومانيا' }, { fr: 'Turquie', ar: 'تركيا' }, { fr: 'Maroc', ar: 'المغرب' }, { fr: 'Tunisie', ar: 'تونس' },
+  { fr: 'Mauritanie', ar: 'موريتانيا' }, { fr: 'Sénégal', ar: 'السنغال' }, { fr: 'Chine', ar: 'الصين' }, { fr: 'Vietnam', ar: 'فيتنام' },
+];
+
+/** Nom du pays dans la langue du client ; un pays écrit à la main reste tel quel. */
+export const countryName = (origin: string, lang: Lang) =>
+  (lang === 'ar' ? COUNTRIES.find(c => c.fr === origin)?.ar : undefined) ?? origin;
+
 export const ICON_NAMES: Record<string, string> = {
   agneau: 'Agneau',
   boeuf: 'Bœuf',

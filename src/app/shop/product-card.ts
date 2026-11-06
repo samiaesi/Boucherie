@@ -22,6 +22,7 @@ import { Tilt } from './effects';
       </a>
       <div class="card-body">
         <a [routerLink]="['/produit', product().id]"><h3>{{ i18n.pick(product(), 'name') }}</h3></a>
+        @if (i18n.origin(product()); as origin) { <small class="origin">{{ origin }}</small> }
         <p>{{ i18n.pick(product(), 'desc') }}</p>
         <div class="card-foot">
           <span class="price-tag">{{ i18n.price(product()) }}</span>

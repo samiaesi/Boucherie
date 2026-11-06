@@ -35,7 +35,7 @@ interface Draft {
     </div>
 
     <div class="finder">
-      <input type="search" placeholder="Référence, nom ou rayon…" aria-label="Rechercher un produit" [ngModel]="search()" (ngModelChange)="search.set($event)" name="search">
+      <input type="search" placeholder="Référence, nom, rayon ou pays…" aria-label="Rechercher un produit" [ngModel]="search()" (ngModelChange)="search.set($event)" name="search">
       <select aria-label="Rayon" [ngModel]="rayon()" (ngModelChange)="rayon.set($event)" name="rayon">
         <option value="">Tous les rayons</option>
         @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name_fr }}</option> }
@@ -53,7 +53,7 @@ interface Draft {
         <div class="row" [class.off]="l.state === 'untracked'">
           <div class="name">
             <b>{{ l.product.name_fr }}</b>
-            <small>Réf. {{ ref(l.product) }} · {{ rayonName(l.product) }}</small>
+            <small>Réf. {{ ref(l.product) }} · {{ rayonName(l.product) }}{{ l.product.origin ? ' · ' + l.product.origin : '' }}</small>
             @if (l.pool) { <small>Réserve : {{ l.pool.name }}</small> }
           </div>
           <div>

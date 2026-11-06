@@ -8,7 +8,7 @@ export const productRef = (p: Pick<Product, 'id' | 'reference'>) => p.reference?
 
 export function matchesProduct(p: Product, text: string, categories: Category[]) {
   const c = categories.find(x => x.id === p.category);
-  const haystack = normalize([p.name_fr, p.name_ar, productRef(p), p.category, c?.name_fr, c?.name_ar].filter(Boolean).join(' '));
+  const haystack = normalize([p.name_fr, p.name_ar, productRef(p), p.category, p.origin, c?.name_fr, c?.name_ar].filter(Boolean).join(' '));
   return normalize(text).split(/\s+/).filter(Boolean).every(word => haystack.includes(word));
 }
 

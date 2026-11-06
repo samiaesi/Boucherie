@@ -21,7 +21,7 @@ function savedFields(): LabelFields {
 }
 
 const FIELD_NAMES: [keyof LabelFields, string][] = [
-  ['company', "Nom de l'entreprise"], ['rayon', 'Pictogramme du rayon'], ['weight', 'Poids'],
+  ['company', "Nom de l'entreprise"], ['rayon', 'Pictogramme du rayon'], ['weight', 'Poids'], ['origin', "Pays d'origine"],
   ['date', 'Date'], ['arrival', "Date d'arrivage"], ['expiry', "Date d'expiration"],
 ];
 
@@ -155,6 +155,7 @@ const pageStyle = (format: Format, s: LabelSize) =>
             </header>
             <div class="name"><b>{{ l.name_fr }}</b><span dir="rtl">{{ l.name_ar }}</span></div>
             @if (l.detail) { <small class="detail">{{ l.detail }}</small> }
+            @if (fields().origin && l.origin) { <small class="origin">Origine : {{ l.origin }}</small> }
             <div class="numbers">
               @if (fields().weight) {
                 @if (weightOf(l); as w) { <b>{{ w }}</b> } @else { <span class="blank">Poids : ............ kg</span> }
@@ -187,6 +188,7 @@ const pageStyle = (format: Format, s: LabelSize) =>
     .rayon-ico { flex: none; display: block; width: 6.5mm; height: 6.5mm; }
     .rayon-ico :is(svg) { display: block; width: 100%; height: 100%; }
     .blank { font-size: 8pt; font-weight: 600; }
+    .label .origin { text-align: center; font-weight: 600; }
     .facts { display: flex; justify-content: space-evenly; gap: 1.5mm; margin-top: auto; padding-top: .8mm; border-top: .2mm solid #000; }
     .facts span { min-width: 0; text-align: center; }
     .facts small { display: block; font-size: 5.5pt; line-height: 1.1; }

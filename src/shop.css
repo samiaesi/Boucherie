@@ -190,6 +190,7 @@ app-shop-layout {
   .stock-note { margin-top: 16px; color: var(--red); font-weight: 700; }
   .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
   .price-tag { font-weight: 800; color: var(--red); }
+  .origin { display: block; margin-bottom: 6px; color: var(--text); font-size: .84rem; font-weight: 600; }
   .add { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--ink); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; transition: transform .3s var(--ease), background .2s; }
   .add:hover { background: var(--red); transform: rotate(90deg) scale(1.1); }
   .add:active { transform: scale(.85); }

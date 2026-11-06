@@ -2,7 +2,7 @@ import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } fr
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
-import { Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, ICONS, Product, formatNumber, isCabinet } from '../core/data';
+import { COUNTRIES, Category, DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, ICONS, Product, formatNumber, isCabinet } from '../core/data';
 import { productRef, referenceTakenBy, searchProducts } from '../core/product-search';
 import { AdminData } from './admin-data';
 import { resizeImage } from './image';
@@ -28,7 +28,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
       </div>
     </div>
     <div class="finder">
-      <input type="search" placeholder="Référence, nom ou rayon…" aria-label="Rechercher un produit" [ngModel]="search()" (ngModelChange)="search.set($event)" name="search">
+      <input type="search" placeholder="Référence, nom, rayon ou pays…" aria-label="Rechercher un produit" [ngModel]="search()" (ngModelChange)="search.set($event)" name="search">
       <select aria-label="Rayon" [ngModel]="rayon()" (ngModelChange)="rayon.set($event)" name="rayon">
         <option value="">Tous les rayons</option>
         @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name_fr }}</option> }
@@ -44,7 +44,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
           <div class="info">
             <b>{{ p.name_fr }} <span class="ar">· {{ p.name_ar }}</span>
               @if (!p.available) { <span class="pill">Masqué</span> }</b>
-            <small>Réf. {{ ref(p) }} · {{ rayonName(p) }}</small>
+            <small>Réf. {{ ref(p) }} · {{ rayonName(p) }}{{ p.origin ? ' · ' + p.origin : '' }}</small>
           </div>
           <div class="price">{{ price(p) }}</div>
           <div class="item-actions">
@@ -67,7 +67,11 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
         <h3>{{ editingId ? 'Modifier le produit' : 'Nouveau produit' }}</h3>
         <div class="grid2">
           <label>Référence<input name="reference" autocomplete="off" [placeholder]="editingId ? editingId.toUpperCase() : 'Automatique'" [(ngModel)]="draft.reference"></label>
-          <span></span>
+          <label>Pays d'origine
+            <input name="origin" list="countries" autocomplete="off" placeholder="Algérie, Inde, Espagne…" [(ngModel)]="draft.origin">
+            <datalist id="countries">@for (c of countries; track c.fr) { <option [value]="c.fr"></option> }</datalist>
+          </label>
+          <label class="check" style="grid-column:1/-1"><input type="checkbox" name="originAll" [(ngModel)]="originAll"> Mettre ce pays sur tous les produits de ce rayon</label>
           <label>Nom (français)<input name="name_fr" required [(ngModel)]="draft.name_fr"></label>
           <label>Nom (arabe)<input name="name_ar" dir="rtl" required [(ngModel)]="draft.name_ar"></label>
           <label>Description (français)<textarea name="desc_fr" rows="2" [(ngModel)]="draft.desc_fr"></textarea></label>
@@ -137,6 +141,8 @@ export class Products implements OnInit {
   protected readonly error = signal('');
   protected readonly categories = signal<Category[]>([]);
   protected readonly reserves = computed(() => this.data.fridge().filter(f => !isCabinet(f)));
+  protected readonly countries = COUNTRIES;
+  protected originAll = false;
   protected readonly search = signal('');
   protected readonly rayon = signal('');
   protected readonly ref = productRef;
@@ -192,6 +198,7 @@ export class Products implements OnInit {
   protected open(p: Product | null) {
     this.editingId = p?.id ?? null;
     this.draft = this.toDraft(p ?? this.blank());
+    this.originAll = false;
     this.image.set(p?.image ?? null);
     this.error.set('');
     this.dialog().nativeElement.showModal();
@@ -226,10 +233,17 @@ export class Products implements OnInit {
     if (!data.source) delete data.source;
     if (reference) data.reference = reference;
     else delete data.reference;
+    const origin = (d.origin ?? '').trim();
+    if (origin) data.origin = origin;
+    else delete data.origin;
     const image = this.image();
     if (image) data.image = image;
     try {
       await this.data.save('products', this.editingId, data);
+      if (this.originAll && origin) {
+        const others = this.products().filter(p => p.category === data.category && p.id !== this.editingId && p.origin !== origin);
+        await Promise.all(others.map(p => this.data.update('products', p.id, { origin })));
+      }
     } catch (e) {
       this.error.set((e as Error).message);
       return;

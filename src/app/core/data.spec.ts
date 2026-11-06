@@ -1,4 +1,4 @@
-import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, itemQty, poolOf, readFridge, stockShortages } from './data';
+import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, countryName, itemQty, poolOf, readFridge, stockShortages } from './data';
 
 const sheep: FridgeItem = { id: 'moutons', name: 'Moutons', tracked: true, kg: 66, min: 100, max: 300, kgEach: 20 };
 const find = (id: string) => DEFAULT_PRODUCTS.find(p => p.id === id)!;
@@ -72,5 +72,13 @@ describe('stockShortages', () => {
   it('contrôle les produits suivis seuls et ignore les autres', () => {
     expect(stockShortages([item('merlan', 4000)], products, fridge).map(l => l.name)).toEqual(['Merlan']);
     expect(stockShortages([{ productId: 'sauce', unit: 'piece', qty: 99 } as OrderItem], products, fridge)).toEqual([]);
+  });
+});
+
+describe('countryName', () => {
+  it('traduit un pays connu et garde un pays écrit à la main', () => {
+    expect(countryName('Inde', 'ar')).toBe('الهند');
+    expect(countryName('Inde', 'fr')).toBe('Inde');
+    expect(countryName('Australie', 'ar')).toBe('Australie');
   });
 });

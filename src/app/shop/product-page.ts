@@ -28,6 +28,7 @@ const MIN_GRAMS = 100;
             <div class="detail-info">
               <h1>{{ i18n.pick(p, 'name') }}</h1>
               <div class="detail-price">{{ i18n.price(p) }}</div>
+              @if (i18n.origin(p); as origin) { <div class="origin">{{ origin }}</div> }
               <p class="lead">{{ i18n.pick(p, 'desc') }}</p>
 
               @if (p.unit === 'kg') {
