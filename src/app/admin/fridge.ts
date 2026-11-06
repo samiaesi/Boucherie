@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Category, FridgeItem, ICON_NAMES, isCabinet, roundStock } from '../core/data';
+import { COUNTRIES, Category, FridgeItem, ICON_NAMES, isCabinet, roundStock, sumCountries } from '../core/data';
 import { IconPipe } from '../core/icon';
 import { AdminData } from './admin-data';
 import { STATE_ICONS, STATE_LABELS, StockState, fridgeContents, fridgeIcon, fridgeLine } from './stock-lines';
@@ -9,10 +9,10 @@ import { STATE_ICONS, STATE_LABELS, StockState, fridgeContents, fridgeIcon, frid
 const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-type Draft = FridgeItem & { cabinet: boolean; iconName: string; picked: string[] };
+type Draft = FridgeItem & { cabinet: boolean; iconName: string; picked: string[]; countryRows: { country: string; kg: number }[] };
 
 const blank = (): Draft => ({
-  id: '', name: '', tracked: true, kg: 0, min: 0, max: 0, kgEach: 0, cabinet: false, iconName: 'boeuf', picked: [],
+  id: '', name: '', tracked: true, kg: 0, min: 0, max: 0, kgEach: 0, cabinet: false, iconName: 'boeuf', picked: [], countryRows: [],
 });
 
 const PRESETS = [
@@ -62,7 +62,9 @@ const PRESETS = [
             <button class="door" [attr.aria-expanded]="opened() === l.item.id" [attr.aria-label]="'Ouvrir le frigo ' + l.item.name" (click)="toggleDoor(l.item.id)">
               <i class="led" [class]="'led ' + l.state"></i>
               <span class="picto" [innerHTML]="iconOf(l.item) | icon"></span>
-              <span class="plate"><b>{{ l.item.name }}</b><small>{{ amount(l) }}</small></span>
+              <span class="plate"><b>{{ l.item.name }}</b><small>{{ amount(l) }}</small>
+                @if (breakdown(l.item); as parts) { <small>{{ parts }}</small> }
+              </span>
               <span class="state" [class]="'state ' + l.state">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(l.state)" /></svg>{{ label(l.state) }}
               </span>
@@ -114,11 +116,24 @@ const PRESETS = [
                 }
               </fieldset>
             } @else {
-              <label>En stock (kg)<input name="kg" type="number" min="0" step="0.5" [(ngModel)]="d.kg"></label>
+              <label>En stock (kg)<input name="kg" type="number" min="0" step="0.5" [disabled]="d.countryRows.length > 0" [ngModel]="d.countryRows.length ? rowsTotal(d) : d.kg" (ngModelChange)="d.kg = $event"></label>
               <label>Poids moyen d'une bête (kg)<input name="each" type="number" min="0" step="0.1" [(ngModel)]="d.kgEach"></label>
               <label>Minimum (kg)<input name="min" type="number" min="0" [(ngModel)]="d.min"></label>
               <label>Maximum (kg)<input name="max" type="number" min="0" [(ngModel)]="d.max"></label>
               @if (!(d.kg > 0)) { <label class="wide">Retour prévu<input name="back" type="date" [(ngModel)]="d.restockDate"></label> }
+              <div class="wide rows">
+                <b>Stock par pays</b>
+                <small>Chaque pays a son stock : une vente Espagne ne retire jamais le stock Algérie.</small>
+                <datalist id="fridge-countries">@for (c of countries; track c.fr) { <option [value]="c.fr"></option> }</datalist>
+                @for (r of d.countryRows; track r; let i = $index) {
+                  <div class="row">
+                    <input [name]="'country' + i" list="fridge-countries" autocomplete="off" required placeholder="Algérie" aria-label="Pays" [(ngModel)]="r.country">
+                    <input [name]="'countryKg' + i" type="number" min="0" step="0.5" aria-label="Kilos" [(ngModel)]="r.kg">
+                    <button type="button" class="btn danger small" aria-label="Retirer ce pays" (click)="d.countryRows.splice(i, 1)">✕</button>
+                  </div>
+                }
+                <div><button type="button" class="btn light small" (click)="d.countryRows.push({ country: '', kg: 0 })">+ Ajouter un pays</button></div>
+              </div>
             }
           </div>
           @if (!d.cabinet) { <label class="check"><input name="tracked" type="checkbox" [(ngModel)]="d.tracked"> Suivre ce frigo</label> }
@@ -184,6 +199,9 @@ const PRESETS = [
     fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
     legend { padding: 0 6px; color: var(--muted); font-size: .85rem; font-weight: 600; }
     .grow { flex: 1; }
+    .rows { display: grid; gap: 8px; }
+    .rows small { color: var(--muted); }
+    .row { display: grid; grid-template-columns: minmax(0, 1fr) 110px auto; gap: 8px; }
   `,
 })
 export class Fridge implements OnInit {
@@ -194,6 +212,7 @@ export class Fridge implements OnInit {
   protected readonly opened = signal('');
   protected readonly categories = signal<Category[]>([]);
   protected readonly presets = PRESETS;
+  protected readonly countries = COUNTRIES;
   protected readonly iconNames = Object.entries(ICON_NAMES);
   protected readonly iconOf = fridgeIcon;
   protected readonly label = (s: StockState) => STATE_LABELS[s];
@@ -213,6 +232,15 @@ export class Fridge implements OnInit {
     return l.item.kgEach ? `${roundStock(l.item.kg)} kg · environ ${l.beasts}` : `${roundStock(l.item.kg)} kg`;
   }
 
+  /** « Algérie 33 kg · Espagne 0 kg » */
+  protected breakdown(f: FridgeItem) {
+    return Object.entries(f.countries ?? {}).map(([country, kg]) => `${country} ${roundStock(kg)} kg`).join(' · ');
+  }
+
+  protected rowsTotal(d: Draft) {
+    return sumCountries(Object.fromEntries(d.countryRows.map((r, i) => [String(i), Number(r.kg) || 0])));
+  }
+
   protected toggleDoor(id: string) {
     this.opened.update(current => (current === id ? '' : id));
   }
@@ -220,7 +248,10 @@ export class Fridge implements OnInit {
   protected open(f: FridgeItem | null) {
     this.error.set('');
     this.draft.set(f
-      ? { ...structuredClone(f), cabinet: isCabinet(f), iconName: fridgeIcon(f), picked: [...(f.rayons ?? [])] }
+      ? {
+        ...structuredClone(f), cabinet: isCabinet(f), iconName: fridgeIcon(f), picked: [...(f.rayons ?? [])],
+        countryRows: Object.entries(f.countries ?? {}).map(([country, kg]) => ({ country, kg })),
+      }
       : blank());
     (document.querySelector('app-fridge dialog') as HTMLDialogElement).showModal();
   }
@@ -262,12 +293,15 @@ export class Fridge implements OnInit {
       this.error.set('Choisissez au moins un rayon pour ce frigo.');
       return;
     }
-    const { restockDate, rayons, cabinet, iconName, picked, ...rest } = d;
-    const kg = cabinet ? 0 : Number(d.kg) || 0;
+    const { restockDate, rayons, cabinet, iconName, picked, countryRows, countries, ...rest } = d;
+    const split = cabinet ? [] : countryRows.filter(r => r.country.trim());
+    const perCountry = Object.fromEntries(split.map(r => [r.country.trim(), Number(r.kg) || 0]));
+    const kg = cabinet ? 0 : split.length ? sumCountries(perCountry) : Number(d.kg) || 0;
     const item: FridgeItem = {
       ...rest, id: d.id || slug(d.name), name: d.name.trim(), tracked: !cabinet && !!d.tracked, kg, icon: iconName,
       min: cabinet ? 0 : Number(d.min) || 0, max: cabinet ? 0 : Number(d.max) || 0, kgEach: cabinet ? 0 : Number(d.kgEach) || 0,
       ...(cabinet ? { rayons: picked } : {}),
+      ...(split.length ? { countries: perCountry } : {}),
       ...(!cabinet && restockDate && kg <= 0 ? { restockDate } : {}),
     };
     const list = this.data.fridge();

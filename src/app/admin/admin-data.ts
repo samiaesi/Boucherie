@@ -15,7 +15,7 @@ import { Auth } from './auth';
 import { Role } from './roles';
 import {
   Category, DEFAULT_CATEGORIES, DEFAULT_FRIDGE, DEFAULT_SETTINGS, FridgeItem, Offer, Order, OrderItem, OrderStatus, Product, Settings,
-  byOrder, formatNumber, itemQty, orderRef, poolOf, readFridge, roundStock, stockShortages,
+  byOrder, formatNumber, itemQty, moveCountryStock, orderRef, originsOf, poolOf, readFridge, roundStock, stockShortages,
 } from '../core/data';
 
 type Col = 'products' | 'offers' | 'orders';
@@ -263,15 +263,28 @@ export class AdminData {
       throw new StockError(`Stock insuffisant. ${detail}. Réduisez la commande ou enregistrez un arrivage.`);
     }
     const pools = new Map<string, number>();
+    let list = fridge;
+    const ownOrigins = new Map<string, ReturnType<typeof originsOf>>();
     for (const item of items) {
       const product = products.find(p => p.id === item.productId);
       if (!product) continue;
       const pool = poolOf(product, fridge);
-      if (pool) pools.set(pool.id, (pools.get(pool.id) ?? 0) + sign * itemQty(item));
-      else if (product.trackStock) tx.update(doc(db, 'products', product.id), { stock: increment(sign * itemQty(item)) });
+      const qty = sign * itemQty(item);
+      if (pool) {
+        pools.set(pool.id, (pools.get(pool.id) ?? 0) + qty);
+        if (item.origin && pool.countries) {
+          list = list.map(f => (f.id === pool.id ? { ...f, countries: moveCountryStock(f.countries, item.origin!, qty) } : f));
+        }
+      } else if (product.trackStock) {
+        const origins = ownOrigins.get(product.id) ?? originsOf(product);
+        const counted = origins.some(o => o.country === item.origin && o.stock !== undefined);
+        const next = counted ? origins.map(o => (o.country === item.origin ? { ...o, stock: Math.max(0, roundStock((o.stock ?? 0) + qty)) } : o)) : origins;
+        if (counted) ownOrigins.set(product.id, next);
+        tx.update(doc(db, 'products', product.id), { stock: increment(qty), ...(counted ? { origins: next } : {}) });
+      }
     }
     if (pools.size) {
-      tx.update(doc(db, 'settings', 'fridge'), { list: fridge.map(f => ({ ...f, kg: roundStock(f.kg + (pools.get(f.id) ?? 0)) })) });
+      tx.update(doc(db, 'settings', 'fridge'), { list: list.map(f => ({ ...f, kg: roundStock(f.kg + (pools.get(f.id) ?? 0)) })) });
     }
   }
 
@@ -469,17 +482,31 @@ export class AdminData {
     return snap.exists() ? readFridge(snap.data()['list']) : this.fridge();
   }
 
+  private async lotProduct(tx: Transaction, lot: LotInput) {
+    if (lot.target.kind !== 'product' || !lot.origin) return undefined;
+    const snap = await tx.get(doc(db, 'products', lot.target.id));
+    return snap.exists() ? ({ ...snap.data(), id: snap.id } as Product) : undefined;
+  }
+
   /** Ajoute (qty > 0) ou retire (qty < 0) la quantité d'un arrivage. */
-  private moveLot(tx: Transaction, lot: LotInput, qty: number, fridge: FridgeItem[]) {
+  private moveLot(tx: Transaction, lot: LotInput, qty: number, fridge: FridgeItem[], product?: Product) {
     const arrival = qty > 0;
     if (lot.target.kind === 'product') {
-      tx.update(doc(db, 'products', lot.target.id), { stock: increment(qty), ...(arrival ? { restockDate: '' } : {}) });
+      const origins = lot.origin && product ? originsOf(product) : [];
+      const known = origins.some(o => o.country === lot.origin);
+      const next = known
+        ? origins.map(o => (o.country === lot.origin ? { ...o, stock: Math.max(0, roundStock((o.stock ?? 0) + qty)) } : o))
+        : lot.origin ? [...origins, { country: lot.origin, price: product?.price ?? 0, stock: Math.max(0, qty) }] : [];
+      tx.update(doc(db, 'products', lot.target.id), { stock: increment(qty), ...(arrival ? { restockDate: '' } : {}), ...(lot.origin ? { origins: next } : {}) });
       return;
     }
     const list = fridge.map(f => {
       if (f.id !== lot.target.id) return f;
       const { restockDate, ...rest } = f;
-      return { ...(arrival ? rest : f), kg: Math.max(0, roundStock(f.kg + qty)) };
+      return {
+        ...(arrival ? rest : f), kg: Math.max(0, roundStock(f.kg + qty)),
+        ...(lot.origin ? { countries: moveCountryStock(f.countries, lot.origin, qty) } : {}),
+      };
     });
     tx.set(doc(db, 'settings', 'fridge'), { list });
   }
@@ -492,14 +519,15 @@ export class AdminData {
     const created = await this.guarded(runTransaction(db, async tx => {
       const counter = await tx.get(counterRef);
       const fridge = await this.fridgeInTx(tx);
+      const product = await this.lotProduct(tx, input);
       const next = (counter.data()?.[year] ?? 0) + 1;
       const matricule = lotNumber(year, next);
       tx.set(counterRef, { [year]: next }, { merge: true });
       tx.set(lotRef, { ...input, matricule, createdAt: serverTimestamp() });
-      this.moveLot(tx, input, input.qty, fridge);
+      this.moveLot(tx, input, input.qty, fridge, product);
       return matricule;
     }));
-    this.audit('lot.created', created, `${input.target.name} · ${input.qty} ${input.target.unit} · ${input.supplierName} · réf. ${input.supplierRef}`);
+    this.audit('lot.created', created, `${input.target.name} · ${input.qty} ${input.target.unit}${input.origin ? ` · ${input.origin}` : ''} · ${input.supplierName} · réf. ${input.supplierRef}`);
     return created;
   }
 
@@ -510,7 +538,8 @@ export class AdminData {
       const snap = await tx.get(lotRef);
       if (snap.data()?.['cancelled']) throw new Error('Cet arrivage est déjà annulé.');
       const fridge = await this.fridgeInTx(tx);
-      this.moveLot(tx, lot, -lot.qty, fridge);
+      const product = await this.lotProduct(tx, lot);
+      this.moveLot(tx, lot, -lot.qty, fridge, product);
       tx.update(lotRef, { cancelled: true });
     }));
     this.audit('lot.cancelled', lot.matricule, `${lot.target.name} · ${lot.qty} ${lot.target.unit}`);

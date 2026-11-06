@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Cart } from '../core/cart';
-import { DEFAULT_WEIGHTS, Product, isOutOfStock, originsOf } from '../core/data';
+import { DEFAULT_WEIGHTS, Product, availableOrigins, isOutOfStock, noOriginLeft } from '../core/data';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -44,7 +44,7 @@ export class ProductCard {
   private readonly cart = inject(Cart);
   private readonly router = inject(Router);
   readonly product = input.required<Product>();
-  protected readonly out = computed(() => isOutOfStock(this.product()));
+  protected readonly out = computed(() => isOutOfStock(this.product()) || noOriginLeft(this.product()));
   protected readonly icon = computed(() => this.shop.category(this.product().category)?.icon);
 
   /** Ajout direct avec le premier poids et la première découpe proposés */
@@ -54,7 +54,7 @@ export class ProductCard {
       this.cart.warn(`${this.i18n.pick(p, 'name')} : ${this.i18n.comeback(p)}`);
       return;
     }
-    const origins = originsOf(p);
+    const origins = availableOrigins(p);
     // Plusieurs pays : le client doit choisir sur la page du produit
     if (origins.length > 1) {
       this.router.navigate(['/produit', p.id]);

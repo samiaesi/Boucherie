@@ -75,6 +75,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
               <div class="origin-row">
                 <input [name]="'country' + i" list="countries" autocomplete="off" required placeholder="Espagne" aria-label="Pays" [(ngModel)]="r.country">
                 <input [name]="'countryPrice' + i" type="number" min="0" step="10" aria-label="Prix en DA" [(ngModel)]="r.price">
+                <label class="check"><input type="checkbox" [name]="'countryOn' + i" [ngModel]="r.available !== false" (ngModelChange)="r.available = $event"> Disponible</label>
                 <button type="button" class="btn danger small" aria-label="Retirer ce pays" (click)="removeRow(i)">✕</button>
               </div>
             }
@@ -135,7 +136,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
   `,
   styles: `
     .origin-rows { grid-column: 1 / -1; display: grid; gap: 8px; }
-    .origin-row { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto; gap: 8px; }
+    .origin-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto auto; gap: 8px; align-items: center; }
     .finder { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 10px; align-items: center; margin-bottom: 14px; max-width: 760px; }
     .finder span { color: var(--muted); font-size: .86rem; white-space: nowrap; }
     @media (max-width: 600px) { .finder { grid-template-columns: 1fr auto; } .finder input { grid-column: 1 / -1; } }
@@ -257,7 +258,9 @@ export class Products implements OnInit {
     if (!data.source) delete data.source;
     if (reference) data.reference = reference;
     else delete data.reference;
-    const rows = this.rows.map(r => ({ country: r.country.trim(), price: Number(r.price) || 0 })).filter(r => r.country);
+    const rows = this.rows.filter(r => r.country.trim()).map(r => ({
+      country: r.country.trim(), price: Number(r.price) || 0, ...(r.available === false ? { available: false } : {}),
+    }));
     delete data.origin;
     if (rows.length) data.origins = rows;
     else delete data.origins;
@@ -268,7 +271,7 @@ export class Products implements OnInit {
       if (this.originAll && rows.length) {
         const others = this.products().filter(p => p.category === data.category && p.id !== this.editingId);
         await Promise.all(others.map(p => this.data.update('products', p.id, {
-          origins: rows.map(r => ({ country: r.country, price: Math.max(0, p.price + r.price - data.price) })),
+          origins: rows.map(r => ({ ...r, price: Math.max(0, p.price + r.price - data.price) })),
         })));
       }
     } catch (e) {

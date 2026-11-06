@@ -1,4 +1,4 @@
-import { Order, Product, formatWeight, orderRef, originsOf } from '../core/data';
+import { Order, Product, availableOrigins, formatWeight, orderRef } from '../core/data';
 
 export interface Label {
   name_fr: string;
@@ -24,7 +24,7 @@ export interface Label {
 
 /** Sur un ticket sans commande, un produit à plusieurs pays n'affiche pas un pays au hasard. */
 function originFields(p: Product | undefined) {
-  const list = p ? originsOf(p) : [];
+  const list = p ? availableOrigins(p) : [];
   return list.length > 1 ? { originBlank: true } : { origin: list[0]?.country };
 }
 

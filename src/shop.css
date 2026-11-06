@@ -191,6 +191,42 @@ app-shop-layout {
   .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
   .price-tag { font-weight: 800; color: var(--red); }
   .flag { display: inline-block; width: 20px; height: 15px; margin-inline-end: 4px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .14); object-fit: cover; vertical-align: -3px; }
+  .pick { position: relative; min-width: 0; }
+  .pick-btn { display: flex; align-items: center; gap: 4px; width: 100%; height: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 14px; background: #fff; color: var(--ink); font: inherit; text-align: start; cursor: pointer; transition: border-color .2s; }
+  .pick-btn:hover, .pick-btn[aria-expanded="true"] { border-color: var(--red); }
+  .pick-btn span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pick-btn svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s var(--ease); }
+  .pick-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .pick-list { position: absolute; z-index: 30; top: calc(100% + 6px); inset-inline: 0; max-height: 320px; margin: 0; padding: 6px; overflow-y: auto; border-radius: 16px; background: #fff; box-shadow: 0 18px 40px -16px rgba(40, 20, 10, .4), 0 0 0 1px rgba(0, 0, 0, .04); list-style: none; animation: pickIn .22s var(--ease) both; transform-origin: top; }
+  @keyframes pickIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+  .pick-list button { display: flex; align-items: center; gap: 4px; width: 100%; min-height: 42px; padding: 8px 12px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: inherit; text-align: start; cursor: pointer; transition: background .15s; }
+  .pick-list button:hover { background: var(--soft); }
+  .pick-list button.on { background: #fde3e6; color: #8f0a1e; font-weight: 600; }
+  .pick-group { margin-top: 18px; }
+  .pick-label { display: block; margin-bottom: 8px; color: var(--text); font-size: .8rem; font-weight: 600; }
+  .origin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+  .origin-card { display: grid; justify-items: center; gap: 3px; padding: 10px 6px; border: 1.5px solid var(--border); border-radius: 16px; background: #fff; color: var(--ink); font: inherit; cursor: pointer; transition: border-color .2s, background .2s, transform .2s var(--ease); }
+  .origin-card .flag { width: 28px; height: 21px; margin: 0; }
+  .origin-card b { font-size: .84rem; }
+  .origin-card small { color: var(--text); font-size: .74rem; }
+  .origin-card:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--red); }
+  .origin-card.on { border-color: var(--red); background: #fde3e6; box-shadow: inset 0 0 0 1px var(--red); }
+  .origin-card:disabled { background: #f1eeea; color: #9b948c; cursor: not-allowed; filter: grayscale(1); opacity: .65; }
+  .origin-one { margin: 12px 0 0; color: var(--text); font-size: .86rem; font-weight: 600; }
+  .chips.small { gap: 6px; }
+  .chips.small .chip { padding: 8px 14px; font-size: .86rem; }
+  .inline-field { display: flex; align-items: center; gap: 8px; max-width: 180px; margin-top: 8px; }
+  .inline-field input { padding: 9px 12px; }
+  .gives { display: block; margin-top: 6px; color: var(--text); }
+  .link-switch { display: inline-block; margin-top: 8px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: .8rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .link-switch:hover { color: var(--red); }
+  .buy { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 22px; padding: 12px; border-radius: 20px; background: #fff; box-shadow: 0 10px 28px -20px rgba(60, 25, 15, .5); }
+  .buy .qty { margin: 0; }
+  .buy-total { margin-inline-start: auto; font-family: var(--font-title); font-size: 1.2rem; white-space: nowrap; }
+  .buy .btn { flex: 1 1 180px; }
+  .serve-line { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: var(--text); font-size: .8rem; }
+  .serve-line svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .chip:disabled { background: #efedea; color: #9b948c; cursor: not-allowed; filter: grayscale(1); opacity: .7; }
   .place { display: inline-block; margin-inline-end: 4px; white-space: nowrap; }
   .origin { display: block; margin-bottom: 6px; color: var(--text); font-size: .84rem; font-weight: 600; }
   .add { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--ink); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; transition: transform .3s var(--ease), background .2s; }
@@ -221,20 +257,28 @@ app-shop-layout {
   .page-head h1 { color: #fff; font-size: clamp(2.1rem, 5vw, 3.2rem); font-weight: 800; animation: fadeUp .6s var(--ease) both; }
   .page-head p { color: #d0c4bc; margin-top: 8px; animation: fadeUp .6s .1s var(--ease) both; }
   .shop { padding: 36px 0 90px; }
-  .shop-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 28px; align-items: start; }
-  .rayons { position: sticky; top: 84px; padding: 16px 10px; border-radius: var(--r); background: #fff; box-shadow: 0 1px 0 var(--border); }
-  .rayons h2 { margin: 0 8px 10px; font-size: .95rem; font-weight: 700; }
-  .rayon { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 7px 10px; border-radius: 12px; font-weight: 600; font-size: .93rem; transition: background .2s, color .2s; }
-  .rayon:hover { background: var(--soft); color: var(--red); }
-  .rayon.on { background: var(--red); color: #fff; }
-  .rayon i { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--soft); }
+  .shop-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .rayons { position: sticky; top: 84px; padding: 18px 10px 12px; border-radius: 28px; background: #fff; box-shadow: 0 1px 2px rgba(60, 25, 15, .06), 0 14px 34px -22px rgba(60, 25, 15, .3); }
+  .rayons h2 { margin: 0 12px 12px; color: var(--text); font-family: inherit; font-size: .76rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .rayon-list { --item: 52px; --gap: 4px; position: relative; display: grid; gap: var(--gap); }
+  .rayon-pill { position: absolute; inset-inline: 0; top: 0; height: var(--item); border-radius: 26px; background: #fde3e6; transform: translateY(calc(var(--i) * (var(--item) + var(--gap)))); transition: transform .5s cubic-bezier(.34, 1.45, .64, 1); }
+  .rayon { position: relative; display: flex; align-items: center; gap: 12px; height: var(--item); padding: 0 14px 0 8px; overflow: hidden; border-radius: 26px; color: var(--ink); font-weight: 600; font-size: .94rem; transition: color .25s; animation: rayonIn .5s calc(var(--n) * 45ms) var(--ease) both; }
+  [dir="rtl"] & .rayon { padding: 0 8px 0 14px; }
+  @keyframes rayonIn { from { opacity: 0; transform: translateX(-14px); } }
+  .rayon::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--ink); opacity: 0; transition: opacity .2s; }
+  .rayon:hover::before { opacity: .05; }
+  .rayon:active::before { opacity: .11; }
+  .rayon:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
+  .rayon.on { color: #8f0a1e; font-weight: 700; }
+  .rayon i { position: relative; flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--soft); color: var(--text); transition: transform .4s cubic-bezier(.34, 1.56, .64, 1), background .25s; }
   .rayon i svg { width: 22px; height: 22px; display: block; }
-  .rayon.on i { background: #fff; }
-  .rayon span { flex: 1; }
-  .rayon small { color: var(--text); font-weight: 500; }
-  .rayon.on small { color: #fff; }
+  .rayon:hover i { transform: scale(1.14) rotate(-6deg); }
+  .rayon.on i { background: #fff; color: #8f0a1e; transform: scale(1.06); }
+  .rayon span { position: relative; flex: 1; min-width: 0; line-height: 1.2; }
+  .rayon small { position: relative; min-width: 26px; padding: 2px 7px; border-radius: 12px; color: var(--text); font-size: .76rem; font-weight: 600; text-align: center; transition: background .25s, color .25s; }
+  .rayon.on small { background: #8f0a1e; color: #fff; }
   .rayon-select { display: none; }
-  .filters { display: grid; grid-template-columns: 1fr 220px; gap: 12px; margin-bottom: 24px; }
+  .filters { display: grid; grid-auto-flow: column; grid-template-columns: 1fr; grid-auto-columns: 200px; gap: 12px; margin-bottom: 24px; }
 
   /* Fiche produit */
   .detail { padding: 30px 0 70px; }
@@ -270,9 +314,6 @@ app-shop-layout {
   .qty span { min-width: 40px; text-align: center; font-weight: 700; }
   .qty.small button { width: 30px; height: 30px; font-size: 1rem; }
   .qty.small span { min-width: 28px; }
-  .buy { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 26px; padding: 18px 22px; border-radius: var(--r); background: #fff; box-shadow: 0 1px 0 var(--border); }
-  .buy small { display: block; color: var(--text); }
-  .buy b { display: inline-block; font-family: var(--font-title); font-size: 1.7rem; font-weight: 800; }
   .pulse { animation: pulse .4s var(--ease); }
   @keyframes pulse { 40% { transform: scale(1.14); color: var(--red); } }
   .related { padding: 50px 0 70px; }
@@ -444,7 +485,7 @@ app-shop-layout {
     .shop-layout { grid-template-columns: minmax(0, 1fr); }
     .rayons { display: none; }
     .rayon-select { display: block; }
-    .filters { grid-template-columns: 1fr 1fr; }
+    .filters { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
     .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 28px 36px; }
     .hero-tiles { height: 340px; min-height: 0; gap: 10px; }
     .htile { border-radius: 20px; }

@@ -1,11 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
+import { COUNTRIES } from '../core/data';
 import { Lot, LotTarget, lotTargets, searchLots, supplierNames } from '../core/lots';
 import { localDay } from '../core/stats';
 import { AdminData } from './admin-data';
 
 const blank = () => ({
-  target: null as LotTarget | null, qty: null as number | null, arrivalDate: localDay(new Date()), supplierName: '', supplierRef: '', note: '',
+  target: null as LotTarget | null, qty: null as number | null, arrivalDate: localDay(new Date()), supplierName: '', supplierRef: '', note: '', origin: '',
 });
 
 @Component({
@@ -34,6 +35,10 @@ const blank = () => ({
         <label>Référence du fournisseur
           <input name="ref" required placeholder="Bon de livraison, facture…" [(ngModel)]="draft.supplierRef">
         </label>
+        <label>Pays d'origine
+          <input name="origin" list="lot-countries" autocomplete="off" placeholder="Algérie, Espagne…" [(ngModel)]="draft.origin">
+          <datalist id="lot-countries">@for (c of countries; track c.fr) { <option [value]="c.fr"></option> }</datalist>
+        </label>
         <label>Note (facultatif)<input name="note" [(ngModel)]="draft.note"></label>
       </div>
       @if (error()) { <div class="msg">{{ error() }}</div> }
@@ -49,7 +54,7 @@ const blank = () => ({
         <div class="item" [class.off]="l.cancelled">
           <div class="info">
             <b>{{ l.matricule }} @if (l.cancelled) { <span class="pill alert">Annulé</span> }</b>
-            <small>{{ l.target.name }} · {{ l.qty }} {{ l.target.unit }} · arrivé le {{ l.arrivalDate }}</small>
+            <small>{{ l.target.name }} · {{ l.qty }} {{ l.target.unit }}{{ l.origin ? ' · ' + l.origin : '' }} · arrivé le {{ l.arrivalDate }}</small>
             <small>{{ l.supplierName }} · réf. {{ l.supplierRef }}{{ l.note ? ' · ' + l.note : '' }}</small>
           </div>
           @if (!l.cancelled) { <button class="btn danger small" (click)="cancel(l)" [disabled]="busy()">Annuler</button> }
@@ -75,6 +80,7 @@ export class Arrivals implements OnInit {
   protected readonly error = signal('');
   protected readonly search = signal('');
   protected draft = blank();
+  protected readonly countries = COUNTRIES;
 
   protected readonly targets = computed(() => lotTargets(this.data.products(), this.data.fridge()));
   protected readonly suppliers = computed(() => supplierNames(this.lots()));
@@ -94,13 +100,13 @@ export class Arrivals implements OnInit {
   }
 
   protected async save(form: NgForm) {
-    const { target, qty, arrivalDate, supplierName, supplierRef, note } = this.draft;
+    const { target, qty, arrivalDate, supplierName, supplierRef, note, origin } = this.draft;
     if (!target || !qty) return;
     this.busy.set(true);
     this.error.set('');
     try {
       const matricule = await this.data.addLot({
-        target, qty: Number(qty), arrivalDate, supplierName: supplierName.trim(), supplierRef: supplierRef.trim(), note: note.trim(),
+        target, qty: Number(qty), arrivalDate, supplierName: supplierName.trim(), supplierRef: supplierRef.trim(), note: note.trim(), ...(origin.trim() ? { origin: origin.trim() } : {}),
       });
       this.data.notify(`Arrivage enregistré : ${matricule}`);
       this.draft = blank();

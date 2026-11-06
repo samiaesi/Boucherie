@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Category, Product, byOrder, originLabel } from '../core/data';
+import { Category, Product, ProductOrigin, byOrder, originLabel, originsOf, roundStock } from '../core/data';
 import { productRef, searchProducts } from '../core/product-search';
 import { AdminData } from './admin-data';
 import { STATE_ICONS, STATE_LABELS, StockLine, StockState, stockCounts, stockLines } from './stock-lines';
@@ -15,6 +15,7 @@ interface Draft {
   stockAlert: number;
   stockMax: number;
   restockDate: string;
+  origins: ProductOrigin[];
 }
 
 @Component({
@@ -81,7 +82,13 @@ interface Draft {
         </div>
         @if (draft()?.id === l.product.id && draft(); as d) {
           <form class="editor" (ngSubmit)="save()">
-            <label>Stock actuel ({{ l.unit }})<input name="stock" type="number" min="0" step="0.5" [(ngModel)]="d.stock"></label>
+            @if (d.origins.length) {
+              @for (o of d.origins; track o.country; let i = $index) {
+                <label>{{ o.country }} ({{ l.unit }})<input [name]="'origin' + i" type="number" min="0" step="0.5" [(ngModel)]="o.stock"></label>
+              }
+            } @else {
+              <label>Stock actuel ({{ l.unit }})<input name="stock" type="number" min="0" step="0.5" [(ngModel)]="d.stock"></label>
+            }
             <label>Minimum<input name="min" type="number" min="0" step="0.5" [(ngModel)]="d.stockAlert"></label>
             <label>Maximum<input name="max" type="number" min="0" step="0.5" [(ngModel)]="d.stockMax"></label>
             @if (l.state === 'out') { <label>Retour prévu<input name="back" type="date" [(ngModel)]="d.restockDate"></label> }
@@ -172,6 +179,7 @@ export class Stock implements OnInit {
   protected open(p: Product, trackStock: boolean) {
     this.draft.set({
       id: p.id, trackStock, stock: p.stock ?? 0, stockAlert: p.stockAlert ?? 0, stockMax: p.stockMax ?? 0, restockDate: p.restockDate ?? '',
+      origins: originsOf(p).map(o => ({ ...o })),
     });
   }
 
@@ -181,8 +189,14 @@ export class Stock implements OnInit {
     const num = (n: number) => Math.max(0, Number(n) || 0);
     this.busy.set(true);
     try {
+      const origins = d.origins.map((o): ProductOrigin => {
+        const { stock, ...rest } = o;
+        return stock === undefined || stock === null ? rest : { ...rest, stock: num(stock) };
+      });
+      const counted = origins.some(o => o.stock !== undefined);
       await this.data.update('products', d.id, {
-        trackStock: d.trackStock, stock: num(d.stock), stockAlert: num(d.stockAlert), stockMax: num(d.stockMax), restockDate: d.restockDate,
+        ...(counted ? { origins } : {}),
+        trackStock: d.trackStock, stock: counted ? roundStock(origins.reduce((sum, o) => sum + (o.stock ?? 0), 0)) : num(d.stock), stockAlert: num(d.stockAlert), stockMax: num(d.stockMax), restockDate: d.restockDate,
       });
       this.data.notify('Stock enregistré');
       this.draft.set(null);

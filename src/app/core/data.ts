@@ -65,6 +65,8 @@ export interface FridgeItem {
   icon?: string;
   /** Frigo de produits : rayons rangés dedans, chaque produit garde son propre stock */
   rayons?: string[];
+  /** Kilos par pays d'origine : quand il existe, chaque pays a son propre stock */
+  countries?: Record<string, number>;
 }
 
 export interface Category {
@@ -198,20 +200,41 @@ export interface ProductOrigin {
   /** Nom en français */
   country: string;
   price: number;
+  /** Faux quand ce pays est retiré de la vente */
+  available?: boolean;
+  /** Stock de ce pays, absent tant que le stock n'est pas réparti par pays */
+  stock?: number;
 }
 
 /** Pays d'un produit, avec le prix de base pour une fiche à un seul ancien pays. */
 export const originsOf = (p: Pick<Product, 'origin' | 'origins' | 'price'>): ProductOrigin[] =>
   (p.origins?.length ? p.origins : p.origin ? [{ country: p.origin, price: p.price }] : []);
 
+/** Un pays se vend s'il n'est pas retiré et que son stock, quand il est suivi, n'est pas vide. */
+export const originInSale = (o: ProductOrigin) => o.available !== false && (o.stock === undefined || o.stock > 0);
+
+/** Pays en vente aujourd'hui */
+export const availableOrigins = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => originsOf(p).filter(originInSale);
+
+/** Pays en vente parmi ces produits, sans doublon, triés par nom */
+export const countriesIn = (products: Pick<Product, 'origin' | 'origins' | 'price'>[]) =>
+  [...new Set(products.flatMap(p => availableOrigins(p).map(o => o.country)))].sort((a, b) => a.localeCompare(b, 'fr'));
+
+/** Le produit a des pays, mais aucun n'est en vente */
+export const noOriginLeft = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => originsOf(p).length > 0 && !availableOrigins(p).length;
+
+/** Prix affichables : ceux des pays en vente, sinon tous */
+const shownPrices = (p: Pick<Product, 'origin' | 'origins' | 'price'>) =>
+  (availableOrigins(p).length ? availableOrigins(p) : originsOf(p)).map(o => o.price);
+
 /** Prix le plus bas à afficher sur une carte. */
 export const lowestPrice = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => {
-  const prices = originsOf(p).map(o => o.price);
+  const prices = shownPrices(p);
   return prices.length ? Math.min(...prices) : p.price;
 };
 
 /** Plusieurs prix différents selon le pays */
-export const hasPriceRange = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => new Set(originsOf(p).map(o => o.price)).size > 1;
+export const hasPriceRange = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => new Set(shownPrices(p)).size > 1;
 
 /** « Espagne, Algérie, Brésil » */
 export const originLabel = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => originsOf(p).map(o => o.country).join(', ');
@@ -430,6 +453,15 @@ const DEFAULT_SOURCE: Record<string, string> = {
   'entrecote': 'vaches', 'filet-boeuf': 'vaches', 'boeuf-couscous': 'vaches', 'hache-boeuf': 'vaches',
 };
 
+/** Ajoute ou retire des kilos au stock d'un pays, sans descendre sous zéro. */
+export function moveCountryStock(countries: Record<string, number> | undefined, country: string, qty: number) {
+  const list = countries ?? {};
+  return { ...list, [country]: Math.max(0, roundStock((list[country] ?? 0) + qty)) };
+}
+
+/** Somme des stocks par pays */
+export const sumCountries = (countries: Record<string, number>) => roundStock(Object.values(countries).reduce((sum, kg) => sum + (Number(kg) || 0), 0));
+
 /** Réserve suivie qui alimente ce produit, s'il y en a une */
 export function poolOf(p: Product, fridge: FridgeItem[]) {
   if (p.unit !== 'kg' || p.source === 'none') return undefined;
@@ -441,7 +473,10 @@ export function poolOf(p: Product, fridge: FridgeItem[]) {
 export const applyPools = (products: Product[], fridge: FridgeItem[]) => products.map(p => {
   const pool = poolOf(p, fridge);
   return pool
-    ? { ...p, trackStock: true, stock: pool.kg, stockAlert: pool.min, stockMax: pool.max, restockDate: pool.restockDate }
+    ? {
+      ...p, trackStock: true, stock: pool.kg, stockAlert: pool.min, stockMax: pool.max, restockDate: pool.restockDate,
+      ...(pool.countries ? { origins: originsOf(p).map(o => ({ ...o, stock: pool.countries?.[o.country] ?? 0 })) } : {}),
+    }
     : p;
 });
 
@@ -453,10 +488,16 @@ export function stockShortages(items: OrderItem[], products: Product[], fridge: 
     if (!product) continue;
     const pool = poolOf(product, fridge);
     if (!pool && !product.trackStock) continue;
-    const key = pool ? `pool-${pool.id}` : product.id;
-    const line = needs.get(key) ?? (pool
-      ? { name: pool.name, unit: 'kg', have: pool.kg, need: 0 }
-      : { name: product.name_fr, unit: stockUnit(product), have: product.stock ?? 0, need: 0 });
+    const own = originsOf(product).find(o => o.country === item.origin);
+    const perCountry = item.origin && (pool ? pool.countries : own?.stock !== undefined);
+    const key = `${pool ? `pool-${pool.id}` : product.id}|${perCountry ? item.origin : ''}`;
+    const name = pool ? pool.name : product.name_fr;
+    const line = needs.get(key) ?? {
+      name: perCountry ? `${name} (${item.origin})` : name,
+      unit: pool ? 'kg' : stockUnit(product),
+      have: perCountry ? (pool ? pool.countries?.[item.origin!] ?? 0 : own?.stock ?? 0) : pool ? pool.kg : product.stock ?? 0,
+      need: 0,
+    };
     needs.set(key, { ...line, need: roundStock(line.need + itemQty(item)) });
   }
   return [...needs.values()].filter(l => l.need > l.have);

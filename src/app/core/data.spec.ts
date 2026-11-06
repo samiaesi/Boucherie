@@ -1,4 +1,4 @@
-import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
+import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, availableOrigins, countriesIn, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, moveCountryStock, sumCountries, noOriginLeft, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
 
 const sheep: FridgeItem = { id: 'moutons', name: 'Moutons', tracked: true, kg: 66, min: 100, max: 300, kgEach: 20 };
 const find = (id: string) => DEFAULT_PRODUCTS.find(p => p.id === id)!;
@@ -112,5 +112,69 @@ describe('countryFlag', () => {
 
   it('ne donne aucun drapeau pour un pays écrit à la main', () => {
     expect(countryFlag('Australie')).toBe('');
+  });
+});
+
+describe('Pays indisponible', () => {
+  const beef = { price: 3100, origins: [{ country: 'Espagne', price: 3400, available: false }, { country: 'Algérie', price: 3800 }, { country: 'Brésil', price: 3100 }] };
+
+  it('ne garde que les pays en vente', () => {
+    expect(availableOrigins(beef).map(o => o.country)).toEqual(['Algérie', 'Brésil']);
+    expect(noOriginLeft(beef)).toBe(false);
+  });
+
+  it('calcule le prix sans le pays retiré', () => {
+    const noCheap = { ...beef, origins: [beef.origins[1], { country: 'Brésil', price: 3100, available: false }] };
+    expect(lowestPrice(noCheap)).toBe(3800);
+    expect(hasPriceRange(noCheap)).toBe(false);
+  });
+
+  it('signale un produit dont aucun pays n\'est en vente', () => {
+    const none = { price: 100, origins: [{ country: 'Inde', price: 100, available: false }] };
+    expect(noOriginLeft(none)).toBe(true);
+    expect(lowestPrice(none)).toBe(100);
+    expect(noOriginLeft({ price: 100 })).toBe(false);
+  });
+});
+
+describe('countriesIn', () => {
+  it('liste les pays en vente sans doublon et sans les pays retirés', () => {
+    const list = countriesIn([
+      { price: 1, origins: [{ country: 'Espagne', price: 1 }, { country: 'Brésil', price: 1, available: false }] },
+      { price: 1, origin: 'Algérie' }, { price: 1, origin: 'Espagne' }, { price: 1 },
+    ]);
+    expect(list).toEqual(['Algérie', 'Espagne']);
+  });
+});
+
+describe('Stock par pays', () => {
+  const fridge = [{ id: 'moutons', name: 'Moutons', tracked: true, kg: 33, min: 0, max: 0, kgEach: 16, countries: { 'Algérie': 33, 'Espagne': 0 } }] as FridgeItem[];
+  const sheep = { id: 'gigot', name_fr: 'Gigot', unit: 'kg', source: 'moutons', price: 3000, origins: [{ country: 'Algérie', price: 3000 }, { country: 'Espagne', price: 2800 }] } as Product;
+  const item = (origin: string, grams: number) => ({ productId: 'gigot', unit: 'kg', grams, qty: 1, origin }) as OrderItem;
+
+  it('refuse une vente Espagne sans toucher au stock Algérie', () => {
+    expect(stockShortages([item('Espagne', 5000)], [sheep], fridge)).toEqual([{ name: 'Moutons (Espagne)', unit: 'kg', have: 0, need: 5 }]);
+    expect(stockShortages([item('Algérie', 5000)], [sheep], fridge)).toEqual([]);
+  });
+
+  it('additionne les ventes d\'un même pays', () => {
+    expect(stockShortages([item('Algérie', 20000), item('Algérie', 20000)], [sheep], fridge)).toHaveLength(1);
+  });
+
+  it('grise le pays vide sur le site', () => {
+    const [applied] = applyPools([sheep], fridge);
+    expect(availableOrigins(applied).map(o => o.country)).toEqual(['Algérie']);
+  });
+
+  it('compte chaque produit suivi seul par pays', () => {
+    const fish = { id: 'merlan', name_fr: 'Merlan', unit: 'kg', source: 'none', trackStock: true, stock: 4, origins: [{ country: 'Inde', price: 1, stock: 4 }, { country: 'Espagne', price: 1, stock: 0 }] } as Product;
+    const line = { productId: 'merlan', unit: 'kg', grams: 1000, qty: 1, origin: 'Espagne' } as OrderItem;
+    expect(stockShortages([line], [fish], [])[0].name).toBe('Merlan (Espagne)');
+  });
+
+  it('déplace les kilos sans descendre sous zéro', () => {
+    expect(moveCountryStock({ 'Algérie': 3 }, 'Algérie', -5)).toEqual({ 'Algérie': 0 });
+    expect(moveCountryStock(undefined, 'Espagne', 10)).toEqual({ Espagne: 10 });
+    expect(sumCountries({ 'Algérie': 33, Espagne: 7.5 })).toBe(40.5);
   });
 });

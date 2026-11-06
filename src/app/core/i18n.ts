@@ -1,5 +1,5 @@
 import { Injectable, effect, signal } from '@angular/core';
-import { Lang, Product, countryFlag, countryName, formatNumber, formatWeight, hasPriceRange, lowestPrice, originsOf } from './data';
+import { Lang, Product, availableOrigins, countryFlag, countryName, formatNumber, formatWeight, hasPriceRange, lowestPrice, originsOf } from './data';
 import { DaySchedule, OrderingState, algeriaClock, scheduleLines } from './ordering';
 
 const FR = {
@@ -7,7 +7,7 @@ const FR = {
   topOpen: 'Ouvert du samedi au jeudi',
   navHome: 'Accueil', navMeat: 'Nos viandes', navAbout: 'Notre engagement', navOffers: 'Formules', navContact: 'Contact', order: 'Commander',
   heroEyebrow: 'Boucherie halal · Aïn El Berd',
-  origin: 'Origine', chooseOrigin: 'Choisissez le pays d\'origine', priceFrom: 'Dès', madeBy: 'Développé par', installApp: 'Application Boucherie Hallem', installText: 'Commandez directement depuis votre téléphone.', installBtn: 'Installer', installLater: 'Plus tard',
+  origin: 'Origine', chooseOrigin: 'Choisissez le pays d\'origine', unavailable: 'Indisponible', weightShort: 'Poids', cutShort: 'Découpe', otherWeight: 'Autre', priceFrom: 'Dès', allCountries: 'Tous les pays', madeBy: 'Développé par', installApp: 'Application Boucherie Hallem', installText: 'Commandez directement depuis votre téléphone.', installBtn: 'Installer', installLater: 'Plus tard',
   heroOpen: 'Commandes ouvertes', heroLine1: 'La viande fraîche,', heroLine2: 'coupée pour vous.', pointHalal: '100 % halal', pointCut: 'Découpe à la demande', pointDelivery: 'Retrait ou livraison',
   heroTitleA: 'Viande fraîche', heroTitleB: '& 100% halal',
   heroText: 'Agneau, bœuf et poulet frais chaque jour, abattus selon le rite musulman. Découpe sur mesure et préparations maison.',
@@ -85,7 +85,7 @@ const AR: Record<TKey, string> = {
   topOpen: 'مفتوح من السبت إلى الخميس',
   navHome: 'الرئيسية', navMeat: 'لحومنا', navAbout: 'التزامنا', navOffers: 'العروض', navContact: 'اتصل بنا', order: 'اطلب الآن',
   heroEyebrow: 'جزارة حلال · عين البرد',
-  origin: 'المنشأ', chooseOrigin: 'اختر بلد المنشأ', priceFrom: 'ابتداءً من', madeBy: 'من تطوير', installApp: 'تطبيق جزارة حلّام', installText: 'اطلب مباشرة من هاتفك.', installBtn: 'تثبيت', installLater: 'لاحقا',
+  origin: 'المنشأ', chooseOrigin: 'اختر بلد المنشأ', unavailable: 'غير متوفر', weightShort: 'الوزن', cutShort: 'التقطيع', otherWeight: 'آخر', priceFrom: 'ابتداءً من', allCountries: 'كل البلدان', madeBy: 'من تطوير', installApp: 'تطبيق جزارة حلّام', installText: 'اطلب مباشرة من هاتفك.', installBtn: 'تثبيت', installLater: 'لاحقا',
   heroOpen: 'الطلبات مفتوحة', heroLine1: 'لحم طازج،', heroLine2: 'مقطّع حسب طلبك.', pointHalal: 'حلال 100%', pointCut: 'تقطيع حسب الطلب', pointDelivery: 'استلام أو توصيل',
   heroTitleA: 'لحم طازج', heroTitleB: 'وحلال 100%',
   heroText: 'لحم الغنم والبقر والدجاج طازج كل يوم، مذبوح على الطريقة الإسلامية. تقطيع حسب الطلب ومستحضرات منزلية.',
@@ -240,7 +240,8 @@ export class I18n {
 
   /** Pays d'un produit avec leur drapeau, vide pour un pays écrit à la main */
   countries(p: Product) {
-    return originsOf(p).map(o => ({ flag: countryFlag(o.country), name: this.country(o.country) }));
+    const inSale = availableOrigins(p);
+    return (inSale.length ? inSale : originsOf(p)).map(o => ({ flag: countryFlag(o.country), name: this.country(o.country) }));
   }
 
   /** Pays dans la langue du client */

@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Cart, lineTotal } from '../core/cart';
-import { DEFAULT_WEIGHTS, countryFlag, formatNumber, isLowStock, isOutOfStock, itemQty, originsOf, roundStock } from '../core/data';
+import { DEFAULT_WEIGHTS, countryFlag, formatNumber, isLowStock, isOutOfStock, itemQty, noOriginLeft, originInSale, originsOf, roundStock } from '../core/data';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -28,67 +28,62 @@ const MIN_GRAMS = 100;
             <div class="detail-info">
               <h1>{{ i18n.pick(p, 'name') }}</h1>
               <div class="detail-price">{{ chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}</div>
-              @if (i18n.countries(p).length) {
-                <div class="origin">{{ i18n.t('origin') }} :
-                  @for (c of i18n.countries(p); track c.name; let last = $last) {
-                    <span class="place">@if (c.flag) { <img class="flag" [src]="c.flag" alt="" width="20" height="15"> }{{ c.name }}@if (!last) {,}</span>
-                  }
-                </div>
-              }
               <p class="lead">{{ i18n.pick(p, 'desc') }}</p>
 
               @if (origins().length > 1) {
-                <h3>{{ i18n.t('chooseOrigin') }}</h3>
-                <div class="chips">
-                  @for (o of origins(); track o.country; let i = $index) {
-                    <button class="chip" [class.on]="originIndex() === i" (click)="chooseOrigin(i)">
-                      @if (flag(o.country); as src) { <img class="flag" [src]="src" alt="" width="24" height="18"> }
-                      {{ i18n.country(o.country) }} · {{ priceText(o.price) }}
-                    </button>
-                  }
+                <div class="pick-group">
+                  <span class="pick-label">{{ i18n.t('origin') }}</span>
+                  <div class="origin-cards">
+                    @for (o of origins(); track o.country; let i = $index) {
+                      <button class="origin-card" [class.on]="originIndex() === i" [disabled]="!inSale(o)" [attr.aria-pressed]="originIndex() === i" (click)="chooseOrigin(i)">
+                        @if (flag(o.country); as src) { <img class="flag" [src]="src" alt="" width="24" height="18"> }
+                        <b>{{ i18n.country(o.country) }}</b>
+                        <small>{{ inSale(o) ? money(o.price) : i18n.t('unavailable') }}</small>
+                      </button>
+                    }
+                  </div>
                 </div>
+              } @else if (i18n.countries(p).length) {
+                <p class="origin-one">
+                  @for (c of i18n.countries(p); track c.name) {
+                    @if (c.flag) { <img class="flag" [src]="c.flag" alt="" width="20" height="15"> }{{ c.name }}
+                  }
+                </p>
               }
 
               @if (p.unit === 'kg') {
-                <div class="mode">
-                  <button [class.on]="mode() === 'weight'" (click)="setMode('weight')">{{ i18n.t('byWeight') }}</button>
-                  <button [class.on]="mode() === 'amount'" (click)="setMode('amount')">{{ i18n.t('byAmount') }}</button>
-                </div>
-                @if (mode() === 'weight') {
-                  <h3>{{ i18n.t('chooseWeight') }}</h3>
-                  <div class="chips">
-                    @for (w of weights(); track w) {
-                      <button class="chip" [class.on]="grams() === w" (click)="grams.set(w)">{{ i18n.weight(w) }}</button>
+                <div class="pick-group">
+                  <span class="pick-label">{{ i18n.t('weightShort') }}</span>
+                  @if (mode() === 'weight') {
+                    <div class="chips small">
+                      @for (w of weights(); track w) {
+                        <button class="chip" [class.on]="!customWeight() && grams() === w" (click)="customWeight.set(false); grams.set(w)">{{ i18n.weight(w) }}</button>
+                      }
+                      <button class="chip" [class.on]="customWeight()" (click)="customWeight.set(true)">{{ i18n.t('otherWeight') }}</button>
+                    </div>
+                    @if (customWeight()) {
+                      <label class="inline-field slide-in"><input type="number" [min]="minGrams" step="50" [attr.aria-label]="i18n.t('customWeight')" [value]="grams()" (input)="setCustom($any($event.target).value)"><span>g</span></label>
                     }
-                    <label class="chip-input">
-                      <span>{{ i18n.t('customWeight') }}</span>
-                      <input type="number" [min]="minGrams" step="50" [value]="grams()" (input)="setCustom($any($event.target).value)">
+                  } @else {
+                    <label class="inline-field slide-in">
+                      <input type="number" min="0" step="50" [placeholder]="i18n.t('amountHint')" [attr.aria-label]="i18n.t('amountLabel')" [value]="amount() || ''" (input)="setAmount($any($event.target).value)"><span>{{ i18n.t('currency') }}</span>
                     </label>
-                  </div>
-                } @else {
-                  <h3>{{ i18n.t('amountLabel') }}</h3>
-                  <div class="amount">
-                    <input type="number" min="0" step="50" [placeholder]="i18n.t('amountHint')" [value]="amount() || ''" (input)="setAmount($any($event.target).value)">
-                    @if (amount()) { <b>{{ i18n.t('amountGives') }} {{ i18n.weight(grams()) }}</b> }
-                  </div>
-                }
+                    @if (amount()) { <small class="gives">{{ i18n.t('amountGives') }} {{ i18n.weight(grams()) }}</small> }
+                  }
+                  <button class="link-switch" (click)="setMode(mode() === 'weight' ? 'amount' : 'weight')">{{ i18n.t(mode() === 'weight' ? 'byAmount' : 'byWeight') }}</button>
+                </div>
               }
 
               @if (options().length) {
-                <h3>{{ i18n.t('chooseCut') }}</h3>
-                <div class="chips">
-                  @for (o of options(); track o; let i = $index) {
-                    <button class="chip" [class.on]="option() === i" (click)="option.set(i)">{{ o }}</button>
-                  }
+                <div class="pick-group">
+                  <span class="pick-label">{{ i18n.t('cutShort') }}</span>
+                  <div class="chips small">
+                    @for (o of options(); track o; let i = $index) {
+                      <button class="chip" [class.on]="option() === i" (click)="option.set(i)">{{ o }}</button>
+                    }
+                  </div>
                 </div>
               }
-
-              <h3>{{ i18n.t('quantity') }}</h3>
-              <div class="qty">
-                <button (click)="qty.set(qty() - 1)" [disabled]="qty() <= 1" aria-label="-">−</button>
-                <span>{{ qty() }}</span>
-                <button (click)="qty.set(qty() + 1)" aria-label="+">+</button>
-              </div>
 
               @if (out()) {
                 <div class="comeback" role="status">
@@ -98,18 +93,22 @@ const MIN_GRAMS = 100;
               }
               @if (stockNote(); as note) { <p class="stock-note">{{ note }}</p> }
               <div class="buy">
-                <div>
-                  <small>{{ i18n.t('total') }}</small>
-                  @for (t of [total()]; track t) {
-                    <b class="pulse">{{ p.unit === 'order' ? i18n.t('toConfirm') : i18n.money(t) }}</b>
-                  }
+                <div class="qty">
+                  <button (click)="qty.set(qty() - 1)" [disabled]="qty() <= 1" aria-label="-">−</button>
+                  <span>{{ qty() }}</span>
+                  <button (click)="qty.set(qty() + 1)" aria-label="+">+</button>
                 </div>
+                @for (t of [total()]; track t) {
+                  <b class="buy-total pulse">{{ p.unit === 'order' ? i18n.t('toConfirm') : i18n.money(t) }}</b>
+                }
                 <button class="btn btn-red" [disabled]="out() || tooMuch() || (p.unit === 'kg' && grams() < minGrams)" (click)="add($event)">
                   {{ out() ? i18n.t('soldOut') : i18n.t('addCart') }}
                 </button>
               </div>
-              <p class="pickup">🏪 {{ i18n.t(shop.pickupKey()) }}</p>
-              @if (p.unit === 'kg') { <p class="note">{{ i18n.t('estimate') }}</p> }
+              <p class="serve-line">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7h12v10H2zM14 10h4l4 4v3h-8zM6.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg>
+                {{ i18n.t(shop.pickupKey()) }}
+              </p>
             </div>
           </div>
         </div>
@@ -139,8 +138,10 @@ export class ProductPage {
   readonly id = input.required<string>();
   protected readonly minGrams = MIN_GRAMS;
   protected readonly flag = countryFlag;
+  protected readonly inSale = originInSale;
   protected readonly grams = signal(0);
   protected readonly option = signal(0);
+  protected readonly customWeight = signal(false);
   protected readonly originIndex = signal(0);
   protected readonly qty = signal(1);
   protected readonly mode = signal<'weight' | 'amount'>('weight');
@@ -177,16 +178,16 @@ export class ProductPage {
     };
   });
 
-  protected readonly out = computed(() => !!this.product() && isOutOfStock(this.product()!));
+  protected readonly out = computed(() => !!this.product() && (isOutOfStock(this.product()!) || noOriginLeft(this.product()!)));
   private readonly stockLabel = computed(() => {
     const p = this.product()!;
-    const left = roundStock(p.stock ?? 0);
+    const left = roundStock(this.chosenOrigin()?.stock ?? p.stock ?? 0);
     return p.unit === 'kg' ? `${String(left).replace('.', ',')} ${this.i18n.t('kg')}` : String(left);
   });
   /** La quantité demandée dépasse le stock */
   protected readonly tooMuch = computed(() => {
     const p = this.product();
-    return !!p?.trackStock && itemQty(this.line()) > (p.stock ?? 0);
+    return !!p?.trackStock && itemQty(this.line()) > (this.chosenOrigin()?.stock ?? p.stock ?? 0);
   });
   protected readonly stockNote = computed(() => {
     const p = this.product();
@@ -203,11 +204,16 @@ export class ProductPage {
       this.id();
       this.grams.set(this.weights()[0]);
       this.option.set(0);
-      this.originIndex.set(0);
+      this.customWeight.set(false);
+      this.originIndex.set(Math.max(0, this.origins().findIndex(originInSale)));
       this.qty.set(1);
       this.mode.set('weight');
       this.amount.set(0);
     });
+  }
+
+  protected money(price: number) {
+    return this.i18n.money(price);
   }
 
   protected priceText(price: number) {

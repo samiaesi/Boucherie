@@ -19,6 +19,8 @@ export interface Lot {
   supplierName: string;
   supplierRef: string;
   note: string;
+  /** Pays d'origine de cet arrivage */
+  origin?: string;
   /** Un arrivage annulé reste dans l'historique et garde son matricule */
   cancelled?: boolean;
 }
