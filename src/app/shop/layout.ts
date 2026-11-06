@@ -35,6 +35,7 @@ function savedSeen(): Set<string> {
           <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">{{ i18n.t('navHome') }}</a>
           <a routerLink="/boutique" routerLinkActive="on">{{ i18n.t('navShop') }}</a>
           <a routerLink="/" fragment="formules">{{ i18n.t('navOffers') }}</a>
+          @if (shop.hasAbout()) { <a routerLink="/notre-boucherie" routerLinkActive="on">{{ i18n.t('aboutNav') }}</a> }
           <a routerLink="/" fragment="contact">{{ i18n.t('navContact') }}</a>
           @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
         </nav>
@@ -92,7 +93,7 @@ function savedSeen(): Set<string> {
           <p dir="ltr"><a [href]="phoneHref()">{{ shop.settings().phone }}</a></p>
         </div>
       </div>
-      <div class="copy"><div class="wrap">© {{ year }} {{ i18n.pick(shop.settings(), 'name') }} · {{ shop.settings().company }} · {{ i18n.t('footer') }} · {{ i18n.t('madeBy') }} <bdi dir="ltr">Medine Samia</bdi></div></div>
+      <div class="copy"><div class="wrap">© {{ year }} {{ i18n.pick(shop.settings(), 'name') }} · {{ shop.settings().company }} · {{ i18n.t('footer') }}<br>© {{ year }} {{ i18n.t('madeBy') }} <bdi dir="ltr">Samia Medine</bdi> · {{ i18n.t('rights') }}</div></div>
     </footer>
 
     <!-- Panier -->

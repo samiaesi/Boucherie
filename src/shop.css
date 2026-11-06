@@ -173,7 +173,7 @@ app-shop-layout {
   .card-img { display: grid; place-items: center; height: 210px; background: #f3ebe2; overflow: hidden; }
   .card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s var(--ease); }
   .card:hover .card-img img { transform: scale(1.1); }
-  .card-icon { display: block; }
+  .card-icon { display: block; color: #8f0a1e; }
   .card-icon svg { width: 120px; height: 120px; display: block; transition: transform .5s var(--ease); }
   .card-icon.big svg { width: 240px; height: 240px; }
   .card:hover .card-icon svg { transform: scale(1.12) rotate(-5deg); }
@@ -206,6 +206,26 @@ app-shop-layout {
   .pick-list button:hover { background: var(--soft); }
   .pick-list button.on { background: #fde3e6; color: #8f0a1e; font-weight: 600; }
   .price-country { display: inline-block; margin-inline-start: 8px; color: var(--text); font-family: Inter, sans-serif; font-size: .9rem; font-weight: 600; white-space: nowrap; }
+  .about-block { padding: 64px 0; }
+  .about-block.soft { background: #fff; }
+  .about-block h2 { margin-bottom: 26px; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700; }
+  .about-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .about-shot, .about-cert { border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: zoom-in; }
+  .about-shot { padding: 0; overflow: hidden; border-radius: 20px; }
+  .about-shot img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: scale .6s var(--ease); }
+  .about-shot:hover img { scale: 1.06; }
+  .about-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .about-card, .about-cert { display: grid; gap: 6px; align-content: start; padding: 20px; border-radius: 20px; background: var(--soft); transition: transform .3s var(--ease); }
+  .about-cert { background: #fff; box-shadow: 0 0 0 1px var(--border); }
+  .about-card:hover, .about-cert:hover { transform: translateY(-4px); }
+  .about-card svg { width: 44px; height: 44px; padding: 10px; border-radius: 50%; background: #fde3e6; color: #8f0a1e; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .about-card small { color: var(--text); font-size: .76rem; font-weight: 600; }
+  .about-card h3 { font-size: 1.1rem; }
+  .about-card p { margin: 0; color: var(--text); font-size: .92rem; }
+  .about-cert img { width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; object-fit: contain; background: var(--soft); }
+  .about-cert small { color: var(--text); }
+  .about-zoom { position: fixed; z-index: 120; inset: 0; display: grid; place-items: center; padding: 20px; border: 0; background: rgba(20, 12, 9, .85); cursor: zoom-out; animation: fadeUp .25s var(--ease) both; }
+  .about-zoom img { max-width: 100%; max-height: 100%; border-radius: 12px; }
   .pick-group { margin-top: 18px; }
   .pick-label { display: block; margin-bottom: 8px; color: var(--text); font-size: .8rem; font-weight: 600; }
   .origin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
@@ -274,7 +294,7 @@ app-shop-layout {
   .rayon:active::before { opacity: .11; }
   .rayon:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
   .rayon.on { color: #8f0a1e; font-weight: 700; }
-  .rayon i { position: relative; flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--soft); color: var(--text); transition: transform .4s cubic-bezier(.34, 1.56, .64, 1), background .25s; }
+  .rayon i { position: relative; flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--soft); color: #5e4d44; transition: transform .4s cubic-bezier(.34, 1.56, .64, 1), background .25s; }
   .rayon i svg { width: 22px; height: 22px; display: block; }
   .rayon:hover i { transform: scale(1.14) rotate(-6deg); }
   .rayon.on i { background: #fff; color: #8f0a1e; transform: scale(1.06); }

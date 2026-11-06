@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { AboutInfo, Certificate, DEFAULT_ABOUT, hasAboutContent } from './about';
 import { Announcement, liveAnnouncements } from './announcements';
 import { db } from './firebase';
 import { TKey } from './i18n';
@@ -41,6 +42,9 @@ export class Shop {
   /** Annonces en ligne aujourd'hui */
   readonly live = computed(() => liveAnnouncements(this.announcements(), localDay(new Date())));
 
+  readonly about = signal<AboutInfo>(DEFAULT_ABOUT);
+  /** Le lien du menu n'apparaît que si la page a du contenu */
+  readonly hasAbout = computed(() => hasAboutContent(this.about()));
   readonly orderingRules = signal<OrderingRules>(DEFAULT_ORDERING);
   /** Écart avec l'heure du serveur : l'horloge d'un téléphone peut être fausse */
   private clockOffset = 0;
@@ -76,8 +80,29 @@ export class Shop {
     );
   }
 
+  /** Les images ne sont lues que sur la page Notre boucherie. */
+  async loadAboutMedia() {
+    try {
+      const [gallery, certificates] = await Promise.all(['gallery', 'certificates'].map(id => getDoc(doc(db, 'settings', id))));
+      return { photos: (gallery.data()?.['list'] ?? []) as string[], certificates: (certificates.data()?.['list'] ?? []) as Certificate[] };
+    } catch (e) {
+      console.warn('Page Notre boucherie indisponible', e);
+      return { photos: [], certificates: [] };
+    }
+  }
+
+  private async loadAbout() {
+    try {
+      const snap = await getDoc(doc(db, 'settings', 'about'));
+      if (snap.exists()) this.about.set({ ...DEFAULT_ABOUT, ...(snap.data() as Partial<AboutInfo>) });
+    } catch (e) {
+      console.warn('Page Notre boucherie indisponible', e);
+    }
+  }
+
   async load() {
     this.watchOrdering();
+    this.loadAbout();
     this.loadAnnouncements();
     try {
       const [ps, os, ss, cs, fs] = await Promise.all([

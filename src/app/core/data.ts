@@ -184,15 +184,19 @@ export const isLowStock = (p: Product) => !!p.trackStock && !isOutOfStock(p) && 
 
 export const STATUSES: OrderStatus[] = ['nouveau', 'confirmé', 'prêt', 'en livraison', 'livré', 'récupéré', 'annulé'];
 
+/** Même trait partout : la couleur vient du texte autour */
+const lineIcon = (d: string) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+
 export const ICONS: Record<string, string> = {
-  agneau: `<svg viewBox="0 0 100 100"><g fill="none" stroke="#7a1f2b" stroke-width="5" stroke-linecap="round"><path d="M38,32 c-8,-12 -28,-10 -29,5 c-1,13 15,18 20,8 c3,-6 -3,-11 -8,-8"/><path d="M62,32 c8,-12 28,-10 29,5 c1,13 -15,18 -20,8 c-3,-6 3,-11 8,-8"/></g><path d="M38,30 q12,-7 24,0 l4,24 q-2,22 -16,30 q-14,-8 -16,-30 z" fill="#fff" stroke="#7a1f2b" stroke-width="3"/><circle cx="44" cy="48" r="3" fill="#7a1f2b"/><circle cx="56" cy="48" r="3" fill="#7a1f2b"/></svg>`,
-  boeuf: `<svg viewBox="0 0 100 100"><path d="M18,52 c0,-22 22,-34 44,-30 c20,4 26,22 20,38 c-6,16 -26,22 -44,18 c-14,-3 -20,-12 -20,-26z" fill="#b8323f" stroke="#fff" stroke-width="5"/><path d="M34,48 q14,-10 30,-2 M30,60 q18,-6 36,4" stroke="#e8a3a3" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="66" cy="38" r="7" fill="#fff"/></svg>`,
-  poulet: `<svg viewBox="0 0 100 100"><path d="M60,20 c16,0 24,14 20,28 c-4,14 -18,20 -30,16 l-14,14 a6,6 0 1,1 -8,-8 l14,-14 c-6,-12 0,-36 18,-36z" fill="#d98a3a" stroke="#7a1f2b" stroke-width="3"/><circle cx="24" cy="80" r="6" fill="#fff" stroke="#7a1f2b" stroke-width="3"/><circle cx="18" cy="74" r="6" fill="#fff" stroke="#7a1f2b" stroke-width="3"/><path d="M58,32 q10,0 14,10" stroke="#f3c48a" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`,
-  merguez: `<svg viewBox="0 0 100 100"><g stroke="#7a1f2b" stroke-width="3"><rect x="14" y="26" width="72" height="14" rx="7" fill="#a8323a"/><rect x="14" y="46" width="72" height="14" rx="7" fill="#b8423f"/><rect x="14" y="66" width="72" height="14" rx="7" fill="#a8323a"/></g><g fill="#7a1f2b"><circle cx="10" cy="33" r="3"/><circle cx="90" cy="53" r="3"/><circle cx="10" cy="73" r="3"/></g></svg>`,
-  abats: `<svg viewBox="0 0 100 100"><path d="M20,50 c0,-18 18,-28 34,-26 c18,2 28,16 26,30 c-2,16 -20,24 -36,22 c-14,-2 -24,-12 -24,-26z" fill="#6b1e26" stroke="#3a0e15" stroke-width="3"/><path d="M50,24 q-4,26 4,52" stroke="#3a0e15" stroke-width="3" fill="none"/><path d="M32,42 q6,-6 12,-4" stroke="#a5525a" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
-  poisson: `<svg viewBox="0 0 100 100"><path d="M8,50 c16,-24 46,-28 66,-8 l18,-14 v44 l-18,-14 c-20,20 -50,16 -66,-8z" fill="#7fa8bd" stroke="#2f5568" stroke-width="3"/><circle cx="26" cy="46" r="4" fill="#2f5568"/><path d="M44,36 q8,14 0,28" stroke="#2f5568" stroke-width="3" fill="none"/></svg>`,
-  legumes: `<svg viewBox="0 0 100 100"><path d="M30,60 c-8,-30 30,-46 50,-40 c6,20 -10,58 -40,50z" fill="#5f9e4a" stroke="#2f5d24" stroke-width="3"/><g fill="#a7d36b" stroke="#2f5d24" stroke-width="2"><circle cx="46" cy="52" r="7"/><circle cx="58" cy="42" r="7"/><circle cx="68" cy="31" r="6"/></g><path d="M30,60 l-14,20" stroke="#2f5d24" stroke-width="4" stroke-linecap="round"/></svg>`,
-  chouwa: `<svg viewBox="0 0 100 100"><path d="M50,10 c6,14 22,22 22,44 a22,22 0 0,1 -44,0 c0,-12 8,-18 10,-28 c4,8 8,10 10,10 c0,-10 0,-18 2,-26z" fill="#e0662b"/><path d="M50,46 c4,8 12,12 12,22 a12,12 0 0,1 -24,0 c0,-8 6,-10 8,-16 c2,4 4,4 4,4z" fill="#f3c04a"/><path d="M12,88 l76,-18" stroke="#7a1f2b" stroke-width="4" stroke-linecap="round"/></svg>`,
+  agneau: lineIcon('M8 7C5 5 2 7 3 10c.7 2 3 2 4 .5M16 7c3-2 6 0 5 3-.7 2-3 2-4 .5M8 6h8l1 6c0 4-2 7-5 8-3-1-5-4-5-8zM10 12v.01M14 12v.01M10.5 16.5c1 .7 2 .7 3 0'),
+  boeuf: lineIcon('M4 4c0 3 2 5 5 5h6c3 0 5-2 5-5M7 9v5c0 4 2 7 5 7s5-3 5-7V9M3 10c1.5 1 3 1 4 .5M21 10c-1.5 1-3 1-4 .5M10 13v.01M14 13v.01M10 18h4'),
+  poulet: lineIcon('M14 4a6 6 0 0 1 4 10c-2 2-5 2-6.5 1L8 18.5a2 2 0 1 1-3-1 2 2 0 1 1 1.5-3L10 11c-1-2-.5-5 1.5-6.5A6 6 0 0 1 14 4z'),
+  merguez: lineIcon('M4 8a3 3 0 0 1 3-3h10a3 3 0 0 1 0 6H7a3 3 0 0 1-3-3zM4 16a3 3 0 0 1 3-3h10a3 3 0 0 1 0 6H7a3 3 0 0 1-3-3zM2 8h2M20 8h2M2 16h2M20 16h2'),
+  abats: lineIcon('M12 20.5S4 15.5 4 9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 6-8 11-8 11z'),
+  chouwa: lineIcon('M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 1-3-1-5 1-9zM6 21h12'),
+  poisson: lineIcon('M3 12c3-5 8-6 12-4 2 1 3 2.5 4 4-1 1.5-2 3-4 4-4 2-9 1-12-4zM19 12l3-3v6zM14 10.5v.01'),
+  legumes: lineIcon('M14 10l-9 10c-.6.6-1.6-.3-1-1l9-10zM11 7a4 4 0 0 1 6 6zM17 7l4-4M16 6c0-2 1-3 3-4M18 8c2 0 3-1 4-3'),
 };
 
 /** Illustrations disponibles pour un rayon */

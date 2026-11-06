@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { deleteApp, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { AboutInfo, Certificate, DEFAULT_ABOUT, Engagement } from '../core/about';
 import { Announcement } from '../core/announcements';
 import { AuditAction, AuditEntry, describeChanges, trimDetail } from '../core/audit';
 import { db, firebaseConfig } from '../core/firebase';
@@ -543,6 +544,25 @@ export class AdminData {
       tx.update(lotRef, { cancelled: true });
     }));
     this.audit('lot.cancelled', lot.matricule, `${lot.target.name} · ${lot.qty} ${lot.target.unit}`);
+  }
+
+  async getAbout() {
+    const [about, gallery, certificates] = await Promise.all(['about', 'gallery', 'certificates'].map(id => getDoc(doc(db, 'settings', id))));
+    return {
+      engagements: ({ ...DEFAULT_ABOUT, ...(about.data() as Partial<AboutInfo> | undefined) }).engagements,
+      photos: (gallery.data()?.['list'] ?? []) as string[],
+      certificates: (certificates.data()?.['list'] ?? []) as Certificate[],
+    };
+  }
+
+  /** Les images ont leurs propres documents : le texte reste léger pour chaque visite. */
+  async saveAbout(photos: string[], engagements: Engagement[], certificates: Certificate[]) {
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'settings', 'about'), { engagements, photos: photos.length, certificates: certificates.length });
+    batch.set(doc(db, 'settings', 'gallery'), { list: photos });
+    batch.set(doc(db, 'settings', 'certificates'), { list: certificates });
+    await this.guarded(batch.commit());
+    this.audit('settings.updated', 'Notre boucherie', `${photos.length} photo(s) · ${engagements.length} engagement(s) · ${certificates.length} certificat(s)`);
   }
 
   async saveOrdering(data: Partial<OrderingRules>) {
