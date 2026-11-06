@@ -789,6 +789,8 @@ app-shop-layout {
   .card > .fav { position: absolute; z-index: 2; top: 12px; inset-inline-end: 12px; }
   .card .fat-tag { top: 12px; inset-inline-start: 12px; inset-inline-end: auto; }
   .card.out .fat-tag { top: 44px; }
+  .card .fat-tag + .fat-tag { top: 46px; }
+  .card.out .fat-tag + .fat-tag { top: 78px; }
   .detail-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .detail-title .fav { margin-top: 6px; }
   .fav-link { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--ink); }

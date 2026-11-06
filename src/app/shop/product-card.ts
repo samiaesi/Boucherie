@@ -15,8 +15,8 @@ import { Tilt } from './effects';
     <article class="card" [class.out]="out()" appTilt>
       @if (out()) { <span class="sold-out">{{ i18n.t('soldOut') }} · {{ i18n.comeback(product()) }}</span> }
       <a class="card-img" [routerLink]="['/produit', product().id]">
-        @if (product().oldPrice; as old) { <span class="fat-tag promo-tag">-{{ product().promoPercent }}%</span> }
-        @else if (product().special) { <span class="fat-tag">{{ i18n.t('specialTag') }}</span> }
+        @if (product().oldPrice) { <span class="fat-tag promo-tag">-{{ product().promoPercent }}%</span> }
+        @if (product().special) { <span class="fat-tag">{{ i18n.t('specialTag') }}</span> }
         @else if (i18n.fat(product()); as fat) { <span class="fat-tag">{{ fat }}</span> }
         @if (product().image) {
           <img [src]="product().image" [alt]="i18n.pick(product(), 'name')" loading="lazy">
