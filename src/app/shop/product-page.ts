@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Cart, lineTotal } from '../core/cart';
-import { DEFAULT_WEIGHTS, countryFlag, formatNumber, isLowStock, isOutOfStock, itemQty, noOriginLeft, originInSale, originsOf, roundStock } from '../core/data';
+import { DEFAULT_WEIGHTS, countryFlag, defaultOriginIndex, formatNumber, isLowStock, isOutOfStock, itemQty, noOriginLeft, originInSale, originsOf, roundStock } from '../core/data';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -27,7 +27,14 @@ const MIN_GRAMS = 100;
             </div>
             <div class="detail-info">
               <h1>{{ i18n.pick(p, 'name') }}</h1>
-              <div class="detail-price">{{ chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}</div>
+              <div class="detail-price">
+                {{ chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}
+                @if (origins().length > 1 && chosenOrigin(); as o) {
+                  <span class="price-country">
+                    @if (flag(o.country); as src) { <img class="flag" [src]="src" alt="" width="20" height="15"> }{{ i18n.country(o.country) }}
+                  </span>
+                }
+              </div>
               <p class="lead">{{ i18n.pick(p, 'desc') }}</p>
 
               @if (origins().length > 1) {
@@ -205,7 +212,7 @@ export class ProductPage {
       this.grams.set(this.weights()[0]);
       this.option.set(0);
       this.customWeight.set(false);
-      this.originIndex.set(Math.max(0, this.origins().findIndex(originInSale)));
+      this.originIndex.set(defaultOriginIndex(this.origins()));
       this.qty.set(1);
       this.mode.set('weight');
       this.amount.set(0);

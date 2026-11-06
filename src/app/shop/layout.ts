@@ -1,5 +1,6 @@
 import { Component, ElementRef, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Subscription, filter } from 'rxjs';
 import { Announcement, KIND_LABELS } from '../core/announcements';
 import { Cart, lineTotal } from '../core/cart';
 import { I18n } from '../core/i18n';
@@ -29,7 +30,8 @@ function savedSeen(): Set<string> {
           <app-logo />
           <span><b>{{ i18n.pick(shop.settings(), 'name') }}</b><small>{{ i18n.t('brandSub') }}</small></span>
         </a>
-        <nav class="menu" [class.open]="menuOpen()" (click)="menuOpen.set(false)">
+        <nav class="menu" #menu [class.open]="menuOpen()" (click)="menuOpen.set(false)" (mouseover)="hoverMenu($event)" (mouseleave)="movePill()">
+          <span class="menu-pill" #pill aria-hidden="true"></span>
           <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">{{ i18n.t('navHome') }}</a>
           <a routerLink="/boutique" routerLinkActive="on">{{ i18n.t('navShop') }}</a>
           <a routerLink="/" fragment="formules">{{ i18n.t('navOffers') }}</a>
@@ -37,7 +39,7 @@ function savedSeen(): Set<string> {
           @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
         </nav>
         <div class="nav-actions">
-          <button class="lang" (click)="i18n.toggle()">{{ i18n.t('langBtn') }}</button>
+          <button class="lang" (click)="i18n.toggle(); moveAfterLang()">{{ i18n.t('langBtn') }}</button>
           <div class="news-wrap">
             <button class="news-btn" [class.ring]="unseen().length" (click)="toggleNews()" [attr.aria-label]="i18n.t('newsTitle')">
               <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10a6 6 0 1 1 12 0c0 5 2 6 2 7H4c0-1 2-2 2-7zM10 20a2 2 0 0 0 4 0" /></svg>@if (unseen().length) { <b>{{ unseen().length }}</b> }
@@ -189,6 +191,11 @@ export class ShopLayout implements OnInit, OnDestroy {
   protected readonly popup = computed(() => this.unseen().find(a => !this.closed().has(a.id)));
   private readonly progress = viewChild.required<ElementRef<HTMLElement>>('progress');
   private readonly header = viewChild.required<ElementRef<HTMLElement>>('header');
+  private readonly menu = viewChild.required<ElementRef<HTMLElement>>('menu');
+  private readonly pill = viewChild.required<ElementRef<HTMLElement>>('pill');
+  private readonly router = inject(Router);
+  private navigation?: Subscription;
+  private readonly onResize = () => this.movePill();
 
   // Directement sur le DOM : inutile de redessiner la page à chaque pixel de défilement
   private readonly onScroll = () => {
@@ -208,10 +215,35 @@ export class ShopLayout implements OnInit, OnDestroy {
   ngOnInit() {
     this.shop.load();
     window.addEventListener('scroll', this.onScroll, { passive: true });
+    window.addEventListener('resize', this.onResize);
+    this.navigation = this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => setTimeout(this.onResize));
+    document.fonts?.ready.then(this.onResize);
+    setTimeout(this.onResize);
+  }
+
+  /** La pastille glisse jusqu'au lien survolé, puis revient sur la page ouverte. */
+  protected movePill(link?: HTMLElement | null) {
+    const target = link ?? this.menu().nativeElement.querySelector<HTMLElement>('a.on');
+    const pill = this.pill().nativeElement;
+    pill.style.opacity = target ? '1' : '0';
+    if (!target) return;
+    pill.style.width = `${target.offsetWidth}px`;
+    pill.style.transform = `translateX(${target.offsetLeft}px)`;
+  }
+
+  protected moveAfterLang() {
+    setTimeout(this.onResize);
+  }
+
+  protected hoverMenu(e: Event) {
+    const link = (e.target as HTMLElement).closest('a');
+    if (link) this.movePill(link);
   }
 
   ngOnDestroy() {
     window.removeEventListener('scroll', this.onScroll);
+    window.removeEventListener('resize', this.onResize);
+    this.navigation?.unsubscribe();
   }
 
   protected kind(a: Announcement) {

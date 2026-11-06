@@ -213,6 +213,12 @@ export const originsOf = (p: Pick<Product, 'origin' | 'origins' | 'price'>): Pro
 /** Un pays se vend s'il n'est pas retiré et que son stock, quand il est suivi, n'est pas vide. */
 export const originInSale = (o: ProductOrigin) => o.available !== false && (o.stock === undefined || o.stock > 0);
 
+/** Pays présélectionné : le local s'il est en vente, sinon le premier disponible. */
+export function defaultOriginIndex(origins: ProductOrigin[]) {
+  const local = origins.findIndex(o => o.country === 'Algérie' && originInSale(o));
+  return local >= 0 ? local : Math.max(0, origins.findIndex(originInSale));
+}
+
 /** Pays en vente aujourd'hui */
 export const availableOrigins = (p: Pick<Product, 'origin' | 'origins' | 'price'>) => originsOf(p).filter(originInSale);
 

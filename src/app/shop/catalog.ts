@@ -1,14 +1,14 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { availableOrigins, countriesIn, countryFlag, lowestPrice } from '../core/data';
-import { I18n } from '../core/i18n';
+import { I18n, TKey } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
 import { ProductCard } from './product-card';
 
 @Component({
   selector: 'app-catalog',
-  host: { '(document:click)': 'countryOpen.set(false)' },
+  host: { '(document:click)': "openMenu.set('')" },
   imports: [RouterLink, IconPipe, ProductCard],
   template: `
     <section class="page-head">
@@ -47,15 +47,18 @@ import { ProductCard } from './product-card';
               <option [value]="c.id" [selected]="cat() === c.id">{{ i18n.pick(c, 'name') }} ({{ countIn(c.id) }})</option>
             }
           </select>
-          <input type="search" [placeholder]="i18n.t('search')" [value]="query()" (input)="query.set($any($event.target).value)">
+          <label class="find">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3" /></svg>
+            <input type="search" [placeholder]="i18n.t('search')" [attr.aria-label]="i18n.t('search')" [value]="query()" (input)="query.set($any($event.target).value)">
+          </label>
           @if (countries().length) {
-            <div class="pick" (keydown.escape)="countryOpen.set(false)">
-              <button type="button" class="pick-btn" aria-haspopup="listbox" [attr.aria-expanded]="countryOpen()" [attr.aria-label]="i18n.t('origin')" (click)="toggleCountry($event)">
+            <div class="pick" (keydown.escape)="openMenu.set('')">
+              <button type="button" class="pick-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'country'" [attr.aria-label]="i18n.t('origin')" (click)="toggleMenu('country', $event)">
                 @if (activeCountry() && flag(activeCountry()); as src) { <img class="flag" [src]="src" alt="" width="20" height="15"> }
                 <span>{{ activeCountry() ? i18n.country(activeCountry()) : i18n.t('allCountries') }}</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
               </button>
-              @if (countryOpen()) {
+              @if (openMenu() === 'country') {
                 <ul class="pick-list" role="listbox" [attr.aria-label]="i18n.t('origin')">
                   <li role="option" [attr.aria-selected]="!activeCountry()"><button type="button" [class.on]="!activeCountry()" (click)="chooseCountry('')">{{ i18n.t('allCountries') }}</button></li>
                   @for (c of countries(); track c) {
@@ -70,11 +73,19 @@ import { ProductCard } from './product-card';
               }
             </div>
           }
-          <select (change)="sort.set($any($event.target).value)">
-            <option value="">{{ i18n.t('sortDefault') }}</option>
-            <option value="asc">{{ i18n.t('sortAsc') }}</option>
-            <option value="desc">{{ i18n.t('sortDesc') }}</option>
-          </select>
+          <div class="pick" (keydown.escape)="openMenu.set('')">
+            <button type="button" class="pick-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'sort'" (click)="toggleMenu('sort', $event)">
+              <span>{{ i18n.t(sortLabel()) }}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            @if (openMenu() === 'sort') {
+              <ul class="pick-list" role="listbox">
+                @for (o of sorts; track o.id) {
+                  <li role="option" [attr.aria-selected]="sort() === o.id"><button type="button" [class.on]="sort() === o.id" (click)="chooseSort(o.id)">{{ i18n.t(o.label) }}</button></li>
+                }
+              </ul>
+            }
+          </div>
         </div>
 
         @for (key of [cat() ?? 'tout']; track key) {
@@ -102,17 +113,26 @@ export class Catalog {
   protected readonly country = signal('');
   /** Un pays absent du rayon affiché ne doit pas vider la liste */
   protected readonly activeCountry = computed(() => (this.countries().includes(this.country()) ? this.country() : ''));
-  protected readonly countryOpen = signal(false);
+  protected readonly openMenu = signal<'' | 'country' | 'sort'>('');
+  protected readonly sorts: { id: string; label: TKey }[] = [
+    { id: '', label: 'sortDefault' }, { id: 'asc', label: 'sortAsc' }, { id: 'desc', label: 'sortDesc' },
+  ];
+  protected readonly sortLabel = computed(() => this.sorts.find(o => o.id === this.sort())?.label ?? 'sortDefault');
   protected readonly flag = countryFlag;
 
-  protected toggleCountry(e: Event) {
+  protected toggleMenu(menu: 'country' | 'sort', e: Event) {
     e.stopPropagation();
-    this.countryOpen.update(open => !open);
+    this.openMenu.update(open => (open === menu ? '' : menu));
+  }
+
+  protected chooseSort(id: string) {
+    this.sort.set(id);
+    this.openMenu.set('');
   }
 
   protected chooseCountry(country: string) {
     this.country.set(country);
-    this.countryOpen.set(false);
+    this.openMenu.set('');
   }
 
   /** Place du rayon choisi : la pastille y glisse, 0 pour Tout */
@@ -146,6 +166,10 @@ export class Catalog {
     const country = this.activeCountry();
     if (country) found = found.filter(p => availableOrigins(p).some(o => o.country === country));
     if (!sort) return found;
-    return [...found].sort((a, b) => (sort === 'asc' ? lowestPrice(a) - lowestPrice(b) : lowestPrice(b) - lowestPrice(a)));
+    // Les produits sur commande n'ont pas de prix : ils passent après les autres
+    const priced = found.filter(p => p.unit !== 'order' && lowestPrice(p) > 0);
+    const others = found.filter(p => !priced.includes(p));
+    priced.sort((a, b) => (sort === 'asc' ? lowestPrice(a) - lowestPrice(b) : lowestPrice(b) - lowestPrice(a)));
+    return [...priced, ...others];
   });
 }

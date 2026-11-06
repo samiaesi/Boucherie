@@ -1,4 +1,4 @@
-import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, availableOrigins, countriesIn, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, moveCountryStock, sumCountries, noOriginLeft, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
+import { DEFAULT_PRODUCTS, FridgeItem, OrderItem, Product, animals, applyPools, availableOrigins, countriesIn, defaultOriginIndex, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, moveCountryStock, sumCountries, noOriginLeft, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
 
 const sheep: FridgeItem = { id: 'moutons', name: 'Moutons', tracked: true, kg: 66, min: 100, max: 300, kgEach: 20 };
 const find = (id: string) => DEFAULT_PRODUCTS.find(p => p.id === id)!;
@@ -176,5 +176,19 @@ describe('Stock par pays', () => {
     expect(moveCountryStock({ 'Algérie': 3 }, 'Algérie', -5)).toEqual({ 'Algérie': 0 });
     expect(moveCountryStock(undefined, 'Espagne', 10)).toEqual({ Espagne: 10 });
     expect(sumCountries({ 'Algérie': 33, Espagne: 7.5 })).toBe(40.5);
+  });
+});
+
+describe('defaultOriginIndex', () => {
+  const es = { country: 'Espagne', price: 1 }, dz = { country: 'Algérie', price: 1 }, br = { country: 'Brésil', price: 1 };
+
+  it("présélectionne l'Algérie quand elle est en vente", () => {
+    expect(defaultOriginIndex([es, dz, br])).toBe(1);
+  });
+
+  it('prend le premier pays en vente sinon', () => {
+    expect(defaultOriginIndex([es, { ...dz, stock: 0 }, br])).toBe(0);
+    expect(defaultOriginIndex([{ ...es, available: false }, { ...dz, available: false }, br])).toBe(2);
+    expect(defaultOriginIndex([])).toBe(0);
   });
 });
