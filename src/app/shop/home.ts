@@ -24,7 +24,10 @@ const STEP_MS = 2200;
       <i class="hero-shade" aria-hidden="true"></i>
       <div class="wrap hero-grid">
         <div class="hero-text glass">
-          <span class="hero-status" [class.closed]="!shop.ordering().open"><i></i>{{ i18n.t(shop.ordering().open ? 'heroOpen' : 'closedTitle') }}</span>
+          <div class="hero-pills">
+            <span class="hero-status" [class.closed]="!shop.ordering().open"><i></i>{{ i18n.t(shop.ordering().open ? 'heroOpen' : 'closedTitle') }}</span>
+            @if (reservation(); as c) { <a routerLink="/reservation" class="hero-status hero-res">{{ i18n.t('resBannerBtn') }} : {{ i18n.pick(c, 'name') }}</a> }
+          </div>
           <h1>
             <span class="line"><span>{{ i18n.t('heroLine1') }}</span></span>
             <span class="line"><span class="accent">{{ i18n.t('heroLine2') }}</span></span>

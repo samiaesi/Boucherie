@@ -825,4 +825,10 @@ app-shop-layout {
   @media (min-width: 961px) { header { width: min(1400px, calc(100% - 28px)); } }
   @media (min-width: 961px) and (max-width: 1440px) { .menu-track { display: none; } }
   @media (min-width: 961px) and (max-width: 1280px) { .menu { font-size: .82rem; } .menu a { padding: 8px 8px; } .logo span { font-size: .92rem; } }
+
+  /* Réservation ouverte : visible dès le haut de page */
+  .hero-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .hero-res { background: linear-gradient(180deg, rgba(232, 34, 62, .92), rgba(170, 12, 32, .92)); transition: transform .3s var(--ease); }
+  .hero-res:hover { transform: translateY(-2px); }
+  @media (min-width: 961px) and (max-width: 1440px) { .menu-res { display: none; } }
 }
