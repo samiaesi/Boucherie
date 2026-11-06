@@ -334,7 +334,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'abats', order: 6, icon: 'abats', name_fr: 'Abats', name_ar: 'الأحشاء' },
   { id: 'poissons', image: photo('1534948216015-843149f72be3', 900), order: 7, icon: 'poisson', name_fr: 'Poissons surgelés', name_ar: 'أسماك مجمدة' },
   { id: 'legumes', image: photo('1790861286904-a5158b131c62', 900), order: 8, icon: 'legumes', name_fr: 'Légumes surgelés', name_ar: 'خضر مجمدة' },
-  { id: 'speciales', order: 9, icon: 'poulet', name_fr: 'Commandes spéciales', name_ar: 'طلبات خاصة' },
+  { id: 'speciales', image: photo('1598103442097-8b74394b95c6', 1600), order: 9, icon: 'poulet', name_fr: 'Commandes spéciales', name_ar: 'طلبات خاصة' },
 ];
 
 type Seed = Omit<Product, 'order' | 'available' | 'unit' | 'desc_fr' | 'desc_ar'> & Partial<Product>;

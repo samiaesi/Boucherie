@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Cart } from '../core/cart';
 import { DEFAULT_WEIGHTS, Product, availableOrigins, isOutOfStock, noOriginLeft } from '../core/data';
@@ -25,16 +25,28 @@ import { Tilt } from './effects';
       <div class="card-body">
         <a [routerLink]="['/produit', product().id]"><h3>{{ i18n.pick(product(), 'name') }}</h3></a>
         @if (i18n.countries(product()).length) {
-          <small class="origin">{{ i18n.t('origin') }} :
-          @for (c of i18n.countries(product()); track c.name; let last = $last) {
-            <span class="place">@if (c.flag) { <img class="flag" [src]="c.flag" alt="" width="20" height="15"> }{{ c.name }}@if (!last) {,}</span>
-          }
-        </small>
+          <small class="origin">
+            @for (c of i18n.countries(product()); track c.name; let last = $last) {
+              <span class="place">@if (c.flag) { <img class="flag" [src]="c.flag" alt="" width="20" height="15"> }{{ c.name }}@if (!last) {,}</span>
+            }
+          </small>
         }
-        <p>{{ i18n.pick(product(), 'desc') }}</p>
+        <div class="card-more"><div>
+          <p>{{ i18n.pick(product(), 'desc') }}</p>
+          @if (quick().length) {
+            <div class="card-weights">
+              @for (w of quick(); track w) {
+                <button type="button" [class.on]="grams() === w" [attr.aria-pressed]="grams() === w" (click)="pickWeight(w)">{{ i18n.weight(w) }}</button>
+              }
+            </div>
+          }
+        </div></div>
         <div class="card-foot">
-          <span class="price-tag">{{ i18n.price(product()) }}</span>
-          <button class="add" [class.off]="out()" (click)="quickAdd($event)" [attr.aria-label]="i18n.t('quickAdd')">+</button>
+          @for (t of [priceText()]; track t) { <span class="price-tag">{{ t }}</span> }
+          <button class="add" [class.off]="out()" [class.done]="added()" (click)="quickAdd($event)" [attr.aria-label]="i18n.t('quickAdd')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="added() ? 'M5 12.5l4.5 4.5L19 7.5' : 'M12 5v14M5 12h14'" /></svg>
+            <span class="add-text">{{ i18n.t('addShort') }}</span>
+          </button>
         </div>
       </div>
     </article>
@@ -48,6 +60,25 @@ export class ProductCard {
   readonly product = input.required<Product>();
   protected readonly out = computed(() => isOutOfStock(this.product()) || noOriginLeft(this.product()));
   protected readonly icon = computed(() => this.shop.category(this.product().category)?.icon);
+  /** Poids choisi directement sur la carte */
+  protected readonly grams = signal(0);
+  protected readonly added = signal(false);
+  private addedTimer?: ReturnType<typeof setTimeout>;
+  /** Poids rapides : seulement quand le prix ne dépend d'aucun autre choix */
+  protected readonly quick = computed(() => {
+    const p = this.product();
+    if (p.unit !== 'kg' || !p.price || p.custom || this.out() || availableOrigins(p).length > 1) return [];
+    return (p.weights?.length ? p.weights : DEFAULT_WEIGHTS).slice(0, 3);
+  });
+  protected readonly priceText = computed(() => {
+    const p = this.product(), g = this.grams();
+    if (!g) return this.i18n.price(p);
+    return this.i18n.money(Math.round(((availableOrigins(p)[0]?.price ?? p.price) * g) / 1000));
+  });
+
+  protected pickWeight(w: number) {
+    this.grams.update(g => (g === w ? 0 : w));
+  }
 
   /** Ajout direct avec le premier poids et la première découpe proposés */
   protected quickAdd(e: Event) {
@@ -57,6 +88,7 @@ export class ProductCard {
       return;
     }
     const origins = availableOrigins(p);
+    clearTimeout(this.addedTimer);
     // Plusieurs pays ou personnalisation : le client choisit sur la page du produit
     if (origins.length > 1 || p.custom) {
       this.router.navigate(['/produit', p.id]);
@@ -68,8 +100,10 @@ export class ProductCard {
       productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, unit: p.unit, price: origins[0]?.price ?? p.price, qty: 1,
       ...(p.special ? { special: true } : {}),
       ...(origins[0] ? { origin: origins[0].country } : {}),
-      grams: p.unit === 'kg' ? (p.weights?.length ? p.weights : DEFAULT_WEIGHTS)[0] : undefined,
+      grams: p.unit === 'kg' ? this.grams() || (p.weights?.length ? p.weights : DEFAULT_WEIGHTS)[0] : undefined,
       option_fr: p.options_fr?.[0], option_ar: p.options_ar?.[0] ?? p.options_fr?.[0],
     }, this.i18n.pick(p, 'name'), thumb);
+    this.added.set(true);
+    this.addedTimer = setTimeout(() => this.added.set(false), 1400);
   }
 }

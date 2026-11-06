@@ -23,6 +23,12 @@ function savedLastOrder() {
 }
 
 /** Lecture publique du contenu du site et envoi des commandes. */
+/** Un rayon enregistré sans photo reprend celle du catalogue par défaut. */
+const withDefaultImage = (c: Category) => {
+  const image = c.image || DEFAULT_CATEGORIES.find(d => d.id === c.id)?.image;
+  return image ? { ...c, image } : c;
+};
+
 @Injectable({ providedIn: 'root' })
 export class Shop {
   readonly categories = signal<Category[]>(DEFAULT_CATEGORIES);
@@ -124,7 +130,7 @@ export class Shop {
       if (!os.empty) this.offers.set(visible(os.docs.map(d => ({ ...d.data(), id: d.id }) as Offer)));
       if (ss.exists()) this.settings.set({ ...DEFAULT_SETTINGS, ...(ss.data() as Partial<Settings>) });
       if (fs.exists()) this.fridge.set(readFridge(fs.data()['list']));
-      if (cs.exists()) this.categories.set([...(cs.data()['list'] as Category[])].sort(byOrder));
+      if (cs.exists()) this.categories.set((cs.data()['list'] as Category[]).map(withDefaultImage).sort(byOrder));
     } catch (e) {
       console.warn('Firebase indisponible, affichage des données par défaut', e);
     }
