@@ -6,6 +6,18 @@ const entry = (over: Partial<AuditEntry>): AuditEntry => ({
 });
 
 describe('describeChanges', () => {
+  it('écrit les horaires en clair, seulement pour les jours modifiés', () => {
+    const lundi = { day: 1, open: true, from: '07:00', to: '20:00' };
+    const before = { schedule: [lundi, { day: 5, open: true, from: '07:00', to: '12:00' }] };
+    const after = { schedule: [lundi, { day: 5, open: true, from: '07:00', to: '23:00' }] };
+    expect(describeChanges(before, after)).toBe('vendredi : 07:00–12:00 → 07:00–23:00');
+    expect(describeChanges(after, { schedule: [{ ...lundi, open: false }, after.schedule[1]] })).toBe('lundi : 07:00–20:00 → fermé');
+  });
+
+  it('résume une liste sans afficher son contenu technique', () => {
+    expect(describeChanges({ closedDays: [] }, { closedDays: [{ date: '2026-12-01', reason: 'x' }] })).toBe('jours de fermeture : modifié');
+  });
+
   it('ne garde que ce qui change', () => {
     expect(describeChanges({ stock: 1000, stockAlert: 200, name: 'Poulet' }, { stock: 0, stockAlert: 200, name: 'Poulet' })).toBe('stock : 1000 → 0');
   });

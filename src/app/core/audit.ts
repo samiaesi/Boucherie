@@ -1,3 +1,4 @@
+import type { DaySchedule } from './ordering';
 import { Order, orderRef } from './data';
 
 export type AuditCategory = 'Connexion' | 'Commandes' | 'Factures' | 'Stock' | 'Catalogue' | 'Clients' | 'Équipe' | 'Paramètres';
@@ -60,12 +61,31 @@ const show = (v: unknown) => {
 
 export const trimDetail = (text: string) => (text.length > MAX_DETAIL ? `${text.slice(0, MAX_DETAIL)}…` : text);
 
+const WEEK_DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const LIST_NAMES: Record<string, string> = {
+  closedSlots: 'créneaux fermés', closedDays: 'jours de fermeture', origins: 'pays et prix', custom: 'personnalisation',
+  options_fr: 'découpes', options_ar: 'découpes en arabe', weights: 'poids proposés', deliveryZones: 'lieux de livraison',
+};
+
+const dayHours = (d?: DaySchedule) => (!d ? '—' : d.open ? `${d.from}–${d.to}` : 'fermé');
+
+/** Horaires lisibles : seuls les jours modifiés apparaissent. */
+function scheduleChanges(before: unknown, after: DaySchedule[]) {
+  const old = Array.isArray(before) ? (before as DaySchedule[]) : [];
+  return after.flatMap(day => {
+    const was = old.find(d => d.day === day.day);
+    return dayHours(was) === dayHours(day) ? [] : [`${WEEK_DAYS[day.day]} : ${dayHours(was)} → ${dayHours(day)}`];
+  });
+}
+
 /** Ce qui a changé entre deux versions : « stock : 1000 → 0 · prix : 2600 → 2800 ». */
 export function describeChanges(before: object | undefined, after: object) {
   const old = (before ?? {}) as Record<string, unknown>;
   const parts = Object.entries(after).flatMap(([key, value]) => {
     if (JSON.stringify(old[key]) === JSON.stringify(value)) return [];
     if (IMAGE_KEY.test(key)) return [`${key} : photo modifiée`];
+    if (key === 'schedule' && Array.isArray(value)) return scheduleChanges(old[key], value as DaySchedule[]);
+    if (value !== null && typeof value === 'object') return [`${LIST_NAMES[key] ?? key} : modifié`];
     return [`${key} : ${show(old[key])} → ${show(value)}`];
   });
   return trimDetail(parts.join(' · '));
