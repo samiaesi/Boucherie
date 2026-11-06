@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { Cart, lineTotal } from '../core/cart';
 import { DEFAULT_WEIGHTS, countryFlag, defaultOriginIndex, formatNumber, isLowStock, isOutOfStock, itemQty, noOriginLeft, originInSale, originsOf, roundStock } from '../core/data';
+import { Favorites } from '../core/favorites';
 import { I18n } from '../core/i18n';
 import { choiceIcon, customText, customTotal } from '../core/special-custom';
 import { IconPipe } from '../core/icon';
@@ -28,7 +29,10 @@ const MIN_GRAMS = 100;
             </div>
             <div class="detail-info">
               @if (i18n.fat(p); as fat) { <span class="fat-tag inline">{{ fat }}</span> }
-              <h1>{{ i18n.pick(p, 'name') }}</h1>
+              <div class="detail-title">
+                <h1>{{ i18n.pick(p, 'name') }}</h1>
+                <button type="button" class="fav" [class.on]="favorites.has(p.id)" [attr.aria-pressed]="favorites.has(p.id)" [attr.aria-label]="i18n.t(favorites.has(p.id) ? 'favRemove' : 'favAdd')" (click)="favorites.toggle(p.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.5 7.3 3.8 4.5 6.9 4.5c2 0 3.7 1.1 5.1 3 1.4-1.9 3.1-3 5.1-3 3.1 0 5.4 2.8 4.2 6.3C19.5 15.4 12 20 12 20z" /></svg></button>
+              </div>
               <div class="detail-price">
                 {{ p.custom ? (customPrice() === null ? i18n.t('customPrice') : i18n.money(customPrice()!)) : chosenOrigin() ? priceText(chosenOrigin()!.price) : i18n.price(p) }}
                 @if (origins().length > 1 && chosenOrigin(); as o) {
@@ -182,6 +186,7 @@ export class ProductPage {
   protected readonly i18n = inject(I18n);
   protected readonly shop = inject(Shop);
   private readonly cart = inject(Cart);
+  protected readonly favorites = inject(Favorites);
   /** Paramètre de route :id */
   readonly id = input.required<string>();
   protected readonly minGrams = MIN_GRAMS;
@@ -234,6 +239,7 @@ export class ProductPage {
       productId: p.id, name_fr: p.name_fr, name_ar: p.name_ar, qty: this.qty(),
       unit: custom === null ? p.unit : 'piece' as const, price: custom ?? (p.custom ? 0 : this.unitPrice()),
       ...(p.special ? { special: true } : {}),
+      ...(p.custom ? { pick: this.pick() } : {}),
       ...(this.chosenOrigin() ? { origin: this.chosenOrigin()!.country } : {}),
       grams: p.unit === 'kg' ? this.grams() : undefined,
       option_fr: note('fr', p.options_fr?.[i]), option_ar: note('ar', p.options_ar?.[i] ?? p.options_fr?.[i]),

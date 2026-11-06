@@ -137,7 +137,7 @@ function dishLine(p: Product, dish: Dish, guests: number): Omit<CartLine, 'key'>
   };
   const total = customTotal(p, pick);
   return {
-    ...base, unit: total === null ? 'order' : 'piece', price: total ?? 0, qty,
+    ...base, unit: total === null ? 'order' : 'piece', price: total ?? 0, qty, pick,
     option_fr: customText(p, pick, 'fr'), option_ar: customText(p, pick, 'ar'),
   };
 }

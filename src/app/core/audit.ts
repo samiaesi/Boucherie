@@ -23,6 +23,8 @@ export const AUDIT_ACTIONS = {
   'offer.deleted': { label: 'Formule supprimée', category: 'Catalogue' },
   'categories.updated': { label: 'Rayons modifiés', category: 'Catalogue' },
   'menus.updated': { label: 'Menus proposés modifiés', category: 'Catalogue' },
+  'reservations.updated': { label: 'Réservations modifiées', category: 'Catalogue' },
+  'loyalty.updated': { label: 'Points de fidélité modifiés', category: 'Commandes' },
   'announcement.created': { label: 'Annonce publiée', category: 'Clients' },
   'announcement.deleted': { label: 'Annonce retirée', category: 'Clients' },
   'company.updated': { label: 'Client entreprise enregistré', category: 'Clients' },

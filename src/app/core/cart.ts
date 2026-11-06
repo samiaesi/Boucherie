@@ -1,3 +1,4 @@
+import type { CustomPick } from './special-custom';
 import { Injectable, computed, effect, signal } from '@angular/core';
 import { Unit } from './data';
 
@@ -15,7 +16,19 @@ export interface CartLine {
   origin?: string;
   /** Commande spéciale : réservation avec créneau */
   special?: boolean;
+  /** Choix du client, pour recalculer le prix quand il recommande */
+  pick?: CustomPick;
   qty: number;
+}
+
+const LAST_BASKET = 'lastBasket';
+
+function savedBasket(): CartLine[] {
+  try {
+    return JSON.parse(localStorage.getItem(LAST_BASKET) ?? '[]');
+  } catch {
+    return [];
+  }
 }
 
 export function lineTotal(l: CartLine) {
@@ -37,6 +50,8 @@ const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').match
 @Injectable({ providedIn: 'root' })
 export class Cart {
   readonly lines = signal<CartLine[]>(savedCart());
+  /** Dernière commande envoyée depuis cet appareil */
+  readonly lastBasket = signal<CartLine[]>(savedBasket());
   readonly open = signal(false);
   /** Nom du dernier article ajouté, le temps de l'annonce */
   readonly justAdded = signal('');
@@ -101,6 +116,18 @@ export class Cart {
     this.lines.update(all => (qty < 1
       ? all.filter(l => l.key !== key)
       : all.map(l => (l.key === key ? { ...l, qty } : l))));
+  }
+
+  /** Garde la commande envoyée, pour la refaire en un clic. */
+  remember() {
+    this.lastBasket.set(this.lines());
+    try { localStorage.setItem(LAST_BASKET, JSON.stringify(this.lines())); } catch {}
+  }
+
+  /** Remplit le panier avec les lignes reprises. */
+  refill(lines: CartLine[]) {
+    this.lines.update(all => [...all.filter(l => !lines.some(x => x.key === l.key)), ...lines]);
+    this.bump.update(n => n + 1);
   }
 
   clear() {

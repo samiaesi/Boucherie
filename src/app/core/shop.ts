@@ -1,3 +1,7 @@
+import type { Campaign } from './campaigns';
+import { rebuildBasket } from './basket';
+import type { Cart } from './cart';
+import type { I18n } from './i18n';
 import { Injectable, computed, signal } from '@angular/core';
 import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AboutInfo, Certificate, DEFAULT_ABOUT, hasAboutContent } from './about';
@@ -37,6 +41,7 @@ export class Shop {
   /** Catalogue avec le stock des réserves du frigo */
   readonly products = computed(() => applyPools(this.catalog(), this.fridge()));
   readonly offers = signal<Offer[]>(DEFAULT_OFFERS);
+  readonly campaigns = signal<Campaign[]>([]);
   readonly settings = signal<Settings>(DEFAULT_SETTINGS);
   /** Le message d'accroche suit le paramétrage de la livraison */
   readonly pickupKey = computed<TKey>(() => (this.settings().deliveryEnabled ? 'pickupBoth' : 'pickup'));
@@ -115,6 +120,7 @@ export class Shop {
     this.watchOrdering();
     this.loadAbout();
     this.loadAnnouncements();
+    this.loadCampaigns();
     try {
       const [ps, os, ss, cs, fs] = await Promise.all([
         getDocs(collection(db, 'products')),
@@ -136,6 +142,15 @@ export class Shop {
     }
   }
 
+  private async loadCampaigns() {
+    try {
+      const snap = await getDoc(doc(db, 'settings', 'reservations'));
+      if (snap.exists()) this.campaigns.set(snap.data()['list'] as Campaign[]);
+    } catch (e) {
+      console.warn('Réservations indisponibles', e);
+    }
+  }
+
   /** À part : une erreur sur les annonces ne doit pas empêcher le catalogue de s'afficher. */
   private async loadAnnouncements() {
     try {
@@ -144,6 +159,16 @@ export class Shop {
     } catch (e) {
       console.warn('Annonces indisponibles', e);
     }
+  }
+
+  /** Remet la dernière commande dans le panier, aux prix du jour. */
+  reorder(cart: Cart, i18n: I18n) {
+    const { lines, missing } = rebuildBasket(cart.lastBasket(), this.products(), this.offers());
+    if (lines.length) {
+      cart.refill(lines);
+      cart.open.set(true);
+    }
+    if (missing) cart.warn(lines.length ? i18n.t('reorderMissing').replace('{n}', String(missing)) : i18n.t('reorderNone'));
   }
 
   category(id: string) {

@@ -750,4 +750,66 @@ app-shop-layout {
     .plan-results { grid-template-columns: 1fr; }
     .menu-banner { padding: 18px; }
   }
+
+  /* Compléter le panier */
+  .suggest { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(70, 30, 15, .12); }
+  .suggest h4 { margin: 0 0 10px; font-size: .95rem; font-weight: 800; }
+  .suggest-item { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px; margin-bottom: 7px; border-radius: 16px; background: rgba(255, 255, 255, .5); box-shadow: inset 0 1px 0 #fff; animation: fadeUp .4s var(--ease) both; }
+  .suggest-item img, .suggest-icon { display: block; width: 52px; height: 52px; border-radius: 12px; object-fit: cover; color: #8f0a1e; }
+  .suggest-icon svg { width: 100%; height: 100%; padding: 8px; }
+  .suggest-item b { display: block; overflow: hidden; font-size: .88rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+  .suggest-item small { color: var(--text); font-size: .78rem; }
+  .suggest-item .add { min-width: 38px; height: 38px; padding: 0 9px; }
+
+  /* Recommander */
+  .reorder-banner { width: 100%; margin-bottom: 12px; border: 0; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+  .reorder-btn { margin-bottom: 10px; }
+
+  /* Fidélité */
+  .loyalty { max-width: 560px; }
+  .loyalty-form { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+  .loyalty-form label { display: grid; gap: 6px; font-weight: 600; font-size: .86rem; }
+  .loyalty-card { display: grid; gap: 10px; margin-top: 18px; padding: 26px; border-radius: 26px; text-align: center; color: #fff; background: radial-gradient(90% 130% at 85% 0%, rgba(208, 16, 42, .55), transparent 70%), linear-gradient(160deg, #2f2420, #17110e); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 30px 50px -30px rgba(40, 15, 8, .7); animation: fadeUp .5s var(--ease) both; }
+  .loyalty-card small { color: rgba(255, 255, 255, .75); }
+  .loyalty-card > b { font-size: 3.4rem; line-height: 1; color: #ffc46b; }
+  .loyalty-card p { margin: 0; color: rgba(255, 255, 255, .88); }
+  .loyalty-bar { overflow: hidden; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .16); }
+  .loyalty-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #e8223e, #ffc46b); transition: width .8s var(--ease); }
+  .loyalty-earn { margin: 10px 0 0; color: var(--red-dark); font-size: .86rem; font-weight: 700; }
+  @media (max-width: 600px) { .loyalty-form { grid-template-columns: 1fr; } }
+
+  /* Favoris */
+  .fav { flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .66); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: inset 0 1px 0 #fff, 0 8px 16px -8px rgba(30, 15, 8, .55); color: var(--ink); cursor: pointer; transition: transform .3s var(--ease), color .2s; }
+  .fav svg { width: 21px; height: 21px; fill: transparent; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; transition: fill .25s; }
+  .fav:hover { transform: scale(1.1); }
+  .fav:active { transform: scale(.88); }
+  .fav.on { color: var(--red); animation: favPop .45s var(--ease); }
+  .fav.on svg { fill: currentColor; }
+  @keyframes favPop { 40% { transform: scale(1.28); } }
+  .card > .fav { position: absolute; z-index: 2; top: 12px; inset-inline-end: 12px; }
+  .card .fat-tag { inset-inline-end: auto; }
+  .detail-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .detail-title .fav { margin-top: 6px; }
+  .fav-link { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--ink); }
+  .fav-link:hover { color: var(--red); }
+  .fav-link svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .fav-link b { position: absolute; top: 2px; inset-inline-end: 0; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--red); color: #fff; font-size: .66rem; }
+  .menu-fav { display: none; }
+  .menu a { padding: 8px 12px; }
+  .cart-btn .hide-sm { display: none; }
+  @media (max-width: 1200px) { .fav-link { display: none; } .menu a { padding: 8px 9px; } }
+  @media (max-width: 960px) { .menu-fav { display: block; } }
+
+  /* Réservations */
+  .res-banner { margin-bottom: 12px; color: #fff; background: radial-gradient(90% 150% at 90% 0%, rgba(232, 34, 62, .75), transparent 70%), linear-gradient(160deg, #2f2420, #17110e); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 24px 44px -28px rgba(40, 15, 8, .75); }
+  .res-banner small { color: rgba(255, 255, 255, .85); }
+  .res-tabs { margin-bottom: 14px; }
+  .res-products { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .res-item { display: flex; align-items: center; gap: 10px; padding: 8px; border: 2px solid transparent; border-radius: 18px; background: var(--g-bg); box-shadow: var(--g-shadow); color: var(--ink); font: inherit; text-align: start; cursor: pointer; transition: border-color .25s, transform .3s var(--ease); }
+  .res-item:hover { transform: translateY(-2px); }
+  .res-item.on { border-color: var(--red); }
+  .res-item img { flex: none; width: 60px; height: 60px; border-radius: 13px; object-fit: cover; }
+  .res-item b { display: block; font-size: .92rem; }
+  .res-item small { color: var(--red); font-size: .8rem; font-weight: 700; }
+  .res-form { display: grid; gap: 14px; }
 }

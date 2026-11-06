@@ -39,6 +39,18 @@ type PhotoKey = 'heroImage' | 'aboutImage';
           }
         </div>
         <div>
+          <label>Carte de fidélité</label>
+          <label class="check" style="margin:8px 0"><input type="checkbox" name="loyaltyEnabled" [(ngModel)]="s.loyaltyEnabled"> Activer la carte de fidélité</label>
+          @if (s.loyaltyEnabled) {
+            <div class="grid2">
+              <label>1 point pour combien de DA<input name="loyaltyEvery" type="number" min="1" step="10" [(ngModel)]="s.loyaltyEvery"></label>
+              <label>Points pour le cadeau (0 = pas de cadeau)<input name="loyaltyGoal" type="number" min="0" step="10" [(ngModel)]="s.loyaltyGoal"></label>
+              <label>Cadeau (français)<input name="loyaltyReward_fr" placeholder="Votre cadeau" [(ngModel)]="s.loyaltyReward_fr"></label>
+              <label>Cadeau (arabe)<input name="loyaltyReward_ar" dir="rtl" [(ngModel)]="s.loyaltyReward_ar"></label>
+            </div>
+          }
+        </div>
+        <div>
           <label>Informations de facturation</label>
           <div class="grid2" style="margin-top:8px">
             <label>NIF<input name="nif" [(ngModel)]="s.nif"></label>

@@ -1,3 +1,5 @@
+import { Favorites } from '../core/favorites';
+import { Suggest } from './suggest';
 import { Component, ElementRef, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
@@ -21,7 +23,7 @@ function savedSeen(): Set<string> {
 
 @Component({
   selector: 'app-shop-layout',
-  imports: [ClosedNotice, InstallApp, Logo, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [Suggest, ClosedNotice, InstallApp, Logo, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <div class="progress" #progress></div>
     <header #header>
@@ -38,6 +40,7 @@ function savedSeen(): Set<string> {
           @if (shop.category('speciales')) {
             <a routerLink="/boutique" [queryParams]="{ cat: 'speciales' }">{{ i18n.t('specialOrder') }}</a>
           }
+          <a class="menu-fav" routerLink="/favoris" routerLinkActive="on">{{ i18n.t('favNav') }}</a>
           <a class="menu-plan" routerLink="/mon-menu" routerLinkActive="on">{{ i18n.t('menuNav') }}</a>
           @if (shop.hasAbout()) { <a routerLink="/notre-boucherie" routerLinkActive="on">{{ i18n.t('aboutNav') }}</a> }
           <a routerLink="/" fragment="contact">{{ i18n.t('navContact') }}</a>
@@ -61,6 +64,7 @@ function savedSeen(): Set<string> {
               </div>
             }
           </div>
+          <a class="fav-link" routerLink="/favoris" [attr.aria-label]="i18n.t('favNav')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.5 7.3 3.8 4.5 6.9 4.5c2 0 3.7 1.1 5.1 3 1.4-1.9 3.1-3 5.1-3 3.1 0 5.4 2.8 4.2 6.3C19.5 15.4 12 20 12 20z" /></svg>@if (favorites.count()) { <b>{{ favorites.count() }}</b> }</a>
           <button class="cart-btn" (click)="cart.open.set(true)" [attr.aria-label]="i18n.t('cart')">
             @for (n of [cart.bump()]; track n) { <span class="cart-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5zM9 8V7a3 3 0 0 1 6 0v1" /></svg></span> }
             <span class="hide-sm">{{ i18n.t('cart') }}</span>
@@ -94,6 +98,8 @@ function savedSeen(): Set<string> {
           <h4>{{ i18n.t('navContact') }}</h4>
           <p>{{ i18n.pick(shop.settings(), 'address') }}</p>
           <a [href]="shop.settings().mapLink" target="_blank" rel="noopener">{{ i18n.t('mapLink') }}</a>
+          @if (shop.settings().loyaltyEnabled) { <a routerLink="/fidelite">{{ i18n.t('loyaltyNav') }}</a> }
+          <a routerLink="/favoris">{{ i18n.t('favNav') }}</a>
           <p dir="ltr"><a [href]="phoneHref()">{{ shop.settings().phone }}</a></p>
         </div>
       </div>
@@ -130,8 +136,12 @@ function savedSeen(): Set<string> {
           </div>
         } @empty {
           <p class="empty">{{ i18n.t('cartEmpty') }}</p>
+          @if (cart.lastBasket().length) {
+            <button class="btn btn-white block reorder-btn" (click)="reorder()">{{ i18n.t('reorder') }}</button>
+          }
           <a routerLink="/boutique" class="btn btn-red block" (click)="cart.open.set(false)">{{ i18n.t('seeAll') }}</a>
         }
+        <app-suggest />
       </div>
       @if (cart.lines().length) {
         <div class="drawer-foot">
@@ -184,6 +194,7 @@ function savedSeen(): Set<string> {
 })
 export class ShopLayout implements OnInit, OnDestroy {
   protected readonly i18n = inject(I18n);
+  protected readonly favorites = inject(Favorites);
   protected readonly shop = inject(Shop);
   protected readonly cart = inject(Cart);
   protected readonly menuOpen = signal(false);
@@ -232,6 +243,10 @@ export class ShopLayout implements OnInit, OnDestroy {
   }
 
   /** La pastille glisse jusqu'au lien survolé, puis revient sur la page ouverte. */
+  protected reorder() {
+    this.shop.reorder(this.cart, this.i18n);
+  }
+
   protected movePill(link?: HTMLElement | null) {
     const target = link ?? this.menu().nativeElement.querySelector<HTMLElement>('a.on');
     const pill = this.pill().nativeElement;

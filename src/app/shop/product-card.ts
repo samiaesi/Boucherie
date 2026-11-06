@@ -2,6 +2,7 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Cart } from '../core/cart';
 import { DEFAULT_WEIGHTS, Product, availableOrigins, isOutOfStock, noOriginLeft } from '../core/data';
+import { Favorites } from '../core/favorites';
 import { I18n } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -22,6 +23,7 @@ import { Tilt } from './effects';
           <span class="card-icon" [innerHTML]="icon() | icon"></span>
         }
       </a>
+      <button type="button" class="fav" [class.on]="favorites.has(product().id)" [attr.aria-pressed]="favorites.has(product().id)" [attr.aria-label]="i18n.t(favorites.has(product().id) ? 'favRemove' : 'favAdd')" (click)="favorites.toggle(product().id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.5 7.3 3.8 4.5 6.9 4.5c2 0 3.7 1.1 5.1 3 1.4-1.9 3.1-3 5.1-3 3.1 0 5.4 2.8 4.2 6.3C19.5 15.4 12 20 12 20z" /></svg></button>
       <div class="card-body">
         <a [routerLink]="['/produit', product().id]"><h3>{{ i18n.pick(product(), 'name') }}</h3></a>
         @if (i18n.countries(product()).length) {
@@ -55,6 +57,7 @@ import { Tilt } from './effects';
 export class ProductCard {
   protected readonly i18n = inject(I18n);
   private readonly shop = inject(Shop);
+  protected readonly favorites = inject(Favorites);
   private readonly cart = inject(Cart);
   private readonly router = inject(Router);
   readonly product = input.required<Product>();

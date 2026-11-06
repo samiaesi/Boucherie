@@ -137,6 +137,13 @@ export interface Settings {
   /** Photos du site (data URL JPEG), choisies depuis l'admin */
   heroImage?: string;
   aboutImage?: string;
+  /** Carte de fidélité : un point par tranche de loyaltyEvery DA */
+  loyaltyEnabled: boolean;
+  loyaltyEvery: number;
+  /** Points nécessaires pour le cadeau, 0 = pas de cadeau */
+  loyaltyGoal: number;
+  loyaltyReward_fr: string;
+  loyaltyReward_ar: string;
   /** Livraison proposée au client */
   deliveryEnabled: boolean;
   /** Lieux de livraison proposés au client */
@@ -162,6 +169,8 @@ export interface Order {
   items?: OrderItem[];
   /** Vrai une fois le stock déduit pour cette commande */
   stockDone?: boolean;
+  /** Points de fidélité déjà comptés pour cette commande */
+  loyaltyDone?: boolean;
   address?: string;
   /** Commune ou quartier de livraison */
   zone?: string;
@@ -590,6 +599,7 @@ export const isCabinet = (f: FridgeItem) => !!f.rayons?.length;
 export const animals = (f: FridgeItem, kg = f.kg) => (f.kgEach ? roundStock(kg / f.kgEach) : 0);
 
 export const DEFAULT_SETTINGS: Settings = {
+  loyaltyEnabled: false, loyaltyEvery: 100, loyaltyGoal: 500, loyaltyReward_fr: '', loyaltyReward_ar: '',
   name_fr: 'Boucherie Hallem',
   name_ar: 'جزارة حلّام',
   company: 'SARL Deligne',

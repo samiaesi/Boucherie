@@ -1,3 +1,5 @@
+import { openCampaigns } from '../core/campaigns';
+import { algeriaClock } from '../core/ordering';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
@@ -50,6 +52,18 @@ const STEP_MS = 2200;
 
     <section class="menu-cta">
       <div class="wrap">
+        @if (reservation(); as c) {
+          <a routerLink="/reservation" class="menu-banner res-banner">
+            <span><b>{{ i18n.pick(c, 'name') }}</b><small>{{ i18n.pick(c, 'text') }}</small></span>
+            <span class="hero-cta">{{ i18n.t('resBannerBtn') }}<span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></span>
+          </a>
+        }
+        @if (cart.lastBasket().length) {
+          <button type="button" class="menu-banner reorder-banner" (click)="reorder()">
+            <span><b>{{ i18n.t('reorderTitle') }}</b><small>{{ i18n.t('reorderText') }}</small></span>
+            <span class="hero-cta">{{ i18n.t('reorder') }}<span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></span>
+          </button>
+        }
         <a routerLink="/mon-menu" class="menu-banner">
           <span><b>{{ i18n.t('menuBannerTitle') }}</b><small>{{ i18n.t('menuBannerText') }}</small></span>
           <span class="hero-cta">{{ i18n.t('menuBannerBtn') }}<span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></span>
@@ -236,7 +250,7 @@ export class Home implements OnInit, OnDestroy {
   protected readonly i18n = inject(I18n);
   protected readonly hours = computed(() => this.i18n.hoursLines(this.shop.orderingRules().schedule));
   protected readonly shop = inject(Shop);
-  private readonly cart = inject(Cart);
+  protected readonly cart = inject(Cart);
   private readonly sanitizer = inject(DomSanitizer);
   protected readonly num = formatNumber;
   protected readonly why: { t: TKey; d: TKey }[] = [
@@ -282,6 +296,12 @@ export class Home implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.resumeSteps();
+  }
+
+  protected readonly reservation = computed(() => openCampaigns(this.shop.campaigns(), algeriaClock(this.shop.clock()).date)[0]);
+
+  protected reorder() {
+    this.shop.reorder(this.cart, this.i18n);
   }
 
   /** Le reflet du verre et le fond suivent le pointeur. */

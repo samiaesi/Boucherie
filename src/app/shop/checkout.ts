@@ -1,3 +1,5 @@
+import { Suggest } from './suggest';
+import { pointsFor } from '../core/loyalty';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -15,7 +17,7 @@ const PHONE = /^0[567]\d{8}$/;
 
 @Component({
   selector: 'app-checkout',
-  imports: [ClosedNotice, FormsModule, RouterLink],
+  imports: [Suggest, ClosedNotice, FormsModule, RouterLink],
   template: `
     <section class="page-head"><div class="wrap"><h1>{{ i18n.t('checkoutTitle') }}</h1></div></section>
     <section class="shop">
@@ -100,6 +102,8 @@ const PHONE = /^0[567]\d{8}$/;
               <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.total(grandTotal(), cart.pending()) }}</b></div>
               @if (cart.specialPriced()) { <p class="note">{{ i18n.t('finalPrice') }}</p> }
               <p class="note">{{ i18n.t(cart.pending() ? 'pendingPrice' : 'estimate') }}</p>
+              @if (earn() > 0) { <p class="loyalty-earn">{{ i18n.t('loyaltyEarn').replace('{n}', '' + earn()) }}</p> }
+              <app-suggest />
             </aside>
           </div>
         }
@@ -132,6 +136,11 @@ export class Checkout {
   /** Frais si le client choisit la livraison */
   protected readonly cost = computed(() => deliveryCost(this.shop.settings(), this.cart.total()));
   protected readonly fee = computed(() => (this.mode() === 'livraison' ? this.cost() : 0));
+  /** Points gagnés quand la commande sera remise au client */
+  protected readonly earn = computed(() => {
+    const s = this.shop.settings();
+    return s.loyaltyEnabled ? pointsFor(this.cart.total(), s.loyaltyEvery) : 0;
+  });
   protected readonly grandTotal = computed(() => this.cart.total() + this.fee());
   /** Ce qu'il manque au panier pour une livraison offerte */
   protected readonly freeLeft = computed(() => {
@@ -220,6 +229,7 @@ export class Checkout {
         ...(f.marketing ? { marketing: true } : {}), delivery: this.fee(), total: this.grandTotal(), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
         typeLabel: `${special ? `${t('specialOrder')} ${this.slot()} · ` : ''}${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
       }));
+      this.cart.remember();
       this.cart.clear();
     } catch (err) {
       console.error('Commande non enregistrée', err);

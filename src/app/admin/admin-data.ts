@@ -1,3 +1,5 @@
+import type { Campaign } from '../core/campaigns';
+import { LoyaltyCard, normalizeTel, pointsFor, validTel } from '../core/loyalty';
 import { MENU_RECIPES, MenuRecipe } from '../core/menu-planner';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
@@ -210,6 +212,53 @@ export class AdminData {
    * déduit à la confirmation, remis en stock si la commande est annulée.
    */
   async changeStatus(o: Order, status: OrderStatus): Promise<string | undefined> {
+    const invoiceId = await this.applyStatus(o, status);
+    await this.awardPoints(o, status);
+    return invoiceId;
+  }
+
+  /** Une seule fois par commande, quand elle est remise au client. Les frais de livraison ne comptent pas. */
+  private async awardPoints(o: Order, status: OrderStatus) {
+    const s = this.settings();
+    if (!s.loyaltyEnabled || o.loyaltyDone || (status !== 'livré' && status !== 'récupéré') || !validTel(o.tel)) return;
+    const points = pointsFor((o.total ?? 0) - (o.delivery ?? 0), s.loyaltyEvery);
+    if (points <= 0) return;
+    const orderRefDoc = doc(db, 'orders', o.id);
+    const cardRef = doc(db, 'loyalty', normalizeTel(o.tel));
+    try {
+      await runTransaction(db, async tx => {
+        const [order, card] = [await tx.get(orderRefDoc), await tx.get(cardRef)];
+        if (order.data()?.['loyaltyDone']) return;
+        tx.update(orderRefDoc, { loyaltyDone: true });
+        tx.set(cardRef, {
+          points: ((card.data()?.['points'] as number) ?? 0) + points,
+          earned: ((card.data()?.['earned'] as number) ?? 0) + points,
+        });
+      });
+      this.audit('loyalty.updated', normalizeTel(o.tel), `+${points} points · ${orderRef(o.id)}`);
+    } catch (e) {
+      // La commande reste valide : seuls les points manquent
+      console.warn('Points de fidélité non ajoutés', e);
+      this.notify('Statut mis à jour, mais les points de fidélité n\'ont pas pu être ajoutés.', 7000);
+    }
+  }
+
+  async listLoyalty(): Promise<LoyaltyCard[]> {
+    const snap = await getDocs(collection(db, 'loyalty'));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id }) as LoyaltyCard);
+  }
+
+  async adjustPoints(id: string, delta: number, reason: string) {
+    const ref = doc(db, 'loyalty', id);
+    await this.guarded(runTransaction(db, async tx => {
+      const card = await tx.get(ref);
+      const points = Math.max(0, ((card.data()?.['points'] as number) ?? 0) + delta);
+      tx.set(ref, { points, earned: (card.data()?.['earned'] as number) ?? 0 });
+    }));
+    this.audit('loyalty.updated', id, `${delta > 0 ? '+' : ''}${delta} points · ${reason}`);
+  }
+
+  private async applyStatus(o: Order, status: OrderStatus): Promise<string | undefined> {
     const deduct = !o.stockDone && status !== 'nouveau' && status !== 'annulé';
     const restore = !!o.stockDone && status === 'annulé';
     const patch: Partial<Order> = { status };
@@ -462,6 +511,16 @@ export class AdminData {
   async saveCategories(list: Category[]) {
     await this.guarded(setDoc(doc(db, 'settings', 'categories'), { list }));
     this.audit('categories.updated', 'Rayons', list.map(c => c.name_fr).join(', '));
+  }
+
+  async getCampaigns(): Promise<Campaign[]> {
+    const snap = await getDoc(doc(db, 'settings', 'reservations'));
+    return snap.exists() ? structuredClone(snap.data()['list'] as Campaign[]) : [];
+  }
+
+  async saveCampaigns(list: Campaign[]) {
+    await this.guarded(setDoc(doc(db, 'settings', 'reservations'), { list }));
+    this.audit('reservations.updated', 'Réservations', list.map(c => c.name_fr).join(', '));
   }
 
   async getMenus(): Promise<MenuRecipe[]> {

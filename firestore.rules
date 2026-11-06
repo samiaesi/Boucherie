@@ -62,6 +62,13 @@ service cloud.firestore {
     }
 
     // Suivi public : lisible avec son lien secret, sans nom, téléphone ni adresse
+    // Carte de fidélité : lue avec le numéro du client, écrite seulement par l'équipe
+    match /loyalty/{tel} {
+      allow get: if true;
+      allow list, create, update: if isMember();
+      allow delete: if isManager();
+    }
+
     match /tracking/{id} {
       allow get: if true;
       allow create: if isMember()
