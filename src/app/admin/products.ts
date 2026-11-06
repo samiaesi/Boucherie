@@ -70,7 +70,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
           <label>Étiquette de gras
             <select name="fat" [ngModel]="draft.fat ?? ''" (ngModelChange)="draft.fat = $event || undefined">
               <option value="">Aucune</option>
-              <option value="low">Low fat</option>
+              <option value="low">Faible en gras</option>
               <option value="none">Sans gras</option>
             </select>
           </label>

@@ -205,7 +205,7 @@ export const ICONS: Record<string, string> = {
 export type FatLabel = 'low' | 'none';
 
 export const FAT_LABELS: Record<FatLabel, { fr: string; ar: string }> = {
-  low: { fr: 'Low fat', ar: 'قليل الدهن' },
+  low: { fr: 'Faible en gras', ar: 'قليل الدهن' },
   none: { fr: 'Sans gras', ar: 'بدون دهن' },
 };
 

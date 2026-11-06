@@ -195,7 +195,7 @@ describe('defaultOriginIndex', () => {
 
 describe('Étiquette de gras', () => {
   it('existe en français et en arabe', () => {
-    expect(FAT_LABELS.low.fr).toBe('Low fat');
+    expect(FAT_LABELS.low.fr).toBe('Faible en gras');
     expect(FAT_LABELS.none.ar).toBe('بدون دهن');
   });
 });
