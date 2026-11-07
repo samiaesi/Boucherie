@@ -19,7 +19,7 @@ import { AdminData } from './admin-data';
           <div class="info">
             <b>{{ c.name_fr }} <span class="ar">· {{ c.name_ar }}</span>
               @if (!c.active) { <span class="pill">Désactivée</span> }</b>
-            <small>Réserver jusqu'au {{ c.closes }} · Retrait du {{ c.pickupFrom }} au {{ c.pickupTo }} · {{ c.products.length }} produit(s)</small>
+            <small>{{ c.opens ? 'Visible dès le ' + c.opens + ' · ' : '' }}Réserver jusqu'au {{ c.closes }} · Retrait du {{ c.pickupFrom }} au {{ c.pickupTo }} · {{ c.products.length }} produit(s)</small>
           </div>
           <div class="item-actions">
             <button class="btn light small" (click)="open(c)">Modifier</button>
@@ -39,6 +39,7 @@ import { AdminData } from './admin-data';
           <label>Nom (arabe)<input name="name_ar" dir="rtl" required [(ngModel)]="draft.name_ar"></label>
           <label>Texte (français)<textarea name="text_fr" rows="2" [(ngModel)]="draft.text_fr"></textarea></label>
           <label>Texte (arabe)<textarea name="text_ar" dir="rtl" rows="2" [(ngModel)]="draft.text_ar"></textarea></label>
+          <label>Visible sur le site à partir du (ex. 2 mois avant)<input name="opens" type="date" [(ngModel)]="draft.opens"></label>
           <label>Dernier jour pour réserver<input name="closes" type="date" required [(ngModel)]="draft.closes"></label>
           <label>Acompte par article (DA, 0 = aucun)<input name="deposit" type="number" min="0" step="500" [(ngModel)]="draft.deposit"></label>
           <label>Premier jour de retrait<input name="pickupFrom" type="date" required [(ngModel)]="draft.pickupFrom"></label>
@@ -109,7 +110,12 @@ export class Reservations implements OnInit {
       this.error.set('Choisissez au moins un produit.');
       return;
     }
-    const item: Campaign = { ...d, id: this.editingId ?? `res-${Date.now()}`, name_fr: d.name_fr.trim(), name_ar: d.name_ar.trim(), deposit: Number(d.deposit) || 0 };
+    if (d.opens && d.opens > d.closes) {
+      this.error.set("Le premier jour d'affichage doit venir avant le dernier jour pour réserver.");
+      return;
+    }
+    const { opens, ...rest } = d;
+    const item: Campaign = { ...rest, ...(opens ? { opens } : {}), id: this.editingId ?? `res-${Date.now()}`, name_fr: d.name_fr.trim(), name_ar: d.name_ar.trim(), deposit: Number(d.deposit) || 0 };
     const list = this.editingId ? this.list().map(c => (c.id === item.id ? item : c)) : [item, ...this.list()];
     try {
       await this.data.saveCampaigns(list);

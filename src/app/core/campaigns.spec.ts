@@ -14,6 +14,12 @@ describe('Réservations', () => {
     expect(openCampaigns([campaign({})], '2027-05-11')).toEqual([]);
   });
 
+  it("reste cachée avant son premier jour d'affichage", () => {
+    const c = campaign({ opens: '2027-03-10' });
+    expect(openCampaigns([c], '2027-03-09')).toEqual([]);
+    expect(openCampaigns([c], '2027-03-10')).toHaveLength(1);
+  });
+
   it('cache une réservation désactivée ou sans produit', () => {
     expect(openCampaigns([campaign({ active: false }), campaign({ products: [] })], '2027-01-01')).toEqual([]);
   });

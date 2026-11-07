@@ -177,17 +177,6 @@ const STEP_MS = 2200;
       </div>
     </section>
 
-    <section class="aid">
-      <div class="wrap aid-inner" appReveal>
-        <span class="aid-icon" [innerHTML]="'agneau' | icon"></span>
-        <div>
-          <h3>{{ i18n.t('aidTitle') }}</h3>
-          <p>{{ i18n.t('aidText') }}</p>
-        </div>
-        <button class="btn btn-white" (click)="addAid()">{{ i18n.t('aidCta') }}</button>
-      </div>
-    </section>
-
     <section id="engagement" class="about">
       <div class="wrap about-grid">
         <div class="about-visual" appReveal>
@@ -344,7 +333,4 @@ export class Home implements OnInit, OnDestroy {
     return KIND_LABELS[a.kind];
   }
 
-  protected addAid() {
-    this.cart.add({ productId: 'mouton-aid', name_fr: "Mouton de l'Aïd", name_ar: 'أضحية العيد', unit: 'order', price: 0, qty: 1 }, this.i18n.t('fAid'));
-  }
 }

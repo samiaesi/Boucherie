@@ -8,6 +8,8 @@ export interface Campaign {
   text_fr: string;
   text_ar: string;
   active: boolean;
+  /** Premier jour d'affichage sur le site (AAAA-MM-JJ) : par exemple 2 mois avant l'Aïd */
+  opens?: string;
   /** Dernier jour pour réserver (AAAA-MM-JJ) */
   closes: string;
   /** Premier et dernier jour de retrait */
@@ -24,7 +26,7 @@ export const blankCampaign = (): Campaign => ({
 
 /** Réservations ouvertes aujourd'hui, la plus proche de sa fin d'abord. */
 export const openCampaigns = (list: Campaign[], today: string) => list
-  .filter(c => c.active && c.products.length > 0 && !!c.closes && today <= c.closes)
+  .filter(c => c.active && c.products.length > 0 && !!c.closes && today <= c.closes && (!c.opens || today >= c.opens))
   .sort((a, b) => a.closes.localeCompare(b.closes));
 
 /** Produits réservables : la personnalisation et les produits épuisés restent à part. */

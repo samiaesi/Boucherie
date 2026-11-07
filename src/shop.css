@@ -902,4 +902,16 @@ app-shop-layout {
     .tile-text { padding: 10px 12px; }
     .tile-text b, .tile:nth-child(1) .tile-text b { font-size: .98rem; }
   }
+
+  /* Chiffres clés : un bandeau net, relié aux rayons au-dessus */
+  section.stats { padding: 18px 0 0; background: none; }
+  .stats .wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 0; max-width: 1200px; overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px #efe4d8, 0 16px 28px -24px rgba(70, 30, 15, .5); }
+  .stats .wrap > * { padding: 22px 12px; text-align: center; }
+  .stats .wrap > * + * { border-inline-start: 1px solid #efe4d8; }
+  @media (max-width: 960px) {
+    section.stats .wrap { grid-template-columns: repeat(2, minmax(0, 1fr)); width: calc(100% - 28px); }
+    .stats .wrap > * { padding: 16px 8px; }
+    .stats .wrap > :nth-child(3) { border-inline-start: 0; }
+    .stats .wrap > :nth-child(n + 3) { border-top: 1px solid #efe4d8; }
+  }
 }
