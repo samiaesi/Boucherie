@@ -27,12 +27,14 @@ import { Tilt } from './effects';
       <button type="button" class="fav" [class.on]="favorites.has(product().id)" [attr.aria-pressed]="favorites.has(product().id)" [attr.aria-label]="i18n.t(favorites.has(product().id) ? 'favRemove' : 'favAdd')" (click)="favorites.toggle(product().id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.5 7.3 3.8 4.5 6.9 4.5c2 0 3.7 1.1 5.1 3 1.4-1.9 3.1-3 5.1-3 3.1 0 5.4 2.8 4.2 6.3C19.5 15.4 12 20 12 20z" /></svg></button>
       <div class="card-body">
         <a [routerLink]="['/produit', product().id]"><h3>{{ i18n.pick(product(), 'name') }}</h3></a>
-        @if (i18n.countries(product()).length) {
-          <small class="origin">
-            @for (c of i18n.countries(product()); track c.name; let last = $last) {
-              <span class="place">@if (c.flag) { <img class="flag" [src]="c.flag" alt="" width="20" height="15"> }{{ c.name }}@if (!last) {,}</span>
+        @if (countries().length; as n) {
+          <div class="origins" [attr.title]="names()">
+            <span class="origin-word">{{ i18n.t('origin') }}</span>
+            @for (c of countries(); track c.name) {
+              @if (c.flag) { <img [src]="c.flag" [alt]="c.name" width="24" height="16"> }
             }
-          </small>
+            @if (n === 1) { <span>{{ countries()[0].name }}</span> }
+          </div>
         }
         <div class="card-more"><div>
           <p>{{ i18n.pick(product(), 'desc') }}</p>
@@ -66,6 +68,9 @@ export class ProductCard {
   readonly product = input.required<Product>();
   protected readonly out = computed(() => isOutOfStock(this.product()) || noOriginLeft(this.product()));
   protected readonly icon = computed(() => this.shop.category(this.product().category)?.icon);
+  protected readonly countries = computed(() => this.i18n.countries(this.product()));
+  /** Noms des pays au survol, quand la carte n'en montre que le nombre */
+  protected readonly names = computed(() => this.countries().map(c => c.name).join(', '));
   /** Poids choisi directement sur la carte */
   protected readonly grams = signal(0);
   protected readonly added = signal(false);
