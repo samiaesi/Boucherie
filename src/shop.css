@@ -848,4 +848,35 @@ app-shop-layout {
 
   /* Arrivage récent sur la fiche produit */
   .arrived { display: inline-block; margin: 0 0 8px; padding: 4px 12px; border-radius: 999px; background: rgba(31, 157, 85, .13); color: #14713c; font-size: .84rem; font-weight: 700; }
+
+  /* Carte produit de boucherie : la viande bien visible, le prix comme sur une étiquette de vitrine */
+  .card { display: flex; flex-direction: column; min-height: 0; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px #efe4d8, 0 16px 28px -24px rgba(70, 30, 15, .5); }
+  .card:hover { box-shadow: 0 0 0 1px #e4d3c3, 0 24px 36px -24px rgba(70, 30, 15, .6); }
+  .card-img { position: relative; inset: auto; flex: none; height: 225px; background: #f3e9df; }
+  .card-img::after { display: none; }
+  .card .card-body, [dir="rtl"] & .card .card-body { position: static; display: flex; flex-direction: column; flex: 1; padding: 14px 16px 16px; border-radius: 0; background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+  .card:hover .card-body { background: #fff; }
+  .card h3 { margin-bottom: 3px; font-size: 1.12rem; }
+  .card .card-more { display: block; opacity: 1; }
+  .card p { display: none; }
+  .card-weights { margin-top: 12px; }
+  .card-weights button { padding: 8px 4px; border: 1px solid #e8dccf; background: #fff; }
+  .card-weights button:hover { border-color: var(--red); background: #fff; color: var(--red); }
+  .card-weights button.on { border-color: transparent; background: var(--red); box-shadow: none; }
+  .card-foot { margin-top: auto; padding-top: 12px; }
+  .card-weights + .card-foot, .card-more + .card-foot { margin-top: auto; }
+  .card .price-tag { font-family: var(--font-title); font-size: 1.28rem; line-height: 1.15; }
+  .card .price-tag s { display: block; margin: 0; font-family: inherit; font-size: .72em; }
+  .card .add { background: var(--red); box-shadow: none; }
+  .card .add:hover { background: var(--red-dark); }
+  .card .add.done { background: #178a4d; box-shadow: none; }
+  .card .add-text, .card:hover .add-text { max-width: none; margin-inline-start: 6px; opacity: 1; }
+
+  @media (max-width: 600px) {
+    .card-img { height: 150px; }
+    .card .card-body, [dir="rtl"] & .card .card-body { padding: 10px; }
+    .card .price-tag { font-size: 1rem; }
+    .card .add-text, .card:hover .add-text { display: none; }
+    .card .add { min-width: 38px; height: 38px; padding: 0 9px; }
+  }
 }
