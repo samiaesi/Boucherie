@@ -107,7 +107,7 @@ const STEP_MS = 2200;
               }
               <div class="tile-text">
                 <b>{{ i18n.pick(c, 'name') }}</b>
-                <small>{{ countIn(c.id) }} {{ i18n.t('articles') }} →</small>
+                <small>{{ countIn(c.id) }} {{ i18n.t(countIn(c.id) === 1 ? 'article' : 'articles') }} →</small>
               </div>
             </a>
           }

@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Category, ICON_NAMES } from '../core/data';
+import { Category, DEFAULT_CATEGORIES, ICON_NAMES } from '../core/data';
+import { resizeImage } from './image';
 import { IconPipe } from '../core/icon';
 import { AdminData } from './admin-data';
 
@@ -8,16 +9,26 @@ import { AdminData } from './admin-data';
 const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+const PHOTO_BYTES = 90_000;
+const MAX_PHOTOS_BYTES = 900_000;
+
 @Component({
   selector: 'app-categories',
   imports: [FormsModule, IconPipe],
   template: `
     <div class="head"><h2>Rayons de la boutique</h2></div>
     @if (loaded()) {
+      <p class="hint">Cliquez sur une image pour la changer, puis sur <b>Enregistrer</b>.</p>
       <form class="card-box" (ngSubmit)="save()">
         @for (c of list; track c; let i = $index) {
           <div class="cat-row-admin">
-            <div class="thumb" [innerHTML]="c.icon | icon"></div>
+            <div class="cat-photo">
+              <label class="thumb" [attr.title]="'Changer la photo du rayon ' + c.name_fr">
+                @if (photoOf(c); as src) { <img [src]="src" alt=""> } @else { <span [innerHTML]="c.icon | icon"></span> }
+                <input type="file" accept="image/*" (change)="pickPhoto(c, $event)">
+              </label>
+              @if (c.image) { <button type="button" class="link-btn" (click)="c.image = undefined">Retirer</button> }
+            </div>
             <input [name]="'fr' + i" placeholder="Nom (français)" required [(ngModel)]="c.name_fr">
             <input [name]="'ar' + i" dir="rtl" placeholder="الاسم بالعربية" required [(ngModel)]="c.name_ar">
             <select [name]="'icon' + i" [(ngModel)]="c.icon">
@@ -35,6 +46,13 @@ const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
     }
   `,
   styles: `
+    .cat-photo { display: grid; justify-items: center; gap: 2px; }
+    .cat-photo .thumb { position: relative; display: grid; place-items: center; width: 64px; height: 64px; overflow: hidden; border-radius: 12px; cursor: pointer; }
+    .cat-photo .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .cat-photo .thumb::after { content: "Changer"; position: absolute; inset: auto 0 0; padding: 2px 0; background: rgba(0, 0, 0, .55); color: #fff; font-size: .62rem; text-align: center; }
+    .cat-photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .link-btn { padding: 0; border: 0; background: none; color: #a10c20; font: inherit; font-size: .72rem; cursor: pointer; }
+    .hint { margin: 0 0 12px; color: var(--muted); font-size: .86rem; }
     .cat-row-admin { display: grid; grid-template-columns: 64px 1fr 1fr 170px auto auto auto; gap: 8px; align-items: center; }
     @media (max-width: 700px) { .cat-row-admin { grid-template-columns: 64px 1fr auto auto auto; } .cat-row-admin input, .cat-row-admin select { grid-column: 1 / -1; } }
   `,
@@ -69,8 +87,35 @@ export class Categories implements OnInit {
     this.list.splice(i + delta, 0, c);
   }
 
+  /** Photo affichée : celle choisie, sinon celle du catalogue par défaut */
+  protected photoOf(c: Category) {
+    return c.image || DEFAULT_CATEGORIES.find(d => d.id === c.id)?.image;
+  }
+
+  /** Les photos des rayons sont dans un seul document Firebase, limité à 1 Mo : chacune reste légère. */
+  protected async pickPhoto(c: Category, e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      c.image = await resizeImage(file, 900, PHOTO_BYTES);
+      this.error.set('');
+    } catch (err) {
+      this.error.set((err as Error).message);
+    }
+  }
+
   protected async save() {
-    const list = this.list.map((c, i) => ({ ...c, id: c.id || slug(c.name_fr), order: i + 1 }));
+    const total = this.list.reduce((sum, c) => sum + (c.image?.startsWith('data:') ? c.image.length : 0), 0);
+    if (total > MAX_PHOTOS_BYTES) {
+      this.error.set('Trop de photos lourdes : retirez-en une ou choisissez des images plus petites.');
+      return;
+    }
+    const list = this.list.map((c, i) => {
+      const { image, ...rest } = c;
+      return { ...rest, ...(image ? { image } : {}), id: c.id || slug(c.name_fr), order: i + 1 };
+    });
     this.saving.set(true);
     this.error.set('');
     try {
