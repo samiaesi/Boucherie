@@ -688,6 +688,33 @@ export class AdminData {
     return created;
   }
 
+  /** Une partie des os d'une découpe était encore de la viande : elle revient au frigo comme reste à redécouper. */
+  async keepWaste(cut: CutRecord, kg: number) {
+    const cutRef = doc(db, 'lots', cut.id);
+    await this.guarded(runTransaction(db, async tx => {
+      const snap = await tx.get(cutRef);
+      const saved = snap.data() as CutRecord | undefined;
+      if (!saved || saved.cancelled) throw new StockError('Cette découpe est annulée.');
+      if (kg <= 0 || kg > saved.waste + 0.001) throw new StockError(`Indiquez entre 0 et ${saved.waste} kg.`);
+      const fridge = await this.fridgeInTx(tx);
+      const restId = `${cut.matricule}-reste`;
+      const [first] = saved.carcasses ?? [];
+      tx.update(cutRef, { waste: roundStock(saved.waste - kg), rest: roundStock((saved.rest ?? 0) + kg) });
+      tx.set(doc(db, 'settings', 'fridge'), {
+        list: fridge.map(f => {
+          if (f.id !== cut.reserve.id) return f;
+          const current = carcassesOf(f);
+          const had = current.find(x => x.id === restId);
+          const next = had
+            ? current.map(x => (x.id === restId ? { ...x, kg: roundStock(x.kg + kg) } : x))
+            : [...current, cleanCarcass({ id: restId, kg: roundStock(kg), origin: saved.origin ?? first?.origin, lot: first?.lot, n: first?.n, date: first?.date, part: true })];
+          return withCarcasses(f, next);
+        }),
+      });
+    }));
+    this.audit('cut.rest', cut.matricule, `${cut.reserve.name} · ${kg} kg remis au frigo comme reste à découper`);
+  }
+
   /** Une découpe annulée rend ses bêtes à la réserve, si les coupes n'ont pas encore été vendues. */
   async cancelCut(cut: CutRecord) {
     const cutRef = doc(db, 'lots', cut.id);

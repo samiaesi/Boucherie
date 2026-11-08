@@ -131,7 +131,12 @@ const blank = (reserve = '') => ({
             @if (c.carcasses?.length) { <small>Bêtes : {{ pickedText(c) }}</small> }
             <small>{{ pieceText(c) }} · os {{ c.waste }} kg{{ c.rest ? ' · gardé au frigo ' + c.rest + ' kg' : '' }}</small>
           </div>
-          @if (!c.cancelled) { <button class="btn light small" (click)="cancel(c)" [disabled]="busy()">Annuler</button> }
+          @if (!c.cancelled) {
+            <div class="row-actions">
+              @if (c.waste > 0) { <button class="btn small" (click)="keep(c)" [disabled]="busy()">Remettre des os au frigo</button> }
+              <button class="btn light small" (click)="cancel(c)" [disabled]="busy()">Annuler</button>
+            </div>
+          }
         </div>
       } @empty {
         @if (loaded()) { <div class="empty">Aucune découpe enregistrée pour le moment.</div> }
@@ -177,6 +182,7 @@ const blank = (reserve = '') => ({
     .picked { display: flex; flex-wrap: wrap; align-items: end; gap: 6px 16px; }
     .picked label { margin: 0; }
     .picked input { width: 120px; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
     .list-head h3 { font-family: Inter, sans-serif; font-size: 1.05rem; }
     .info small { display: block; }
   `,
@@ -321,6 +327,29 @@ export class Cutting implements OnInit {
       form.resetForm(next);
       this.pickReserve();
       await this.reload();
+    } catch (e) {
+      this.error.set((e as Error).message);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** Les « os » comptaient encore de la viande : ces kilos redeviennent un reste à découper. */
+  protected async keep(c: CutRecord) {
+    const answer = prompt(`Combien de kilos remettre au frigo, à découper plus tard ? (os enregistrés : ${c.waste} kg)`, String(c.waste));
+    if (answer === null) return;
+    const kg = roundStock(Number(answer.replace(',', '.')) || 0);
+    if (kg <= 0 || kg > c.waste) {
+      this.error.set(`Indiquez un nombre entre 0 et ${c.waste} kg.`);
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.data.keepWaste(c, kg);
+      this.data.notify(`${kg} kg remis au frigo : choisissez « reste » dans la découpe`);
+      await this.reload();
+      this.picked = [];
     } catch (e) {
       this.error.set((e as Error).message);
     } finally {
