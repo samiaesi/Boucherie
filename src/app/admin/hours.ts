@@ -47,7 +47,7 @@ const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'
           <button type="button" class="btn danger small" (click)="removeSlot(i)">✕</button>
         </div>
       }
-      <div><button type="button" class="btn light small" (click)="addSlot()">+ Ajouter un créneau</button></div>
+      <div><button type="button" class="btn add-row" (click)="addSlot()">+ Ajouter un créneau</button></div>
 
       <h3>Jours de fermeture exceptionnelle</h3>
       @for (d of days(); track d; let i = $index) {
@@ -57,10 +57,10 @@ const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'
           <button type="button" class="btn danger small" (click)="removeDay(i)">✕</button>
         </div>
       }
-      <div><button type="button" class="btn light small" (click)="addDay()">+ Ajouter un jour</button></div>
+      <div><button type="button" class="btn add-row" (click)="addDay()">+ Ajouter un jour</button></div>
 
       @if (error()) { <div class="msg">{{ error() }}</div> }
-      <div><button class="btn" type="submit" [disabled]="busy()">Enregistrer les horaires</button></div>
+      <div class="form-actions"><button class="btn" type="submit" [disabled]="busy()">Enregistrer les horaires</button></div>
     </form>
   `,
   styles: `

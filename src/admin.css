@@ -136,4 +136,13 @@
     .grid2 { grid-template-columns: 1fr; }
     .item { flex-wrap: wrap; }
   }
+
+  /* Actions des formulaires : toujours au même endroit, en bas à droite, visibles pendant le défilement */
+  .form-actions { position: sticky; z-index: 5; bottom: 10px; display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, .96); box-shadow: 0 10px 24px -18px rgba(35, 26, 23, .45); backdrop-filter: blur(6px); }
+  .form-actions .btn { min-width: 160px; }
+  .modal-actions { position: sticky; z-index: 5; bottom: -1px; margin-top: 6px; padding: 12px 0 2px; border-top: 1px solid var(--line); background: #fff; }
+  /* Ajouter une ligne : sous la liste, sur toute la largeur, pour qu'on ne le cherche pas */
+  .btn.add-row { width: 100%; padding: 10px 14px; border: 1.5px dashed var(--line); background: transparent; color: var(--bordeaux); font-weight: 600; box-shadow: none; }
+  .btn.add-row:hover { border-color: currentColor; background: rgba(122, 31, 43, .05); }
+  @media (max-width: 600px) { .form-actions .btn { flex: 1; min-width: 0; } }
 }

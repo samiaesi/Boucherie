@@ -82,7 +82,7 @@ type PhotoKey = 'heroImage' | 'aboutImage';
           }
         </div>
         @if (error()) { <div class="msg">{{ error() }}</div> }
-        <div><button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button></div>
+        <div class="form-actions"><button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button></div>
       </form>
     }
   `,

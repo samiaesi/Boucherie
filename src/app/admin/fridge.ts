@@ -132,7 +132,7 @@ const PRESETS = [
                     <button type="button" class="btn danger small" aria-label="Retirer ce pays" (click)="d.countryRows.splice(i, 1)">✕</button>
                   </div>
                 }
-                <div><button type="button" class="btn light small" (click)="d.countryRows.push({ country: '', kg: 0 })">+ Ajouter un pays</button></div>
+                <div><button type="button" class="btn add-row" (click)="d.countryRows.push({ country: '', kg: 0 })">+ Ajouter un pays</button></div>
               </div>
             }
           </div>

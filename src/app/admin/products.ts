@@ -88,7 +88,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
                 <button type="button" class="btn danger small" aria-label="Retirer ce pays" (click)="removeRow(i)">✕</button>
               </div>
             }
-            <div><button type="button" class="btn light small" (click)="addRow()">+ Ajouter un pays</button></div>
+            <div><button type="button" class="btn add-row" (click)="addRow()">+ Ajouter un pays</button></div>
             @if (rows.length) {
               <label class="check"><input type="checkbox" name="originAll" [(ngModel)]="originAll"> Mettre ces pays sur tous les produits de ce rayon, avec les mêmes écarts de prix</label>
             }
@@ -130,7 +130,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
                   <button type="button" class="btn danger small" aria-label="Retirer cette viande" (click)="c.meats.splice(i, 1)">✕</button>
                 </div>
               }
-              <div><button type="button" class="btn light small" (click)="addChoice(c.meats)">+ Ajouter une viande</button></div>
+              <div><button type="button" class="btn add-row" (click)="addChoice(c.meats)">+ Ajouter une viande</button></div>
               <label>Poids de viande proposés en grammes, séparés par des virgules
                 <input name="customGrams" placeholder="250, 500, 750, 1000" [(ngModel)]="customGrams">
               </label>
@@ -143,7 +143,7 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
                   <button type="button" class="btn danger small" aria-label="Retirer cet ingrédient" (click)="c.extras.splice(i, 1)">✕</button>
                 </div>
               }
-              <div><button type="button" class="btn light small" (click)="addChoice(c.extras)">+ Ajouter un ingrédient</button></div>
+              <div><button type="button" class="btn add-row" (click)="addChoice(c.extras)">+ Ajouter un ingrédient</button></div>
             </div>
           }
           @if (!draft.custom) {

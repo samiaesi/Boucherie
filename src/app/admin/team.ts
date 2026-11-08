@@ -37,7 +37,7 @@ import { ROLE_LABELS, Role } from './roles';
       </div>
       <small class="hint">{{ help[draft.role] }}</small>
       @if (error()) { <div class="msg">{{ error() }}</div> }
-      <div><button class="btn" type="submit" [disabled]="f.invalid || busy()">{{ busy() ? 'Création…' : 'Créer le compte' }}</button></div>
+      <div class="form-actions"><button class="btn" type="submit" [disabled]="f.invalid || busy()">{{ busy() ? 'Création…' : 'Créer le compte' }}</button></div>
     </form>
   `,
   styles: `

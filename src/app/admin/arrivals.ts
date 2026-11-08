@@ -42,7 +42,7 @@ const blank = () => ({
         <label>Note (facultatif)<input name="note" [(ngModel)]="draft.note"></label>
       </div>
       @if (error()) { <div class="msg">{{ error() }}</div> }
-      <div><button class="btn" type="submit" [disabled]="f.invalid || busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer l\\'arrivage' }}</button></div>
+      <div class="form-actions"><button class="btn" type="submit" [disabled]="f.invalid || busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer l\\'arrivage' }}</button></div>
     </form>
 
     <div class="head list-head">

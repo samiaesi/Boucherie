@@ -68,7 +68,7 @@ const today = () => {
                 <button type="button" class="btn danger small" [disabled]="lines().length === 1" (click)="removeLine(i)">✕</button>
               </div>
             }
-            <div><button type="button" class="btn light small" (click)="addLine()">+ Ajouter une ligne</button></div>
+            <div><button type="button" class="btn add-row" (click)="addLine()">+ Ajouter une ligne</button></div>
           </div>
 
           <div class="bottom">
@@ -90,7 +90,7 @@ const today = () => {
 
           @if (error()) { <div class="msg">{{ error() }}</div> }
           @if (f.invalid) { <p class="todo">Pour émettre la facture : choisissez le client, puis un article ou une désignation sur chaque ligne.</p> }
-          <div><button class="btn" type="submit" [disabled]="f.invalid || busy()">{{ busy() ? 'Création…' : 'Émettre la facture' }}</button></div>
+          <div class="form-actions"><button class="btn" type="submit" [disabled]="f.invalid || busy()">{{ busy() ? 'Création…' : 'Émettre la facture' }}</button></div>
         </form>
       }
     } @else {
@@ -118,7 +118,7 @@ const today = () => {
           <label>Téléphone<input name="tel" type="tel" [(ngModel)]="company.tel"></label>
         </div>
         @if (companyError()) { <div class="msg">{{ companyError() }}</div> }
-        <div><button class="btn" type="submit" [disabled]="cf.invalid">Enregistrer le client</button></div>
+        <div class="form-actions"><button class="btn" type="submit" [disabled]="cf.invalid">Enregistrer le client</button></div>
       </form>
     }
   `,

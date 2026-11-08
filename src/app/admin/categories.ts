@@ -39,9 +39,9 @@ const MAX_PHOTOS_BYTES = 900_000;
             <button type="button" class="btn danger small" [attr.aria-label]="'Supprimer le rayon ' + c.name_fr" (click)="remove(i)">✕</button>
           </div>
         }
-        <div><button type="button" class="btn light small" (click)="add()">+ Ajouter un rayon</button></div>
+        <div><button type="button" class="btn add-row" (click)="add()">+ Ajouter un rayon</button></div>
         @if (error()) { <div class="msg">{{ error() }}</div> }
-        <div><button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button></div>
+        <div class="form-actions"><button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button></div>
       </form>
     }
   `,

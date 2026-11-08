@@ -50,7 +50,7 @@ import { resizeImage } from './image';
               </div>
             </fieldset>
           }
-          <div><button type="button" class="btn light small" (click)="addEngagement()">+ Ajouter un engagement</button></div>
+          <div><button type="button" class="btn add-row" (click)="addEngagement()">+ Ajouter un engagement</button></div>
         </section>
 
         <section class="card-box">
@@ -71,12 +71,12 @@ import { resizeImage } from './image';
             </fieldset>
           }
           @if (certificates().length < maxCertificates) {
-            <div><button type="button" class="btn light small" (click)="addCertificate()">+ Ajouter un certificat</button></div>
+            <div><button type="button" class="btn add-row" (click)="addCertificate()">+ Ajouter un certificat</button></div>
           }
         </section>
 
         @if (error()) { <div class="msg">{{ error() }}</div> }
-        <div class="save"><button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button></div>
+        <div class="form-actions"><button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button></div>
       </form>
     }
   `,

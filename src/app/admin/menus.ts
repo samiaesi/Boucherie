@@ -83,7 +83,7 @@ const blankMenu = (): MenuRecipe => ({ id: '', style: 'fete', name_fr: '', name_
             }
           </div>
         }
-        <div><button type="button" class="btn light small" (click)="draft.dishes.push(newDish())">+ Ajouter un produit</button></div>
+        <div><button type="button" class="btn add-row" (click)="draft.dishes.push(newDish())">+ Ajouter un produit</button></div>
         <p class="hint">« Accompagnement » : si ce produit manque, le menu reste proposé sans lui.</p>
         @if (error()) { <div class="msg">{{ error() }}</div> }
         <div class="modal-actions">

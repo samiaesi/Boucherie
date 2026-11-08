@@ -31,7 +31,7 @@ const blank = (): Omit<Announcement, 'id'> => {
         <label>Au<input name="end" type="date" required [min]="draft.start" [(ngModel)]="draft.end"></label>
       </div>
       @if (error()) { <div class="msg">{{ error() }}</div> }
-      <div><button class="btn" type="submit" [disabled]="f.invalid || busy()">Publier sur le site</button></div>
+      <div class="form-actions"><button class="btn" type="submit" [disabled]="f.invalid || busy()">Publier sur le site</button></div>
     </form>
 
     <h3 class="section">Annonces</h3>
