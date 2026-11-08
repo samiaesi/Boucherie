@@ -121,7 +121,7 @@ const MIN_GRAMS = 100;
                     <div class="chips small">
                       @for (x of c.extras; track x.fr; let i = $index) {
                         <button class="chip" [class.on]="extras().includes(i)" [attr.aria-pressed]="extras().includes(i)" (click)="toggleExtra(i)">
-                          <span class="chip-ico" [innerHTML]="choiceIcon(x.fr) | icon"></span>{{ i18n.lang() === 'ar' ? x.ar : x.fr }}@if (x.price) { <small class="chip-price">+{{ i18n.money(x.price) }}</small> }
+                          <span class="chip-ico" [innerHTML]="choiceIcon(x.fr) | icon"></span>{{ i18n.lang() === 'ar' ? x.ar : x.fr }}
                         </button>
                       }
                     </div>
