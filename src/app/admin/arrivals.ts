@@ -4,6 +4,7 @@ import { COUNTRIES } from '../core/data';
 import { Lot, LotTarget, lotTargets, searchLots, supplierNames } from '../core/lots';
 import { localDay } from '../core/stats';
 import { AdminData } from './admin-data';
+import { ChainSteps } from './chain-steps';
 
 const blank = () => ({
   target: null as LotTarget | null, qty: null as number | null, arrivalDate: localDay(new Date()), supplierName: '', supplierRef: '', note: '', origin: '',
@@ -11,9 +12,10 @@ const blank = () => ({
 
 @Component({
   selector: 'app-arrivals',
-  imports: [FormsModule],
+  imports: [FormsModule, ChainSteps],
   template: `
     <div class="head"><h2>Arrivages</h2></div>
+    <app-chain-steps current="arrivages" />
     <p class="hint">Chaque arrivage reçoit un matricule et s'ajoute automatiquement au stock.</p>
 
     <form class="card-box" #f="ngForm" (ngSubmit)="save(f)">

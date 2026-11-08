@@ -15,6 +15,8 @@ export const AUDIT_ACTIONS = {
   'invoice.deleted': { label: 'Facture supprimée', category: 'Factures' },
   'lot.created': { label: 'Arrivage enregistré', category: 'Stock' },
   'lot.cancelled': { label: 'Arrivage annulé', category: 'Stock' },
+  'exit.created': { label: 'Sortie de stock (déstockage)', category: 'Stock' },
+  'exit.cancelled': { label: 'Sortie de stock annulée', category: 'Stock' },
   'fridge.updated': { label: 'Frigo modifié', category: 'Stock' },
   'product.created': { label: 'Produit ajouté', category: 'Catalogue' },
   'product.updated': { label: 'Produit ou stock modifié', category: 'Catalogue' },

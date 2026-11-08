@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Category, Product, ProductOrigin, byOrder, originLabel, originsOf, roundStock } from '../core/data';
 import { productRef, searchProducts } from '../core/product-search';
 import { AdminData } from './admin-data';
+import { ChainSteps } from './chain-steps';
 import { STATE_ICONS, STATE_LABELS, StockLine, StockState, stockCounts, stockLines } from './stock-lines';
 
 type Filter = 'tous' | StockState;
@@ -20,13 +21,14 @@ interface Draft {
 
 @Component({
   selector: 'app-stock',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, ChainSteps],
   template: `
     <div class="head">
       <h2>Stock</h2>
       <a class="btn small" routerLink="/admin/arrivages">Nouvel arrivage</a>
     </div>
 
+    <app-chain-steps current="stock" />
     <div class="summary">
       @for (c of cards(); track c.id) {
         <button class="tile" [class]="'tile ' + c.id" [class.active]="filter() === c.id" (click)="filter.set(c.id)">

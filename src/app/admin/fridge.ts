@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { COUNTRIES, Category, FridgeItem, ICON_NAMES, isCabinet, roundStock, sumCountries } from '../core/data';
 import { IconPipe } from '../core/icon';
 import { AdminData } from './admin-data';
+import { ChainSteps } from './chain-steps';
 import { STATE_ICONS, STATE_LABELS, StockState, fridgeContents, fridgeIcon, fridgeLine } from './stock-lines';
 
 const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -22,7 +23,7 @@ const PRESETS = [
 
 @Component({
   selector: 'app-fridge',
-  imports: [FormsModule, RouterLink, IconPipe],
+  imports: [FormsModule, RouterLink, IconPipe, ChainSteps],
   template: `
     <div class="head">
       <h2>Frigo</h2>
@@ -31,6 +32,7 @@ const PRESETS = [
         <a class="btn small" routerLink="/admin/arrivages">Nouvel arrivage</a>
       </div>
     </div>
+    <app-chain-steps current="frigo" />
     <p class="hint">Cliquez sur la porte d'un frigo pour voir ce qu'il contient.</p>
 
     @if (error()) { <div class="msg">{{ error() }}</div> }

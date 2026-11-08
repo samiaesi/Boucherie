@@ -15,6 +15,7 @@ import { db, firebaseConfig } from '../core/firebase';
 import { Invoice, buildInvoice, counterAfterDelete, invoiceNumber } from '../core/invoice';
 import { Company, PaymentMode, ProLine, amountInWords, computePro } from '../core/pro-invoice';
 import { Lot, LotInput, lotNumber } from '../core/lots';
+import { ExitInput, StockExit, availableQty, exitLabel, exitNumber, splitRegister } from '../core/stock-chain';
 import { DEFAULT_ORDERING, OrderingRules } from '../core/ordering';
 import { Auth } from './auth';
 import { Role } from './roles';
@@ -561,9 +562,67 @@ export class AdminData {
     this.audit('fridge.updated', 'Frigo', changes.join(' | '));
   }
 
-  async listLots(): Promise<Lot[]> {
+  /** Le registre contient les arrivages et les sorties de stock. */
+  async listRegister() {
     const snap = await getDocs(query(collection(db, 'lots'), orderBy('createdAt', 'desc')));
-    return snap.docs.map(d => ({ ...d.data(), id: d.id }) as Lot);
+    return splitRegister(snap.docs.map(d => ({ ...d.data(), id: d.id }) as Lot | StockExit));
+  }
+
+  async listLots(): Promise<Lot[]> {
+    return (await this.listRegister()).lots;
+  }
+
+  /** Retire du stock ce qui ne sera pas vendu (perte, os, retour…), avec un matricule de sortie. */
+  async addExit(input: ExitInput): Promise<string> {
+    const year = Number(input.date.slice(0, 4));
+    const counterRef = doc(db, 'settings', 'lotCounter');
+    const exitRef = doc(collection(db, 'lots'));
+    const created = await this.guarded(runTransaction(db, async tx => {
+      const counter = await tx.get(counterRef);
+      const fridge = await this.fridgeInTx(tx);
+      const product = input.target.kind === 'product' ? await this.productInTx(tx, input.target.id) : undefined;
+      const left = availableQty(input.target, fridge, product ? [product] : [], input.origin);
+      if (input.qty > left + 0.001) {
+        throw new StockError(`Il ne reste que ${roundStock(left)} ${input.target.unit} de ${input.target.name}${input.origin ? ` (${input.origin})` : ''} : impossible d'en retirer ${input.qty}.`);
+      }
+      const key = `S${year}`;
+      const next = (counter.data()?.[key] ?? 0) + 1;
+      const matricule = exitNumber(year, next);
+      tx.set(counterRef, { [key]: next }, { merge: true });
+      tx.set(exitRef, { ...input, kind: 'sortie', matricule, createdAt: serverTimestamp() });
+      this.moveLot(tx, this.asLot(input), -input.qty, fridge, product);
+      return matricule;
+    }));
+    this.audit('exit.created', created, `${input.target.name} · ${input.qty} ${input.target.unit}${input.origin ? ` · ${input.origin}` : ''} · ${exitLabel(input.reason)}${input.lot ? ` · ${input.lot}` : ''}`);
+    return created;
+  }
+
+  /** Une sortie annulée remet la quantité en stock et reste dans l'historique. */
+  async cancelExit(exit: StockExit) {
+    const exitRef = doc(db, 'lots', exit.id);
+    await this.guarded(runTransaction(db, async tx => {
+      const snap = await tx.get(exitRef);
+      if (snap.data()?.['cancelled']) throw new Error('Cette sortie est déjà annulée.');
+      const fridge = await this.fridgeInTx(tx);
+      const product = exit.target.kind === 'product' ? await this.productInTx(tx, exit.target.id) : undefined;
+      this.moveLot(tx, this.asLot(exit), exit.qty, fridge, product);
+      tx.update(exitRef, { cancelled: true });
+    }));
+    this.audit('exit.cancelled', exit.matricule, `${exit.target.name} · ${exit.qty} ${exit.target.unit} remis en stock`);
+  }
+
+  private asLot(e: ExitInput): LotInput {
+    return { target: e.target, qty: e.qty, arrivalDate: e.date, supplierName: '', supplierRef: '', note: e.note, ...(e.origin ? { origin: e.origin } : {}) };
+  }
+
+  private async productInTx(tx: Transaction, id: string) {
+    const snap = await tx.get(doc(db, 'products', id));
+    return snap.exists() ? ({ ...snap.data(), id: snap.id } as Product) : undefined;
+  }
+
+  /** Met un produit en rayon (visible sur le site) ou l'en retire. */
+  async setOnShelf(p: Product, on: boolean) {
+    await this.update('products', p.id, { available: on });
   }
 
   private async fridgeInTx(tx: Transaction) {
