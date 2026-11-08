@@ -3,10 +3,11 @@ import { RouterLink } from '@angular/router';
 
 export const CHAIN_STEPS = [
   { path: 'arrivages', label: 'Arrivage', hint: 'La marchandise entre' },
-  { path: 'frigo', label: 'Frigo', hint: 'Elle est stockée' },
-  { path: 'chaine', label: 'Rayons', hint: 'Elle est mise en vente' },
+  { path: 'frigo', label: 'Frigo', hint: 'Les bêtes entières' },
+  { path: 'decoupe', label: 'Découpe', hint: 'Bêtes → coupes' },
+  { path: 'chaine', label: 'Rayons', hint: 'Mise en vente' },
   { path: 'stock', label: 'Stock', hint: 'Les ventes la retirent' },
-  { path: 'destockage', label: 'Déstockage', hint: 'Pertes, os, retours' },
+  { path: 'destockage', label: 'Déstockage', hint: 'Pertes, retours' },
 ] as const;
 
 /** Bandeau commun aux pages du stock : on voit où l'on est dans la chaîne. */
@@ -23,7 +24,7 @@ export const CHAIN_STEPS = [
     </nav>
   `,
   styles: `
-    .chain { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin: 0 0 18px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
+    .chain { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; margin: 0 0 18px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
     a { position: relative; display: flex; align-items: center; gap: 9px; padding: 9px 12px 9px 10px; color: inherit; text-decoration: none; border-radius: 10px; }
     a + a::before { content: ""; position: absolute; inset-inline-start: -6px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-top: 2px solid #cfc6bc; border-inline-end: 2px solid #cfc6bc; transform: rotate(45deg); }
     a:hover { background: var(--bg); }
@@ -35,7 +36,7 @@ export const CHAIN_STEPS = [
     small { display: block; color: var(--muted); font-size: .74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     a.here small { color: rgba(255, 255, 255, .8); }
     @media (max-width: 800px) {
-      .chain { grid-template-columns: repeat(5, auto); overflow-x: auto; }
+      .chain { grid-template-columns: repeat(6, auto); overflow-x: auto; }
       small { display: none; }
     }
   `,

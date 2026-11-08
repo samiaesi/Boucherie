@@ -22,10 +22,16 @@ describe('stockLines', () => {
     expect(lines.map(l => l.product.id)).toEqual(['d', 'c', 'b', 'a']);
   });
 
-  it('suit la réserve du frigo pour une coupe reliée', () => {
-    const fridge = [{ id: 'moutons', name: 'Moutons', tracked: true, kg: 40, min: 100, max: 500, kgEach: 20 }] as FridgeItem[];
-    const line = stockLines([product({ trackStock: false, stock: 0, source: 'moutons' })], fridge)[0];
+  it('suit la réserve du frigo pour le mouton entier', () => {
+    const fridge = [{ id: 'moutons', name: 'Moutons', tracked: true, kg: 40, min: 100, max: 500, kgEach: 20, whole: 2 }] as FridgeItem[];
+    const line = stockLines([product({ id: 'mouton-entier', trackStock: false, stock: 0, source: 'moutons' })], fridge)[0];
     expect([line.state, line.qty, line.pool?.name, line.reorder, line.fill]).toEqual(['low', 40, 'Moutons', 460, 8]);
+  });
+
+  it('une coupe garde son propre stock, suivi dès que la réserve l\'est', () => {
+    const fridge = [{ id: 'moutons', name: 'Moutons', tracked: true, kg: 40, min: 100, max: 500, kgEach: 20, whole: 2 }] as FridgeItem[];
+    const line = stockLines([product({ id: 'gigot', trackStock: false, stock: 6, source: 'moutons', stockAlert: 2 })], fridge)[0];
+    expect([line.state, line.qty, line.pool]).toEqual(['ok', 6, undefined]);
   });
 
   it('remplit la jauge selon le maximum, sinon le double du minimum', () => {
@@ -54,8 +60,8 @@ describe('fridgeLine', () => {
   });
 
   it('remplit la jauge et compte les bêtes', () => {
-    const line = fridgeLine(item({}));
-    expect([line.fill, line.beasts]).toEqual([50, 2.5]);
+    const line = fridgeLine(item({ whole: 2 }));
+    expect([line.fill, line.beasts]).toEqual([50, 2]);
   });
 });
 

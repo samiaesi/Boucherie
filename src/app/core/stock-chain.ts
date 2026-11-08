@@ -1,4 +1,4 @@
-import { Category, FridgeItem, Order, Product, applyPools, isCabinet, isLowStock, isOutOfStock, itemQty, roundStock } from './data';
+import { Category, FridgeItem, Order, Product, applyPools, carcassOf, isCabinet, isLowStock, isOutOfStock, itemQty, reserveOf, roundStock, wholeLeft } from './data';
 import { Lot, LotTarget } from './lots';
 
 /** Pourquoi la marchandise sort du stock sans être vendue */
@@ -30,6 +30,8 @@ export interface StockExit {
   origin?: string;
   /** Matricule de l'arrivage concerné, pour la traçabilité */
   lot?: string;
+  /** Bêtes entières retirées (réserve du frigo) */
+  beasts?: number;
   note: string;
   cancelled?: boolean;
 }
@@ -38,11 +40,58 @@ export type ExitInput = Omit<StockExit, 'id' | 'kind' | 'matricule' | 'cancelled
 
 export const exitNumber = (year: number, n: number) => `SOR-${year}-${String(n).padStart(4, '0')}`;
 
-/** Le registre mélange arrivages et sorties : on les sépare à la lecture. */
-export function splitRegister(docs: (Lot | StockExit)[]) {
-  const exits = docs.filter((d): d is StockExit => (d as StockExit).kind === 'sortie');
-  const lots = docs.filter((d): d is Lot => (d as StockExit).kind !== 'sortie');
-  return { lots, exits };
+/** Découpe de bêtes entières en coupes, rangée elle aussi dans le registre */
+export interface CutRecord {
+  id: string;
+  kind: 'decoupe';
+  matricule: string;
+  reserve: { id: string; name: string };
+  /** Pays des bêtes découpées */
+  origin?: string;
+  /** Bêtes entières découpées (0,5 = une demi-bête) */
+  beasts: number;
+  /** Poids des carcasses découpées */
+  kg: number;
+  /** Ce qui en sort, coupe par coupe */
+  cuts: { id: string; name: string; kg: number }[];
+  /** Os et déchets : poids des carcasses moins les coupes */
+  waste: number;
+  /** AAAA-MM-JJ */
+  date: string;
+  note: string;
+  cancelled?: boolean;
+}
+
+export type CutInput = Omit<CutRecord, 'id' | 'kind' | 'matricule' | 'cancelled' | 'waste'>;
+
+export const cutNumber = (year: number, n: number) => `DEC-${year}-${String(n).padStart(4, '0')}`;
+
+/** Os et déchets d'une découpe */
+export const cutWaste = (kg: number, cuts: { kg: number }[]) => roundStock(kg - cuts.reduce((sum, c) => sum + (Number(c.kg) || 0), 0));
+
+type RegisterDoc = Lot | StockExit | CutRecord;
+
+/** Le registre mélange arrivages, découpes et sorties : on les sépare à la lecture. */
+export function splitRegister(docs: RegisterDoc[]) {
+  const kind = (d: RegisterDoc) => (d as { kind?: string }).kind;
+  const exits = docs.filter((d): d is StockExit => kind(d) === 'sortie');
+  const cuts = docs.filter((d): d is CutRecord => kind(d) === 'decoupe');
+  const lots = docs.filter((d): d is Lot => !kind(d));
+  return { lots, exits, cuts };
+}
+
+/** Coupes d'une réserve : les produits de cet animal qui ne se vendent pas en bête entière */
+export const cutsOf = (reserve: FridgeItem, products: Product[]) =>
+  products.filter(p => reserveOf(p, [reserve])?.id === reserve.id && !carcassOf(p));
+
+/** Pays où il reste des bêtes entières à découper */
+export const reserveCountries = (f: FridgeItem) => Object.keys(f.wholeBy ?? f.countries ?? {});
+
+/** Poids moyen d'une bête entière restante, pour un pays quand il est séparé */
+export function beastWeight(f: FridgeItem, country?: string) {
+  const beasts = wholeLeft(f, country);
+  const kg = country && f.countries ? f.countries[country] ?? 0 : f.kg;
+  return beasts > 0 ? roundStock(kg / beasts) : f.kgEach || 0;
 }
 
 /** Quantité disponible là où l'on veut retirer (réserve, pays, ou produit). */
@@ -84,7 +133,7 @@ const zero = (): Amount => ({ kg: 0, pieces: 0 });
 
 /** Les chiffres de chaque étape, sur les derniers jours (aujourd'hui compris). */
 export function chainSummary(input: {
-  lots: Lot[]; exits: StockExit[]; fridge: FridgeItem[]; products: Product[]; orders: Order[]; today: string; days?: number;
+  lots: Lot[]; exits: StockExit[]; cuts?: CutRecord[]; fridge: FridgeItem[]; products: Product[]; orders: Order[]; today: string; days?: number;
 }) {
   const from = shiftDay(input.today, -((input.days ?? 7) - 1));
   const inRange = (d: string) => d >= from && d <= input.today;
@@ -96,10 +145,16 @@ export function chainSummary(input: {
     .flatMap(o => o.items ?? []).reduce((a, i) => add(a, itemQty(i), i.unit === 'kg' ? 'kg' : 'pièce'), zero());
   const byReason = new Map<ExitReason, Amount>();
   for (const e of exits) byReason.set(e.reason, add(byReason.get(e.reason) ?? zero(), e.qty, e.target.unit));
+  const cuts = (input.cuts ?? []).filter(c => !c.cancelled && inRange(c.date));
+  // Les os d'une découpe sont une sortie sans vente, comptée avec les autres
+  const waste = roundStock(cuts.reduce((sum, c) => sum + Math.max(0, c.waste), 0));
+  if (waste) byReason.set('decoupe', add(byReason.get('decoupe') ?? zero(), waste, 'kg'));
+  const exitTotal = [...byReason.values()].reduce((a, r) => ({ kg: roundStock(a.kg + r.kg), pieces: roundStock(a.pieces + r.pieces) }), zero());
   return {
     from,
     arrivals: { count: lots.length, ...lots.reduce((a, l) => add(a, l.qty, l.target.unit), zero()) },
     fridge: {
+      beasts: roundStock(reserves.reduce((sum, f) => sum + (f.whole ?? 0), 0)),
       kg: roundStock(reserves.reduce((sum, f) => sum + f.kg, 0)),
       alerts: reserves.filter(f => f.tracked && (f.kg <= 0 || (f.min && f.kg <= f.min))).length,
       count: reserves.length,
@@ -109,8 +164,13 @@ export function chainSummary(input: {
       toFill: shelves.filter(s => s.state === 'remplir' || s.state === 'vide').length,
       off: shelves.filter(s => s.state === 'retire').length,
     },
+    cuts: {
+      count: cuts.length,
+      beasts: roundStock(cuts.reduce((sum, c) => sum + c.beasts, 0)),
+      kg: roundStock(cuts.reduce((sum, c) => sum + c.kg - Math.max(0, c.waste), 0)),
+    },
     sold,
-    exits: { count: exits.length, ...exits.reduce((a, e) => add(a, e.qty, e.target.unit), zero()), byReason: [...byReason].map(([reason, amount]) => ({ reason, ...amount })) },
+    exits: { count: exits.length + cuts.filter(c => c.waste > 0).length, ...exitTotal, byReason: [...byReason].map(([reason, amount]) => ({ reason, ...amount })) },
   };
 }
 

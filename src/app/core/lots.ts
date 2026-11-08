@@ -1,4 +1,4 @@
-import { FridgeItem, Product, isCabinet, poolOf, stockUnit } from './data';
+import { FridgeItem, Product, applyPools, isCabinet, poolOf, stockUnit } from './data';
 
 /** Ce qui reçoit l'arrivage : une réserve du frigo ou un produit suivi seul */
 export interface LotTarget {
@@ -21,11 +21,20 @@ export interface Lot {
   note: string;
   /** Pays d'origine de cet arrivage */
   origin?: string;
+  /** Nombre de bêtes entières reçues (réserve du frigo) */
+  beasts?: number;
+  /** Poids de chaque bête, quand on les a pesées une à une */
+  weights?: number[];
   /** Un arrivage annulé reste dans l'historique et garde son matricule */
   cancelled?: boolean;
 }
 
 export type LotInput = Omit<Lot, 'id' | 'matricule' | 'cancelled'>;
+
+/** « 21 23,5 22 » ou « 21; 23.5; 22 » → [21, 23.5, 22] : une virgule collée entre deux chiffres est une décimale. */
+export function parseWeights(text: string) {
+  return text.replace(/,\s+/g, ' ').split(/[\s;+]+/).map(t => Number(t.replace(',', '.'))).filter(n => n > 0);
+}
 
 export const lotNumber = (year: number, n: number) => `LOT-${year}-${String(n).padStart(4, '0')}`;
 
@@ -33,7 +42,7 @@ export const lotNumber = (year: number, n: number) => `LOT-${year}-${String(n).p
 export function lotTargets(products: Product[], fridge: FridgeItem[]): LotTarget[] {
   return [
     ...fridge.filter(f => !isCabinet(f)).map(f => ({ kind: 'fridge' as const, id: f.id, name: f.name, unit: 'kg' })),
-    ...products.filter(p => p.trackStock && !poolOf(p, fridge))
+    ...applyPools(products, fridge).filter(p => p.trackStock && !poolOf(p, fridge))
       .map(p => ({ kind: 'product' as const, id: p.id, name: p.name_fr, unit: stockUnit(p) })),
   ];
 }

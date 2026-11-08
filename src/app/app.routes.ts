@@ -58,6 +58,7 @@ export const routes: Routes = [
       page('frigo', () => import('./admin/fridge').then(m => m.Fridge)),
       page('chaine', () => import('./admin/chain').then(m => m.Chain)),
       page('destockage', () => import('./admin/destock').then(m => m.Destock)),
+      page('decoupe', () => import('./admin/cutting').then(m => m.Cutting)),
       page('rayons', () => import('./admin/categories').then(m => m.Categories)),
       page('produits', () => import('./admin/products').then(m => m.Products)),
       page('reservations', () => import('./admin/reservations').then(m => m.Reservations)),

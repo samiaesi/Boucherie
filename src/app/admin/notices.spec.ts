@@ -97,9 +97,13 @@ describe('buildNotices', () => {
       expect(ids({ fridge: [{ ...sheep, tracked: false, kg: 0 }] })).toEqual([]);
     });
 
-    it('ne double pas l\'alerte sur chaque coupe de la réserve', () => {
-      const old = { ...gigot, trackStock: true, stock: 0 };
-      expect(ids({ products: [old], fridge: [{ ...sheep, kg: 200 }] })).toEqual([]);
+    it('ne double pas l\'alerte sur le mouton entier, suivi par la réserve', () => {
+      const whole = { ...gigot, id: 'mouton-entier', trackStock: true, stock: 0 };
+      expect(ids({ products: [whole], fridge: [{ ...sheep, kg: 200 }] })).toEqual([]);
+    });
+
+    it('alerte quand une coupe découpée est épuisée', () => {
+      expect(ids({ products: [{ ...gigot, stock: 0 }], fridge: [{ ...sheep, kg: 200 }] })).toEqual(['stock-out-gigot-agneau']);
     });
   });
 

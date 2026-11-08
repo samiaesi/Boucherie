@@ -1,5 +1,5 @@
 import { FridgeItem, Product } from './data';
-import { Lot, lotNumber, lotTargets, searchLots, supplierNames } from './lots';
+import { Lot, lotNumber, lotTargets, searchLots, supplierNames, parseWeights } from './lots';
 
 const lot = (over: Partial<Lot>): Lot => ({
   id: '1', matricule: 'LOT-2026-0001', target: { kind: 'fridge', id: 'moutons', name: 'Moutons', unit: 'kg' },
@@ -16,13 +16,20 @@ describe('Matricule', () => {
 describe('lotTargets', () => {
   const fridge = [{ id: 'moutons', name: 'Moutons', tracked: true, kg: 0, min: 0, max: 0, kgEach: 0 }] as FridgeItem[];
 
-  it('propose les réserves et les produits suivis seuls, pas les coupes liées à une réserve', () => {
+  it('propose les réserves, les coupes et les produits suivis seuls, pas le mouton entier', () => {
     const products = [
       { id: 'merlan', name_fr: 'Merlan', unit: 'kg', trackStock: true, source: 'none' },
-      { id: 'gigot', name_fr: 'Gigot', unit: 'kg', trackStock: true, source: 'moutons' },
+      { id: 'gigot', name_fr: 'Gigot', unit: 'kg', trackStock: false, source: 'moutons' },
+      { id: 'mouton-entier', name_fr: 'Mouton entier', unit: 'kg', source: 'moutons' },
       { id: 'sauce', name_fr: 'Sauce', unit: 'kg', trackStock: false, source: 'none' },
     ] as Product[];
-    expect(lotTargets(products, fridge).map(t => [t.kind, t.id])).toEqual([['fridge', 'moutons'], ['product', 'merlan']]);
+    expect(lotTargets(products, fridge).map(t => [t.kind, t.id])).toEqual([['fridge', 'moutons'], ['product', 'merlan'], ['product', 'gigot']]);
+  });
+
+  it('lit les poids tapés un par un', () => {
+    expect(parseWeights('21 23,5 24 22')).toEqual([21, 23.5, 24, 22]);
+    expect(parseWeights('21, 23, 24;22')).toEqual([21, 23, 24, 22]);
+    expect(parseWeights('')).toEqual([]);
   });
 });
 

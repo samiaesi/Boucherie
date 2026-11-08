@@ -2,7 +2,7 @@ import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } fr
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
-import { COUNTRIES, Category, CustomChoice, DEFAULT_CATEGORIES, DEFAULT_CUSTOM, DEFAULT_PRODUCTS, ICONS, Product, ProductOrigin, formatNumber, isCabinet, originLabel, originsOf } from '../core/data';
+import { COUNTRIES, Category, CustomChoice, DEFAULT_CATEGORIES, DEFAULT_CUSTOM, DEFAULT_PRODUCTS, ICONS, Product, ProductOrigin, carcassOf, formatNumber, isCabinet, originLabel, originsOf } from '../core/data';
 import { productRef, referenceTakenBy, searchProducts } from '../core/product-search';
 import { MAX_PROMO } from '../core/promo';
 import { customReady } from '../core/special-custom';
@@ -109,6 +109,15 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
               <option value="none">Stock propre au produit</option>
             </select>
           </label>
+          @if (draft.unit === 'kg' && draft.source !== 'none') {
+            <label>Vendu comme
+              <select name="carcass" [ngModel]="draft.carcass ?? defaultCarcass()" (ngModelChange)="draft.carcass = $event">
+                <option value="cut">Coupe : stock rempli par la découpe</option>
+                <option value="whole">Bête entière</option>
+                <option value="half">Demi-bête</option>
+              </select>
+            </label>
+          }
           <label>Rayon
             <select name="category" [(ngModel)]="draft.category">
               @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name_fr }}</option> }
@@ -269,6 +278,11 @@ export class Products implements OnInit {
     return this.icons[name] ?? this.icons['boeuf'];
   }
 
+  /** Ce que le catalogue prévoit pour ce produit, avant tout choix */
+  protected defaultCarcass() {
+    return carcassOf({ id: this.editingId ?? '', carcass: undefined }) ?? 'cut';
+  }
+
   /** « / kg » ou « / pièce », selon la vente du produit */
   protected perUnit() {
     return this.draft.unit === 'piece' ? '/ pièce' : '/ kg';
@@ -363,6 +377,7 @@ export class Products implements OnInit {
     }
     if (!data.source) delete data.source;
     if (!data.fat) delete data.fat;
+    if (!data.carcass || data.unit !== 'kg' || data.source === 'none') delete data.carcass;
     if (!data.special) delete data.special;
     if (data.special && d.custom) {
       const choices = (list: CustomChoice[]) => list.map(c => ({ fr: c.fr.trim(), ar: c.ar.trim(), price: Number(c.price) || 0 }));

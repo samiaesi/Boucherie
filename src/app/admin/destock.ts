@@ -1,14 +1,14 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
-import { roundStock } from '../core/data';
+import { roundStock, wholeLeft } from '../core/data';
 import { Lot, LotTarget, lotTargets } from '../core/lots';
 import { localDay } from '../core/stats';
-import { EXIT_REASONS, ExitReason, StockExit, availableQty, exitLabel, searchExits, targetCountries } from '../core/stock-chain';
+import { CutRecord, EXIT_REASONS, ExitReason, StockExit, availableQty, beastWeight, exitLabel, searchExits, targetCountries } from '../core/stock-chain';
 import { AdminData } from './admin-data';
 import { ChainSteps } from './chain-steps';
 
 const blank = () => ({
-  target: null as LotTarget | null, qty: null as number | null, date: localDay(new Date()), reason: 'perte' as ExitReason, origin: '', lot: '', note: '',
+  target: null as LotTarget | null, qty: null as number | null, beasts: null as number | null, date: localDay(new Date()), reason: 'perte' as ExitReason, origin: '', lot: '', note: '',
 });
 
 @Component({
@@ -30,7 +30,7 @@ const blank = () => ({
       </div>
       <div class="grid2">
         <label>Article retiré
-          <select name="target" required [(ngModel)]="draft.target" (ngModelChange)="draft.origin = ''">
+          <select name="target" required [(ngModel)]="draft.target" (ngModelChange)="draft.origin = ''; draft.beasts = null">
             <option [ngValue]="null">Choisir…</option>
             @for (t of targets(); track t.kind + t.id) { <option [ngValue]="t">{{ t.name }} ({{ t.unit }})</option> }
           </select>
@@ -41,6 +41,12 @@ const blank = () => ({
               <option value="">Choisir…</option>
               @for (c of countries(); track c) { <option [value]="c">{{ c }}</option> }
             </select>
+          </label>
+        }
+        @if (draft.target?.kind === 'fridge') {
+          <label>Bêtes entières retirées
+            <input name="beasts" type="number" min="0.5" step="0.5" required [(ngModel)]="draft.beasts" (ngModelChange)="suggestKg()">
+            <small class="left">Il reste {{ beastsLeft() }} bête(s) entière(s). Pour une coupe abîmée, choisissez la coupe dans la liste.</small>
           </label>
         }
         <label>Quantité retirée {{ draft.target ? '(' + draft.target.unit + ')' : '' }}
@@ -74,7 +80,7 @@ const blank = () => ({
         <div class="item" [class.off]="e.cancelled">
           <div class="info">
             <b>{{ e.matricule }} · {{ label(e.reason) }} @if (e.cancelled) { <span class="pill alert">Annulée</span> }</b>
-            <small>{{ e.target.name }} · −{{ e.qty }} {{ e.target.unit }}{{ e.origin ? ' · ' + e.origin : '' }} · le {{ e.date }}</small>
+            <small>{{ e.target.name }} · {{ e.beasts ? '−' + e.beasts + ' bête(s) · ' : '' }}−{{ e.qty }} {{ e.target.unit }}{{ e.origin ? ' · ' + e.origin : '' }} · le {{ e.date }}</small>
             @if (e.lot || e.note) { <small>{{ e.lot ? 'Arrivage ' + e.lot : '' }}{{ e.lot && e.note ? ' · ' : '' }}{{ e.note }}</small> }
           </div>
           @if (!e.cancelled) { <button class="btn light small" (click)="cancel(e)" [disabled]="busy()">Annuler</button> }
@@ -107,6 +113,7 @@ export class Destock implements OnInit {
   protected readonly label = exitLabel;
   protected readonly lots = signal<Lot[]>([]);
   protected readonly exits = signal<StockExit[]>([]);
+  protected readonly cutWastes = signal<CutRecord[]>([]);
   protected readonly loaded = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -118,6 +125,22 @@ export class Destock implements OnInit {
 
   protected countries() {
     return targetCountries(this.draft.target, this.data.fridge(), this.data.products());
+  }
+
+  private reserve() {
+    const t = this.draft.target;
+    return t?.kind === 'fridge' ? this.data.fridge().find(f => f.id === t.id) : undefined;
+  }
+
+  protected beastsLeft() {
+    const r = this.reserve();
+    return r ? wholeLeft(r, this.draft.origin && r.wholeBy ? this.draft.origin : undefined) : 0;
+  }
+
+  protected suggestKg() {
+    const r = this.reserve();
+    const n = Number(this.draft.beasts) || 0;
+    if (r && n) this.draft.qty = roundStock(n * beastWeight(r, this.draft.origin && r.wholeBy ? this.draft.origin : undefined));
   }
 
   protected left() {
@@ -134,6 +157,12 @@ export class Destock implements OnInit {
   protected readonly totals = computed(() => {
     const month = localDay(new Date()).slice(0, 7);
     const sums = new Map<ExitReason, { kg: number; pieces: number }>();
+    for (const c of this.cutWastes()) {
+      if (c.cancelled || !c.waste || !c.date.startsWith(month)) continue;
+      const s = sums.get('decoupe') ?? { kg: 0, pieces: 0 };
+      s.kg = roundStock(s.kg + c.waste);
+      sums.set('decoupe', s);
+    }
     for (const e of this.exits()) {
       if (e.cancelled || !e.date.startsWith(month)) continue;
       const s = sums.get(e.reason) ?? { kg: 0, pieces: 0 };
@@ -155,7 +184,8 @@ export class Destock implements OnInit {
   }
 
   private async reload() {
-    const { lots, exits } = await this.data.listRegister();
+    const { lots, exits, cuts } = await this.data.listRegister();
+    this.cutWastes.set(cuts);
     this.lots.set(lots);
     this.exits.set(exits);
   }
@@ -163,6 +193,11 @@ export class Destock implements OnInit {
   protected async save(form: NgForm) {
     const { target, qty, date, reason, origin, lot, note } = this.draft;
     if (!target || !qty) return;
+    const beasts = target.kind === 'fridge' ? Number(this.draft.beasts) || 0 : 0;
+    if (target.kind === 'fridge' && !beasts) {
+      this.error.set('Indiquez combien de bêtes entières sortent.');
+      return;
+    }
     if (this.countries().length && !origin) {
       this.error.set('Choisissez le pays du stock retiré.');
       return;
@@ -171,7 +206,7 @@ export class Destock implements OnInit {
     this.error.set('');
     try {
       const matricule = await this.data.addExit({
-        target, qty: Number(qty), date, reason, note: note.trim(),
+        target, qty: Number(qty), date, reason, note: note.trim(), ...(beasts ? { beasts } : {}),
         ...(origin ? { origin } : {}), ...(lot.trim() ? { lot: lot.trim().toUpperCase() } : {}),
       });
       this.data.notify(`Sortie enregistrée : ${matricule}`);

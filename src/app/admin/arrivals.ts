@@ -1,13 +1,14 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { COUNTRIES } from '../core/data';
-import { Lot, LotTarget, lotTargets, searchLots, supplierNames } from '../core/lots';
+import { roundStock } from '../core/data';
+import { Lot, LotTarget, lotTargets, parseWeights, searchLots, supplierNames } from '../core/lots';
 import { localDay } from '../core/stats';
 import { AdminData } from './admin-data';
 import { ChainSteps } from './chain-steps';
 
 const blank = () => ({
-  target: null as LotTarget | null, qty: null as number | null, arrivalDate: localDay(new Date()), supplierName: '', supplierRef: '', note: '', origin: '',
+  target: null as LotTarget | null, qty: null as number | null, beasts: null as number | null, weights: '', arrivalDate: localDay(new Date()), supplierName: '', supplierRef: '', note: '', origin: '',
 });
 
 @Component({
@@ -26,8 +27,18 @@ const blank = () => ({
             @for (t of targets(); track t.kind + t.id) { <option [ngValue]="t">{{ t.name }} ({{ t.unit }})</option> }
           </select>
         </label>
-        <label>Quantité reçue {{ draft.target ? '(' + draft.target.unit + ')' : '' }}
-          <input name="qty" type="number" min="0.01" step="0.01" required [(ngModel)]="draft.qty">
+        @if (draft.target?.kind === 'fridge') {
+          <label>Nombre de bêtes reçues
+            <input name="beasts" type="number" min="1" step="1" required [disabled]="weighed().length > 0" [ngModel]="weighed().length || draft.beasts" (ngModelChange)="draft.beasts = $event">
+          </label>
+          <label class="wide">Poids de chaque bête en kg (facultatif)
+            <input name="weights" placeholder="21 23,5 24 22" autocomplete="off" [(ngModel)]="draft.weights">
+            <small class="why">Séparez les poids par un espace. Le site compte les bêtes et fait la somme tout seul.</small>
+          </label>
+        }
+        <label>Poids total reçu {{ draft.target ? '(' + draft.target.unit + ')' : '' }}
+          <input name="qty" type="number" min="0.01" step="0.01" required [disabled]="weighed().length > 0" [ngModel]="weighed().length ? weighedTotal() : draft.qty" (ngModelChange)="draft.qty = $event">
+          @if (draft.target?.kind === 'fridge' && average(); as avg) { <small class="why">Moyenne : {{ avg }} kg par bête</small> }
         </label>
         <label>Date d'arrivée<input name="date" type="date" required [(ngModel)]="draft.arrivalDate"></label>
         <label>Nom du fournisseur
@@ -57,7 +68,8 @@ const blank = () => ({
         <div class="item" [class.off]="l.cancelled">
           <div class="info">
             <b>{{ l.matricule }} @if (l.cancelled) { <span class="pill alert">Annulé</span> }</b>
-            <small>{{ l.target.name }} · {{ l.qty }} {{ l.target.unit }}{{ l.origin ? ' · ' + l.origin : '' }} · arrivé le {{ l.arrivalDate }}</small>
+            <small>{{ l.target.name }} · {{ l.beasts ? l.beasts + ' bête(s) · ' : '' }}{{ l.qty }} {{ l.target.unit }}{{ l.beasts ? ' (moyenne ' + avgOf(l) + ' kg)' : '' }}{{ l.origin ? ' · ' + l.origin : '' }} · arrivé le {{ l.arrivalDate }}</small>
+            @if (l.weights?.length) { <small>Poids : {{ l.weights.join(' · ') }} kg</small> }
             <small>{{ l.supplierName }} · réf. {{ l.supplierRef }}{{ l.note ? ' · ' + l.note : '' }}</small>
           </div>
           @if (!l.cancelled) { <button class="btn danger small" (click)="cancel(l)" [disabled]="busy()">Annuler</button> }
@@ -74,6 +86,8 @@ const blank = () => ({
     .list-head input { max-width: 300px; }
     .info small { display: block; }
     .why { color: var(--muted); font-size: .78rem; font-weight: 400; }
+    .card-box .grid2 > label { align-content: start; }
+    .wide { grid-column: 1 / -1; }
   `,
 })
 export class Arrivals implements OnInit {
@@ -90,6 +104,25 @@ export class Arrivals implements OnInit {
   protected readonly suppliers = computed(() => supplierNames(this.lots()));
   protected readonly shown = computed(() => searchLots(this.lots(), this.search()));
 
+  /** Poids tapés un par un */
+  protected weighed() {
+    return this.draft.target?.kind === 'fridge' ? parseWeights(this.draft.weights) : [];
+  }
+
+  protected weighedTotal() {
+    return roundStock(this.weighed().reduce((sum, w) => sum + w, 0));
+  }
+
+  protected average() {
+    const n = this.weighed().length || Number(this.draft.beasts) || 0;
+    const total = this.weighed().length ? this.weighedTotal() : Number(this.draft.qty) || 0;
+    return n && total ? roundStock(total / n) : 0;
+  }
+
+  protected avgOf(l: Lot) {
+    return l.beasts ? roundStock(l.qty / l.beasts) : 0;
+  }
+
   async ngOnInit() {
     try {
       await this.reload();
@@ -104,8 +137,15 @@ export class Arrivals implements OnInit {
   }
 
   protected async save(form: NgForm) {
-    const { target, qty, arrivalDate, supplierName, supplierRef, note, origin } = this.draft;
+    const { target, arrivalDate, supplierName, supplierRef, note, origin } = this.draft;
+    const weights = this.weighed();
+    const qty = weights.length ? this.weighedTotal() : Number(this.draft.qty) || 0;
+    const beasts = target?.kind === 'fridge' ? weights.length || Math.round(Number(this.draft.beasts) || 0) : 0;
     if (!target || !qty) return;
+    if (target.kind === 'fridge' && !beasts) {
+      this.error.set('Indiquez le nombre de bêtes reçues.');
+      return;
+    }
     if (!origin.trim()) {
       this.error.set('Indiquez le pays d\'origine de cet arrivage.');
       return;
@@ -114,7 +154,7 @@ export class Arrivals implements OnInit {
     this.error.set('');
     try {
       const matricule = await this.data.addLot({
-        target, qty: Number(qty), arrivalDate, supplierName: supplierName.trim(), supplierRef: supplierRef.trim(), note: note.trim(), ...(origin.trim() ? { origin: origin.trim() } : {}),
+        target, qty, arrivalDate, ...(beasts ? { beasts } : {}), ...(weights.length ? { weights } : {}), supplierName: supplierName.trim(), supplierRef: supplierRef.trim(), note: note.trim(), ...(origin.trim() ? { origin: origin.trim() } : {}),
       });
       this.data.notify(`Arrivage enregistré : ${matricule}`);
       this.draft = blank();
@@ -128,7 +168,7 @@ export class Arrivals implements OnInit {
   }
 
   protected async cancel(l: Lot) {
-    if (!confirm(`Annuler ${l.matricule} ? ${l.qty} ${l.target.unit} seront retirés du stock.`)) return;
+    if (!confirm(`Annuler ${l.matricule} ? ${l.beasts ? l.beasts + ' bête(s), ' : ''}${l.qty} ${l.target.unit} seront retirés du stock.`)) return;
     this.busy.set(true);
     this.error.set('');
     try {

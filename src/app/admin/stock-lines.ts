@@ -1,4 +1,4 @@
-import { FridgeItem, Product, animals, applyPools, isCabinet, isLowStock, isOutOfStock, isOverStock, poolOf, reorderQty, roundStock, stockUnit } from '../core/data';
+import { FridgeItem, Product, applyPools, carcassOf, isCabinet, isLowStock, isOutOfStock, isOverStock, poolOf, reorderQty, reserveOf, roundStock, stockUnit } from '../core/data';
 
 export type StockState = 'out' | 'low' | 'over' | 'ok' | 'untracked';
 
@@ -71,9 +71,14 @@ export function fridgeContents(f: FridgeItem, products: Product[]) {
     }));
   }
   const reserve = [{ ...f, tracked: true }];
-  return products.filter(p => poolOf(p, reserve)).map(p => ({
-    product: p, state: null as StockState | null, note: '',
-  }));
+  return applyPools(products.filter(p => reserveOf(p, reserve)), reserve).map(p => {
+    const carcass = carcassOf(p);
+    return {
+      product: p,
+      state: carcass ? null : stateOf(p),
+      note: carcass === 'whole' ? 'Bête entière' : carcass === 'half' ? 'Demi-bête' : `${roundStock(p.stock ?? 0)} kg découpés`,
+    };
+  });
 }
 
 /** État d'un frigo, avec les mêmes repères que la page Stock. */
@@ -90,7 +95,7 @@ export function fridgeLine(item: FridgeItem, products: Product[] = []) {
     : item.kg <= 0 ? 'out'
     : item.min && item.kg <= item.min ? 'low'
     : item.max && item.kg > item.max ? 'over' : 'ok';
-  return { item, cabinet: false, state, fill: fillOf(item.kg, item.min, item.max), beasts: animals(item, Number(item.kg) || 0), total: item.kg };
+  return { item, cabinet: false, state, fill: fillOf(item.kg, item.min, item.max), beasts: item.whole ?? 0, total: item.kg };
 }
 
 /** Nombre de produits par état, pour le résumé en haut de page. */

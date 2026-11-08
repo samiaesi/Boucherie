@@ -4,7 +4,7 @@ import { Category, Product, byOrder } from '../core/data';
 import { IconPipe } from '../core/icon';
 import { Lot } from '../core/lots';
 import { localDay } from '../core/stats';
-import { Amount, SHELF_LABELS, ShelfState, StockExit, chainSummary, exitLabel, shelfAlerts, shelfLines } from '../core/stock-chain';
+import { Amount, CutRecord, SHELF_LABELS, ShelfState, StockExit, chainSummary, exitLabel, shelfAlerts, shelfLines } from '../core/stock-chain';
 import { AdminData } from './admin-data';
 import { ChainSteps } from './chain-steps';
 
@@ -30,24 +30,30 @@ const DAYS = 7;
         </a>
         <a class="step" routerLink="/admin/frigo" [class.warn]="s.fridge.alerts">
           <small>2 · Frigo</small>
-          <b>{{ s.fridge.kg }} kg</b>
-          <span>dans {{ s.fridge.count }} réserve(s){{ s.fridge.alerts ? ' · ' + s.fridge.alerts + ' à recharger' : '' }}</span>
+          <b>{{ s.fridge.beasts }} bête(s)</b>
+          <span>entières · {{ s.fridge.kg }} kg{{ s.fridge.alerts ? ' · ' + s.fridge.alerts + ' à recharger' : '' }}</span>
           <em>Ouvrir le frigo →</em>
         </a>
+        <a class="step" routerLink="/admin/decoupe">
+          <small>3 · Découpe</small>
+          <b>{{ s.cuts.kg }} kg</b>
+          <span>de coupes · {{ s.cuts.beasts }} bête(s) découpée(s)</span>
+          <em>Découper une bête →</em>
+        </a>
         <a class="step" href="#rayons" (click)="scrollTo($event)" [class.warn]="s.shelves.toFill">
-          <small>3 · Rayons</small>
+          <small>4 · Rayons</small>
           <b>{{ s.shelves.onShelf }} en rayon</b>
           <span>{{ s.shelves.toFill }} à remplir · {{ s.shelves.off }} retiré(s)</span>
           <em>Remplir les rayons ↓</em>
         </a>
         <a class="step" routerLink="/admin/stock">
-          <small>4 · Ventes</small>
+          <small>5 · Ventes</small>
           <b>{{ amount(s.sold) }}</b>
           <span>sorti par les commandes confirmées</span>
           <em>Voir le stock →</em>
         </a>
         <a class="step" routerLink="/admin/destockage" [class.loss]="s.exits.count">
-          <small>5 · Déstockage</small>
+          <small>6 · Déstockage</small>
           <b>{{ amount(s.exits) }}</b>
           <span>{{ s.exits.count }} sortie(s) sans vente</span>
           <em>Faire une sortie →</em>
@@ -122,7 +128,7 @@ const DAYS = 7;
   `,
   styles: `
     .hint { color: var(--muted); margin: 0 0 14px; }
-    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 10px; }
+    .flow { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 10px; }
     .step { position: relative; display: grid; gap: 3px; padding: 14px 16px; color: inherit; text-decoration: none; background: #fff; border: 1px solid var(--line); border-top: 4px solid #2f7d4f; border-radius: 12px; }
     .step + .step::before { content: "→"; position: absolute; inset-inline-start: -13px; top: 50%; margin-top: -11px; color: #b8aea3; font-weight: 700; }
     .step.warn { border-top-color: var(--orange); }
@@ -158,7 +164,7 @@ const DAYS = 7;
     .sign.out { background: #f8e1e4; color: #a10c20; }
     .item { align-items: center; }
     .info small { display: block; }
-    @media (max-width: 1000px) { .flow { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); } .step + .step::before { display: none; } }
+    @media (max-width: 1200px) { .flow { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); } .step + .step::before { display: none; } }
   `,
 })
 export class Chain implements OnInit {
@@ -166,6 +172,7 @@ export class Chain implements OnInit {
   protected readonly days = DAYS;
   protected readonly lots = signal<Lot[]>([]);
   protected readonly exits = signal<StockExit[]>([]);
+  protected readonly cuts = signal<CutRecord[]>([]);
   protected readonly categories = signal<Category[]>([]);
   protected readonly rayon = signal('');
   protected readonly loaded = signal(false);
@@ -175,7 +182,7 @@ export class Chain implements OnInit {
   protected readonly reason = exitLabel;
 
   protected readonly summary = computed(() => chainSummary({
-    lots: this.lots(), exits: this.exits(), fridge: this.data.fridge(), products: this.data.products(), orders: this.data.orders(),
+    lots: this.lots(), exits: this.exits(), cuts: this.cuts(), fridge: this.data.fridge(), products: this.data.products(), orders: this.data.orders(),
     today: localDay(new Date()), days: DAYS,
   }));
   protected readonly tabs = computed(() => shelfAlerts(this.data.products(), this.data.fridge(), this.categories()));
@@ -186,6 +193,7 @@ export class Chain implements OnInit {
   protected readonly moves = computed(() => [
     ...this.lots().map(l => ({ id: l.id, matricule: l.matricule, name: l.target.name, qty: l.qty, unit: l.target.unit, date: l.arrivalDate, out: false, cancelled: !!l.cancelled, what: l.supplierName || 'Arrivage' })),
     ...this.exits().map(e => ({ id: e.id, matricule: e.matricule, name: e.target.name, qty: e.qty, unit: e.target.unit, date: e.date, out: true, cancelled: !!e.cancelled, what: exitLabel(e.reason) })),
+    ...this.cuts().map(c => ({ id: c.id, matricule: c.matricule, name: c.reserve.name, qty: c.kg, unit: 'kg', date: c.date, out: true, cancelled: !!c.cancelled, what: `découpe de ${c.beasts} bête(s), os ${c.waste} kg` })),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12));
 
   async ngOnInit() {
@@ -193,6 +201,7 @@ export class Chain implements OnInit {
       const [register, categories] = await Promise.all([this.data.listRegister(), this.data.getCategories()]);
       this.lots.set(register.lots);
       this.exits.set(register.exits);
+      this.cuts.set(register.cuts);
       this.categories.set(categories);
     } catch (e) {
       this.error.set((e as Error).message);

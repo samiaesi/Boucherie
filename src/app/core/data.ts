@@ -70,6 +70,11 @@ export interface Product {
   restockDate?: string;
   /** Réserve du frigo qui alimente ce produit ; 'none' pour un stock propre au produit */
   source?: string;
+  /**
+   * Comment le produit sort de sa réserve : bête entière, demi-bête, ou coupe ('cut') remplie par la découpe.
+   * Absent : selon le catalogue (mouton entier, demi-mouton, poulet entier, demi-poulet), sinon coupe.
+   */
+  carcass?: 'whole' | 'half' | 'cut';
 }
 
 /**
@@ -95,6 +100,10 @@ export interface FridgeItem {
   rayons?: string[];
   /** Kilos par pays d'origine : quand il existe, chaque pays a son propre stock */
   countries?: Record<string, number>;
+  /** Bêtes entières pas encore découpées (0,5 = il reste une demi-bête) */
+  whole?: number;
+  /** Bêtes entières par pays d'origine */
+  wholeBy?: Record<string, number>;
 }
 
 export interface Category {
@@ -555,22 +564,48 @@ export function moveCountryStock(countries: Record<string, number> | undefined, 
 /** Somme des stocks par pays */
 export const sumCountries = (countries: Record<string, number>) => roundStock(Object.values(countries).reduce((sum, kg) => sum + (Number(kg) || 0), 0));
 
-/** Réserve suivie qui alimente ce produit, s'il y en a une */
-export function poolOf(p: Product, fridge: FridgeItem[]) {
+const DEFAULT_CARCASS: Record<string, 'whole' | 'half'> = {
+  'mouton-entier': 'whole', 'demi-mouton': 'half', 'poulet-entier': 'whole', 'demi-poulet': 'half',
+};
+
+/** Part d'une bête retirée par article vendu */
+export const BEAST_SHARE = { whole: 1, half: 0.5 } as const;
+
+/** Bête entière ou demi-bête ; undefined pour une coupe */
+export const carcassOf = (p: Pick<Product, 'id' | 'carcass'>) => (p.carcass === 'cut' ? undefined : p.carcass ?? DEFAULT_CARCASS[p.id]);
+
+/** Réserve (animal) à laquelle le produit appartient, suivie ou non */
+export function reserveOf(p: Product, fridge: FridgeItem[]) {
   if (p.unit !== 'kg' || p.source === 'none') return undefined;
   const id = p.source || DEFAULT_SOURCE[p.id];
-  return fridge.find(f => f.id === id && f.tracked);
+  return fridge.find(f => f.id === id && !isCabinet(f));
 }
 
-/** Le stock d'un produit relié est celui de sa réserve : toutes ses coupes partagent les mêmes kg. */
+/** Réserve suivie qui vend ce produit en bête entière ou en demi-bête */
+export function poolOf(p: Product, fridge: FridgeItem[]) {
+  const reserve = reserveOf(p, fridge);
+  return reserve?.tracked && carcassOf(p) ? reserve : undefined;
+}
+
+/** Coupe d'une réserve suivie : elle a son propre stock, rempli par la découpe */
+export const isCutOf = (p: Product, fridge: FridgeItem[]) => !!reserveOf(p, fridge)?.tracked && !carcassOf(p);
+
+/** Bêtes entières restantes, pour un pays quand il est séparé */
+export const wholeLeft = (f: FridgeItem, country?: string) => (country && f.wholeBy ? f.wholeBy[country] ?? 0 : f.whole ?? 0);
+
+/**
+ * Une bête entière (ou une demi) se vend tant qu'il reste une bête entière : son stock est alors
+ * le poids des carcasses. Les coupes gardent leur propre stock, suivi dès que la réserve l'est.
+ */
 export const applyPools = (products: Product[], fridge: FridgeItem[]) => products.map(p => {
   const pool = poolOf(p, fridge);
-  return pool
-    ? {
-      ...p, trackStock: true, stock: pool.kg, stockAlert: pool.min, stockMax: pool.max, restockDate: pool.restockDate,
-      ...(pool.countries ? { origins: originsOf(p).map(o => ({ ...o, stock: pool.countries?.[o.country] ?? 0 })) } : {}),
-    }
-    : p;
+  if (!pool) return isCutOf(p, fridge) && !p.trackStock ? { ...p, trackStock: true } : p;
+  const share = BEAST_SHARE[carcassOf(p)!];
+  const kgIf = (kg: number, beasts: number) => (beasts + 1e-9 >= share ? kg : 0);
+  return {
+    ...p, trackStock: true, stock: kgIf(pool.kg, wholeLeft(pool)), stockAlert: pool.min, stockMax: pool.max, restockDate: pool.restockDate,
+    ...(pool.countries ? { origins: originsOf(p).map(o => ({ ...o, stock: kgIf(pool.countries?.[o.country] ?? 0, wholeLeft(pool, o.country)) })) } : {}),
+  };
 });
 
 /** Ce qui manque pour servir ces articles. Les coupes d'une même réserve s'additionnent. */
@@ -580,7 +615,15 @@ export function stockShortages(items: OrderItem[], products: Product[], fridge: 
     const product = products.find(p => p.id === item.productId);
     if (!product) continue;
     const pool = poolOf(product, fridge);
-    if (!pool && !product.trackStock) continue;
+    if (!pool && !product.trackStock && !isCutOf(product, fridge)) continue;
+    if (pool) {
+      const byCountry = item.origin && pool.wholeBy ? item.origin : '';
+      const key = `beasts-${pool.id}|${byCountry}`;
+      const beasts = needs.get(key) ?? {
+        name: `${pool.name}${byCountry ? ` (${byCountry})` : ''} entiers`, unit: 'bête(s)', have: wholeLeft(pool, byCountry || undefined), need: 0,
+      };
+      needs.set(key, { ...beasts, need: roundStock(beasts.need + BEAST_SHARE[carcassOf(product)!] * item.qty) });
+    }
     const own = originsOf(product).find(o => o.country === item.origin);
     const perCountry = item.origin && (pool ? pool.countries : own?.stock !== undefined);
     const key = `${pool ? `pool-${pool.id}` : product.id}|${perCountry ? item.origin : ''}`;
@@ -597,11 +640,24 @@ export function stockShortages(items: OrderItem[], products: Product[], fridge: 
 }
 
 /** Produits qui gardent leur propre stock */
-export const ownStock = (products: Product[], fridge: FridgeItem[]) => products.filter(p => !poolOf(p, fridge));
+export const ownStock = (products: Product[], fridge: FridgeItem[]) =>
+  products.filter(p => !poolOf(p, fridge)).map(p => (isCutOf(p, fridge) && !p.trackStock ? { ...p, trackStock: true } : p));
 
 /** Lit le frigo enregistré ; l'ancien format comptait des bêtes, pas des kg. */
 export const readFridge = (list: (FridgeItem & { count?: number })[]): FridgeItem[] =>
-  list.map(({ count, ...f }) => ({ ...f, tracked: !!f.tracked, kg: f.kg ?? (count ?? 0) * f.kgEach }));
+  list.map(({ count, ...f }) => {
+    const kg = f.kg ?? (count ?? 0) * f.kgEach;
+    return { ...f, tracked: !!f.tracked, kg, whole: f.whole ?? (f.kgEach ? Math.floor(kg / f.kgEach) : 0) };
+  });
+
+/** Ajoute ou retire des bêtes entières, globalement et pour un pays */
+export function moveBeasts(f: FridgeItem, beasts: number, country?: string): FridgeItem {
+  if (!beasts) return f;
+  return {
+    ...f, whole: Math.max(0, roundStock((f.whole ?? 0) + beasts)),
+    ...(country ? { wholeBy: { ...(f.wholeBy ?? {}), [country]: Math.max(0, roundStock((f.wholeBy?.[country] ?? 0) + beasts)) } } : {}),
+  };
+}
 
 /** Vrai pour un frigo de produits (surgelés…), faux pour une réserve en kg */
 export const isCabinet = (f: FridgeItem) => !!f.rayons?.length;

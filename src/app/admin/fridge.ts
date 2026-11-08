@@ -77,6 +77,9 @@ const PRESETS = [
           <footer>
             <button class="btn light small" (click)="open(l.item)">Modifier</button>
             @if (!l.cabinet) {
+              <a class="btn small" routerLink="/admin/decoupe" [queryParams]="{ frigo: l.item.id }">Découper</a>
+            }
+            @if (!l.cabinet) {
               <button class="btn small" [class.light]="l.item.tracked" (click)="toggle(l.item)" [disabled]="saving()">
                 {{ l.item.tracked ? 'Ne plus suivre' : 'Suivre' }}
               </button>
@@ -119,6 +122,7 @@ const PRESETS = [
               </fieldset>
             } @else {
               <label>En stock (kg)<input name="kg" type="number" min="0" step="0.5" [disabled]="d.countryRows.length > 0" [ngModel]="d.countryRows.length ? rowsTotal(d) : d.kg" (ngModelChange)="d.kg = $event"></label>
+              <label>Bêtes entières<input name="whole" type="number" min="0" step="0.5" [(ngModel)]="d.whole"></label>
               <label>Poids moyen d'une bête (kg)<input name="each" type="number" min="0" step="0.1" [(ngModel)]="d.kgEach"></label>
               <label>Minimum (kg)<input name="min" type="number" min="0" [(ngModel)]="d.min"></label>
               <label>Maximum (kg)<input name="max" type="number" min="0" [(ngModel)]="d.max"></label>
@@ -231,12 +235,13 @@ export class Fridge implements OnInit {
 
   protected amount(l: ReturnType<typeof fridgeLine>) {
     if (l.cabinet) return `${this.contents(l.item).length} produit(s) · ${roundStock(l.total)} kg`;
-    return l.item.kgEach ? `${roundStock(l.item.kg)} kg · environ ${l.beasts}` : `${roundStock(l.item.kg)} kg`;
+    return `${l.beasts} bête(s) entière(s) · ${roundStock(l.item.kg)} kg`;
   }
 
-  /** « Algérie 33 kg · Espagne 0 kg » */
+  /** « Algérie 2 bêtes 44 kg · Espagne 0 bête 0 kg » */
   protected breakdown(f: FridgeItem) {
-    return Object.entries(f.countries ?? {}).map(([country, kg]) => `${country} ${roundStock(kg)} kg`).join(' · ');
+    return Object.entries(f.countries ?? {}).map(([country, kg]) =>
+      `${country} ${f.wholeBy ? (f.wholeBy[country] ?? 0) + ' bête(s) ' : ''}${roundStock(kg)} kg`).join(' · ');
   }
 
   protected rowsTotal(d: Draft) {
@@ -302,6 +307,7 @@ export class Fridge implements OnInit {
     const item: FridgeItem = {
       ...rest, id: d.id || slug(d.name), name: d.name.trim(), tracked: !cabinet && !!d.tracked, kg, icon: iconName,
       min: cabinet ? 0 : Number(d.min) || 0, max: cabinet ? 0 : Number(d.max) || 0, kgEach: cabinet ? 0 : Number(d.kgEach) || 0,
+      whole: cabinet ? 0 : Math.max(0, Number(d.whole) || 0),
       ...(cabinet ? { rayons: picked } : {}),
       ...(split.length ? { countries: perCountry } : {}),
       ...(!cabinet && restockDate && kg <= 0 ? { restockDate } : {}),
