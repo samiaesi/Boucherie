@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Category, DEFAULT_CATEGORIES, ICON_NAMES } from '../core/data';
 import { resizeImage } from './image';
@@ -18,7 +18,7 @@ const MAX_PHOTOS_BYTES = 900_000;
   template: `
     <div class="head"><h2>Rayons de la boutique</h2></div>
     @if (loaded()) {
-      <p class="hint">Cliquez sur une image pour la changer, puis sur <b>Enregistrer</b>.</p>
+      <p class="hint">Cliquez sur une image pour la changer : elle est enregistrée tout de suite.</p>
       <form class="card-box" (ngSubmit)="save()">
         @for (c of list; track c; let i = $index) {
           <div class="cat-row-admin">
@@ -27,7 +27,7 @@ const MAX_PHOTOS_BYTES = 900_000;
                 @if (photoOf(c); as src) { <img [src]="src" alt=""> } @else { <span [innerHTML]="c.icon | icon"></span> }
                 <input type="file" accept="image/*" (change)="pickPhoto(c, $event)">
               </label>
-              @if (c.image) { <button type="button" class="link-btn" (click)="c.image = undefined">Retirer</button> }
+              @if (c.image) { <button type="button" class="link-btn" (click)="removePhoto(c)">Retirer</button> }
             </div>
             <input [name]="'fr' + i" placeholder="Nom (français)" required [(ngModel)]="c.name_fr">
             <input [name]="'ar' + i" dir="rtl" placeholder="الاسم بالعربية" required [(ngModel)]="c.name_ar">
@@ -59,6 +59,7 @@ const MAX_PHOTOS_BYTES = 900_000;
 })
 export class Categories implements OnInit {
   private readonly data = inject(AdminData);
+  private readonly view = inject(ChangeDetectorRef);
   protected readonly loaded = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
@@ -101,9 +102,18 @@ export class Categories implements OnInit {
     try {
       c.image = await resizeImage(file, 900, PHOTO_BYTES);
       this.error.set('');
+      // Enregistrée aussitôt : la photo doit apparaître sur le site sans autre clic
+      await this.save();
     } catch (err) {
       this.error.set((err as Error).message);
     }
+    this.view.markForCheck();
+  }
+
+  protected async removePhoto(c: Category) {
+    c.image = undefined;
+    await this.save();
+    this.view.markForCheck();
   }
 
   protected async save() {
