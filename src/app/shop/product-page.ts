@@ -147,6 +147,12 @@ const MIN_GRAMS = 100;
                 </div>
               }
               @if (stockNote(); as note) { <p class="stock-note">{{ note }}</p> }
+              @if (line().unit === 'order') {
+                <div class="ask-price">
+                  <p>{{ i18n.t('noPrice') }}</p>
+                  <a class="btn btn-wa-soft" target="_blank" rel="noopener" [href]="askPriceHref()">{{ i18n.t('askPrice') }}</a>
+                </div>
+              } @else {
               <div class="buy">
                 <div class="qty">
                   <button (click)="qty.set(qty() - 1)" [disabled]="qty() <= 1" aria-label="-">−</button>
@@ -160,6 +166,7 @@ const MIN_GRAMS = 100;
                   {{ out() ? i18n.t('soldOut') : i18n.t('addCart') }}
                 </button>
               </div>
+              }
               @if (p.custom) { <p class="note">{{ i18n.t(customPrice() === null ? 'pendingPrice' : 'finalPrice') }}</p> }
               <p class="serve-line">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7h12v10H2zM14 10h4l4 4v3h-8zM6.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg>
@@ -347,6 +354,14 @@ export class ProductPage {
   }
 
   /** Le client demande sur WhatsApp à être prévenu du retour du produit */
+  /** Le message rappelle les choix du client, pour que la boucherie réponde avec le bon prix. */
+  protected askPriceHref() {
+    const l = this.line(), p = this.product()!;
+    const what = [this.i18n.pick(p, 'name'), this.i18n.lang() === 'ar' ? l.option_ar : l.option_fr].filter(Boolean).join(' · ');
+    const text = this.i18n.t('askPriceMsg').replace('{p}', what);
+    return `https://wa.me/${this.shop.settings().whatsapp}?text=${encodeURIComponent(text)}`;
+  }
+
   protected notifyHref() {
     const text = this.i18n.t('notifyMsg').replace('{p}', this.i18n.pick(this.product()!, 'name'));
     return `https://wa.me/${this.shop.settings().whatsapp}?text=${encodeURIComponent(text)}`;

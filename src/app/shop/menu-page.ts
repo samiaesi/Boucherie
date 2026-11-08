@@ -60,7 +60,11 @@ const PAGE_SIZE = 6;
                   @if (!m.pending) { <small>≈ {{ i18n.money(perGuest(m)) }} {{ i18n.t('menuEach') }}</small> }
                 </div>
                 @if (m.over) { <p class="note">{{ i18n.t('menuOver') }}</p> }
-                <button class="btn btn-red block" (click)="addAll(m)">{{ i18n.t(added() === m.id ? 'menuAdded' : 'menuAdd') }}</button>
+                @if (m.pending) {
+                  <a class="btn btn-wa-soft block" target="_blank" rel="noopener" [href]="askPriceHref(m)">{{ i18n.t('askPrice') }}</a>
+                } @else {
+                  <button class="btn btn-red block" (click)="addAll(m)">{{ i18n.t(added() === m.id ? 'menuAdded' : 'menuAdd') }}</button>
+                }
               </div>
             </article>
           } @empty {
@@ -77,7 +81,7 @@ const PAGE_SIZE = 6;
 })
 export class MenuPage implements OnInit {
   protected readonly i18n = inject(I18n);
-  private readonly shop = inject(Shop);
+  protected readonly shop = inject(Shop);
   private readonly cart = inject(Cart);
   protected readonly minGuests = MIN_GUESTS;
   protected readonly maxGuests = MAX_GUESTS;
@@ -116,6 +120,12 @@ export class MenuPage implements OnInit {
 
   protected perGuest(m: MenuProposal) {
     return Math.round(m.total / this.guests());
+  }
+
+  protected askPriceHref(m: MenuProposal) {
+    const lines = m.lines.map(l => `${l.grams ? this.i18n.weight(l.grams) : l.qty + ' ×'} ${this.i18n.pick(l, 'name')}`).join(', ');
+    const text = this.i18n.t('askPriceMsg').replace('{p}', `${this.i18n.pick(m, 'name')} (${this.guests()}) : ${lines}`);
+    return `https://wa.me/${this.shop.settings().whatsapp}?text=${encodeURIComponent(text)}`;
   }
 
   protected addAll(m: MenuProposal) {

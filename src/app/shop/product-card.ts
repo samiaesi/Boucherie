@@ -105,7 +105,7 @@ export class ProductCard {
     const origins = availableOrigins(p);
     clearTimeout(this.addedTimer);
     // Plusieurs pays ou personnalisation : le client choisit sur la page du produit
-    if (origins.length > 1 || p.custom) {
+    if (origins.length > 1 || p.custom || p.unit === 'order' || !p.price) {
       this.router.navigate(['/produit', p.id]);
       return;
     }

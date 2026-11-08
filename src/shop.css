@@ -917,4 +917,9 @@ app-shop-layout {
     .stats .wrap > :nth-child(3) { border-inline-start: 0; }
     .stats .wrap > :nth-child(n + 3) { border-top: 1px solid #efe4d8; }
   }
+
+  /* Produit sans prix : on demande le prix, on ne commande pas à l'aveugle */
+  .ask-price { display: grid; gap: 10px; margin-top: 16px; padding: 16px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px #efe4d8; }
+  .ask-price p { margin: 0; color: var(--text); font-size: .92rem; }
+  .ask-price .btn, .plan-body .btn-wa-soft { text-align: center; }
 }

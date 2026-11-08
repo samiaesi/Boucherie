@@ -19,10 +19,14 @@ const product: Product = {
 };
 
 async function render() {
+  return renderProduct(product);
+}
+
+async function renderProduct(item: Product) {
   TestBed.configureTestingModule({
     providers: [provideRouter([]), {
       provide: Shop,
-      useValue: { products: signal([product]), category: () => undefined, pickupKey: () => 'pickup', settings: signal({ whatsapp: '' }), clock: () => new Date() },
+      useValue: { products: signal([item]), category: () => undefined, pickupKey: () => 'pickup', settings: signal({ whatsapp: '' }), clock: () => new Date() },
     }],
   });
   const fixture = TestBed.createComponent(ProductPage);
@@ -81,5 +85,12 @@ describe('Page d\'une commande spéciale personnalisée', () => {
     const [line] = TestBed.inject(Cart).lines();
     expect(line).toMatchObject({ unit: 'piece', price: 1734, special: true, option_fr: 'Bœuf 250 g · Olives' });
     expect(line.origin).toBeUndefined();
+  });
+
+  it('sans prix complet, propose de demander le prix au lieu de commander', async () => {
+    const { page } = await renderProduct({ ...product, price: 0 });
+    expect([...page.querySelectorAll('button')].some(b => b.textContent!.includes('Ajouter au panier'))).toBe(false);
+    const link = page.querySelector<HTMLAnchorElement>('.ask-price a')!;
+    expect(decodeURIComponent(link.href)).toContain('Poulet farci');
   });
 });
