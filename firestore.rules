@@ -92,7 +92,7 @@ service cloud.firestore {
     // Clients professionnels : jamais lisibles par le public
     match /companies/{id} { allow read, write: if isManager(); }
     // Arrivages : jamais supprimés, un arrivage annulé garde son matricule
-    match /lots/{id} { allow read, create, update: if isManager(); }
+    match /lots/{id} { allow read, create, update: if isManager(); allow delete: if isAdmin(); }
 
     // Journal d'audit : seul l'administrateur le lit, personne ne peut le modifier ni le supprimer
     match /audit/{id} {

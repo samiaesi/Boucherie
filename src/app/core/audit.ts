@@ -18,6 +18,8 @@ export const AUDIT_ACTIONS = {
   'exit.created': { label: 'Sortie de stock (déstockage)', category: 'Stock' },
   'exit.cancelled': { label: 'Sortie de stock annulée', category: 'Stock' },
   'fridge.updated': { label: 'Frigo modifié', category: 'Stock' },
+  'stock.reset': { label: 'Stock remis à zéro', category: 'Stock' },
+  'register.cleared': { label: 'Arrivages et sorties effacés', category: 'Stock' },
   'product.created': { label: 'Produit ajouté', category: 'Catalogue' },
   'product.updated': { label: 'Produit ou stock modifié', category: 'Catalogue' },
   'product.deleted': { label: 'Produit supprimé', category: 'Catalogue' },

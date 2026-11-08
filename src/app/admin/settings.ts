@@ -84,12 +84,31 @@ type PhotoKey = 'heroImage' | 'aboutImage';
         @if (error()) { <div class="msg">{{ error() }}</div> }
         <div class="form-actions"><button class="btn" type="submit" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button></div>
       </form>
+
+      <section class="card-box reset">
+        <h3>Remise à zéro avant un vrai test</h3>
+        <p>Les fiches produits, les prix, les photos et les commandes ne sont pas touchés. Ces actions sont définitives.</p>
+        <div class="reset-row">
+          <div><b>Stock à zéro</b><small>Tous les produits et tous les frigos à 0, pour chaque pays.</small></div>
+          <button type="button" class="btn danger" [disabled]="resetting()" (click)="resetStock()">Mettre le stock à 0</button>
+        </div>
+        <div class="reset-row">
+          <div><b>Effacer arrivages et sorties</b><small>Historique LOT-… et SOR-… supprimé, les numéros repartent à 0001.</small></div>
+          <button type="button" class="btn danger" [disabled]="resetting()" (click)="clearRegister()">Effacer l'historique</button>
+        </div>
+        @if (resetMsg()) { <div class="msg ok">{{ resetMsg() }}</div> }
+      </section>
     }
   `,
   styles: `
     .photo-box { margin-top: 6px; aspect-ratio: 16/9; border: 1px dashed var(--line); border-radius: 10px; background: #f3eee6;
       display: grid; place-items: center; overflow: hidden; color: var(--muted); font-size: .85rem; }
     .photo-box img { width: 100%; height: 100%; object-fit: cover; }
+    .reset { margin-top: 24px; border-color: #e7b9c0; }
+    .reset h3 { margin: 0 0 4px; font-family: Inter, sans-serif; font-size: 1.05rem; color: #a10c20; }
+    .reset p { margin: 0 0 12px; color: var(--muted); font-size: .88rem; }
+    .reset-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+    .reset-row small { display: block; color: var(--muted); font-size: .82rem; }
   `,
 })
 export class Settings implements OnInit {
@@ -97,6 +116,8 @@ export class Settings implements OnInit {
   protected readonly loaded = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
+  protected readonly resetting = signal(false);
+  protected readonly resetMsg = signal('');
   protected readonly images = signal<Partial<Record<PhotoKey, string>>>({});
   protected s: ShopSettings = structuredClone(DEFAULT_SETTINGS);
   protected zones = '';
@@ -105,6 +126,29 @@ export class Settings implements OnInit {
     { key: 'heroImage', label: 'Photo de la bannière', size: 1600, hint: "Grande photo en fond d'accueil (format paysage)." },
     { key: 'aboutImage', label: 'Photo « Notre engagement »', size: 900, hint: 'Votre boutique, votre étal ou le boucher au travail.' },
   ];
+
+  protected async resetStock() {
+    if (!confirm('Mettre TOUT le stock à 0 (produits et frigos, tous les pays) ? C\'est définitif.')) return;
+    await this.runReset(async () => `Stock remis à 0 : ${await this.data.resetStock()} produit(s) et tous les frigos.`);
+  }
+
+  protected async clearRegister() {
+    if (!confirm('Effacer TOUS les arrivages et sorties ? L\'historique sera perdu et les numéros repartiront à 0001.')) return;
+    await this.runReset(async () => `${await this.data.clearRegister()} arrivage(s) et sortie(s) effacé(s).`);
+  }
+
+  private async runReset(task: () => Promise<string>) {
+    this.resetting.set(true);
+    this.resetMsg.set('');
+    this.error.set('');
+    try {
+      this.resetMsg.set(await task());
+    } catch (e) {
+      this.resetMsg.set(`Échec : ${(e as Error).message}`);
+    } finally {
+      this.resetting.set(false);
+    }
+  }
 
   async ngOnInit() {
     const { heroImage, aboutImage, ...rest } = await this.data.getSettings();

@@ -620,6 +620,36 @@ export class AdminData {
     return snap.exists() ? ({ ...snap.data(), id: snap.id } as Product) : undefined;
   }
 
+  /** Remise à zéro avant un vrai test : tout le stock à 0, fiches, prix et photos inchangés. */
+  async resetStock() {
+    const products = await this.list<Product>('products');
+    const batch = writeBatch(db);
+    for (const p of products) {
+      const origins = p.origins?.map(o => (o.stock === undefined ? o : { ...o, stock: 0 }));
+      batch.update(doc(db, 'products', p.id), { stock: 0, ...(origins ? { origins } : {}) });
+    }
+    const fridge = this.fridge().map(f => ({
+      ...f, kg: 0, ...(f.countries ? { countries: Object.fromEntries(Object.keys(f.countries).map(c => [c, 0])) } : {}),
+    }));
+    batch.set(doc(db, 'settings', 'fridge'), { list: fridge });
+    await this.guarded(batch.commit());
+    this.audit('stock.reset', 'Stock', `${products.length} produit(s) et ${fridge.length} frigo(s) remis à 0`);
+    return products.length;
+  }
+
+  /** Efface tous les arrivages et sorties ; les matricules repartent à 0001. */
+  async clearRegister() {
+    const snap = await getDocs(collection(db, 'lots'));
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      const batch = writeBatch(db);
+      snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+      await this.guarded(batch.commit());
+    }
+    await this.guarded(setDoc(doc(db, 'settings', 'lotCounter'), {}));
+    this.audit('register.cleared', 'Arrivages et sorties', `${snap.docs.length} ligne(s) effacée(s), matricules remis à 0001`);
+    return snap.docs.length;
+  }
+
   /** Met un produit en rayon (visible sur le site) ou l'en retire. */
   async setOnShelf(p: Product, on: boolean) {
     await this.update('products', p.id, { available: on });
