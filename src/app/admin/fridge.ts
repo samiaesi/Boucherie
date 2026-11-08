@@ -63,7 +63,28 @@ const PRESETS = [
             </div>
             <button class="door" [attr.aria-expanded]="opened() === l.item.id" [attr.aria-label]="'Ouvrir le frigo ' + l.item.name" (click)="toggleDoor(l.item.id)">
               <i class="led" [class]="'led ' + l.state"></i>
-              <span class="picto" [innerHTML]="iconOf(l.item) | icon"></span>
+              @if (l.cabinet) {
+                <span class="picto" [innerHTML]="iconOf(l.item) | icon"></span>
+              } @else {
+                <span class="rail" [class]="'rail ' + iconOf(l.item) + (l.beasts > 4 ? ' many' : '')" [attr.aria-label]="l.beasts + ' bête(s) entière(s) suspendue(s)'">
+                  @for (c of hanging(l.beasts); track k; let k = $index) {
+                    <i class="carcass">
+                      <svg viewBox="0 0 60 120" aria-hidden="true">
+                        <defs><clipPath [attr.id]="'half-' + l.item.id + k"><rect x="0" y="0" width="30" height="120" /></clipPath></defs>
+                        <path class="hook" d="M30 0v4M12 5h36M14 5v3M46 5v3" />
+                        @if (c === 'half') { <path class="ghost" d="M16 7C14 15 14 22 18 30C10 40 12 52 18 58C16 66 15 74 16 82C12 92 14 104 24 110L27 118H33L36 110C46 104 48 92 44 82C45 74 44 66 42 58C48 52 50 40 42 30C46 22 46 15 44 7L38 9C36 16 33 21 30 24C27 21 24 16 22 9Z" /> }
+                        <g [attr.clip-path]="c === 'half' ? 'url(#half-' + l.item.id + k + ')' : null">
+                          <path class="meat" d="M16 7C14 15 14 22 18 30C10 40 12 52 18 58C16 66 15 74 16 82C12 92 14 104 24 110L27 118H33L36 110C46 104 48 92 44 82C45 74 44 66 42 58C48 52 50 40 42 30C46 22 46 15 44 7L38 9C36 16 33 21 30 24C27 21 24 16 22 9Z" />
+                          <path class="fat" d="M30 28V108M22 86c4 2 12 2 16 0M20 93c5 3 15 3 20 0M21 100c4 3 14 3 18 0M19 44c3 6 5 10 11 12M41 44c-3 6-5 10-11 12" />
+                        </g>
+                      </svg>
+                    </i>
+                  } @empty {
+                    <em class="none">Aucune bête suspendue</em>
+                  }
+                  @if (l.beasts > maxHung) { <b class="more">+{{ extra(l.beasts) }}</b> }
+                </span>
+              }
               <span class="plate"><b>{{ l.item.name }}</b><small>{{ amount(l) }}</small>
                 @if (breakdown(l.item); as parts) { <small>{{ parts }}</small> }
               </span>
@@ -195,7 +216,28 @@ const PRESETS = [
     .picto :is(svg) { display: block; width: 100%; height: 100%; }
     .plate { text-align: center; }
     .plate b { display: block; font-size: 1.1rem; }
-    .plate small { color: var(--muted); font-size: .86rem; }
+    .plate small { display: block; color: var(--muted); font-size: .86rem; }
+    /* Chambre froide : une carcasse suspendue par bête entière, une demi pour 0,5 */
+    .rail { position: relative; display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 8px 6px; width: 100%; min-height: 112px; padding: 4px 6px 6px; border-top: 5px solid #8e8880; border-radius: 3px; }
+    .rail::before { content: ""; position: absolute; inset: -5px 6% auto; height: 5px; background: linear-gradient(#c6c0b8, #8e8880); border-radius: 3px; }
+    .carcass { display: block; width: 50px; height: 100px; transform-origin: 50% 0; animation: sway 4s ease-in-out infinite; }
+    .rail.many .carcass { width: 34px; height: 68px; }
+    .carcass:nth-child(2n) { animation-delay: -1.3s; }
+    .carcass:nth-child(3n) { animation-delay: -2.4s; }
+    .carcass svg { display: block; width: 100%; height: 100%; overflow: visible; }
+    .carcass .hook { fill: none; stroke: #6f6a64; stroke-width: 2.2; stroke-linecap: round; }
+    .carcass .meat { fill: #e8b4aa; stroke: #a8434c; stroke-width: 1.6; stroke-linejoin: round; }
+    .carcass .fat { fill: none; stroke: #b9525b; stroke-width: 1.3; stroke-linecap: round; opacity: .55; }
+    .carcass .ghost { fill: none; stroke: #a8434c; stroke-width: 1.2; stroke-dasharray: 3 3; opacity: .45; }
+    .rail.poulet .carcass { width: 34px; height: 68px; }
+    .rail.poulet .meat { fill: #f3d2b0; stroke: #c99a6c; }
+    .rail.poulet .fat { stroke: #c99a6c; }
+    .rail.boeuf .meat { fill: #c9564f; stroke: #8a1f2a; }
+    .rail.boeuf .fat { stroke: #f4dcd6; opacity: .8; }
+    .rail .none { align-self: center; color: var(--muted); font-size: .82rem; font-style: normal; }
+    .rail .more { align-self: center; padding: 3px 8px; border-radius: 999px; background: #fff; font-size: .82rem; }
+    @keyframes sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+    @media (prefers-reduced-motion: reduce) { .carcass { animation: none; } }
     .door .gauge { width: 70%; margin: 0; }
     .handle { position: absolute; top: 50%; inset-inline-end: 13px; width: 8px; height: 104px; margin-top: -52px; border-radius: 6px; background: linear-gradient(90deg, #8e8880, #c6c0b8); }
     footer { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
@@ -242,6 +284,21 @@ export class Fridge implements OnInit {
   protected breakdown(f: FridgeItem) {
     return Object.entries(f.countries ?? {}).map(([country, kg]) =>
       `${country} ${f.wholeBy ? (f.wholeBy[country] ?? 0) + ' bête(s) ' : ''}${roundStock(kg)} kg`).join(' · ');
+  }
+
+  /** Carcasses dessinées : 10 au plus, la dernière en demi s'il reste une demi-bête */
+  protected readonly maxHung = 10;
+
+  protected hanging(beasts: number): ('full' | 'half')[] {
+    const n = Math.max(0, Number(beasts) || 0);
+    const full = Math.min(this.maxHung, Math.floor(n));
+    const list: ('full' | 'half')[] = Array(full).fill('full');
+    if (n % 1 >= 0.5 && full < this.maxHung) list.push('half');
+    return list;
+  }
+
+  protected extra(beasts: number) {
+    return Math.max(0, Math.round((beasts - this.maxHung) * 10) / 10);
   }
 
   protected rowsTotal(d: Draft) {
