@@ -15,6 +15,7 @@ import { db, firebaseConfig } from '../core/firebase';
 import { Invoice, buildInvoice, counterAfterDelete, invoiceNumber } from '../core/invoice';
 import { Company, PaymentMode, ProLine, amountInWords, computePro } from '../core/pro-invoice';
 import { Lot, LotInput, lotNumber, lotParts } from '../core/lots';
+import { Carcass, carcassesOf, cleanCarcass, removeOldest, sellCarcass, withCarcasses } from '../core/carcasses';
 import { CutInput, CutRecord, ExitInput, StockExit, availableQty, cutNumber, cutWaste, exitLabel, exitNumber, splitRegister } from '../core/stock-chain';
 import { DEFAULT_ORDERING, OrderingRules } from '../core/ordering';
 import { Auth } from './auth';
@@ -41,6 +42,22 @@ export interface Member {
   uid: string;
   email: string;
   role: Role;
+}
+
+/** Mouvement de stock d'un arrivage, d'une sortie ou de leur annulation */
+type LotMove = LotInput & { matricule?: string; back?: Carcass[] };
+
+/** Les carcasses d'un arrivage : une par bête, avec son numéro, son poids, son pays et son prix */
+function newCarcasses(lot: LotMove, qty: number): Carcass[] {
+  if (lot.lines?.length) {
+    return lot.lines.map((b, i) => ({ b, i })).filter(x => !lot.origin || x.b.origin === lot.origin).map(({ b, i }) => cleanCarcass({
+      id: `${lot.matricule ?? 'lot'}-${i + 1}`, kg: b.kg, origin: b.origin, lot: lot.matricule, n: i + 1, price: b.price, date: lot.arrivalDate,
+    }));
+  }
+  const n = Math.max(0, Math.floor(lot.beasts ?? 0));
+  return Array.from({ length: n }, (_, i) => cleanCarcass({
+    id: `${lot.matricule ?? 'retour-' + Date.now()}-${i + 1}`, kg: roundStock(qty / n), origin: lot.origin, lot: lot.matricule, n: lot.matricule ? i + 1 : undefined, date: lot.arrivalDate,
+  }));
 }
 
 /** Accès en écriture à Firestore pour l'espace admin. */
@@ -332,7 +349,7 @@ export class AdminData {
       const detail = short.map(l => `${l.name} : il reste ${roundStock(l.have)} ${l.unit}, il en faut ${l.need} ${l.unit}`).join(' · ');
       throw new StockError(`Stock insuffisant. ${detail}. Réduisez la commande ou enregistrez un arrivage.`);
     }
-    const pools = new Map<string, number>();
+    let touched = false;
     let list = fridge;
     const ownOrigins = new Map<string, ReturnType<typeof originsOf>>();
     for (const item of items) {
@@ -341,12 +358,21 @@ export class AdminData {
       const pool = poolOf(product, fridge);
       const qty = sign * itemQty(item);
       if (pool) {
-        pools.set(pool.id, (pools.get(pool.id) ?? 0) + qty);
-        const beasts = sign * BEAST_SHARE[carcassOf(product)!] * item.qty;
-        list = list.map(f => (f.id === pool.id ? moveBeasts(f, beasts, item.origin && f.wholeBy ? item.origin : undefined) : f));
-        if (item.origin && pool.countries) {
-          list = list.map(f => (f.id === pool.id ? { ...f, countries: moveCountryStock(f.countries, item.origin!, qty) } : f));
+        // Une bête entière (ou une demi) quitte le frigo : la carcasse au poids le plus proche de la commande
+        const share = BEAST_SHARE[carcassOf(product)!];
+        const unit = itemQty(item) / Math.max(1, item.qty);
+        for (let k = 0; k < item.qty; k++) {
+          list = list.map(f => {
+            if (f.id !== pool.id) return f;
+            const current = carcassesOf(f);
+            const next = sign < 0
+              ? sellCarcass(current, share, item.origin, unit)
+              : [...current, cleanCarcass({ id: `retour-${Date.now()}-${k}`, kg: roundStock(unit), origin: item.origin, half: share === 0.5 || undefined })];
+            if (!next) throw new StockError(`Plus de ${share === 1 ? 'bête entière' : 'demi-bête'} de ${f.name}${item.origin ? ` (${item.origin})` : ''} au frigo.`);
+            return withCarcasses(f, next);
+          });
         }
+        touched = true;
       } else if (product.trackStock || isCutOf(product, fridge)) {
         const origins = ownOrigins.get(product.id) ?? originsOf(product);
         const counted = origins.some(o => o.country === item.origin && o.stock !== undefined);
@@ -355,9 +381,7 @@ export class AdminData {
         tx.update(doc(db, 'products', product.id), { stock: increment(qty), ...(counted ? { origins: next } : {}) });
       }
     }
-    if (pools.size) {
-      tx.update(doc(db, 'settings', 'fridge'), { list: list.map(f => ({ ...f, kg: roundStock(f.kg + (pools.get(f.id) ?? 0)) })) });
-    }
+    if (touched) tx.update(doc(db, 'settings', 'fridge'), { list });
   }
 
   /** Émet une facture d'entreprise. Même numérotation que les factures clients. */
@@ -596,8 +620,13 @@ export class AdminData {
       const next = (counter.data()?.[key] ?? 0) + 1;
       const matricule = exitNumber(year, next);
       tx.set(counterRef, { [key]: next }, { merge: true });
-      tx.set(exitRef, { ...input, kind: 'sortie', matricule, createdAt: serverTimestamp() });
-      this.moveLot(tx, this.asLot(input), -input.qty, fridge, product);
+      const after = this.moveLot(tx, this.asLot(input), -input.qty, fridge, product);
+      // Pour une réserve, ce sont de vraies carcasses qui sortent : on garde lesquelles et leur poids réel
+      const removed = reserve ? carcassesOf(reserve).filter(c => !carcassesOf(after.find(f => f.id === reserve.id)!).some(x => x.id === c.id)) : [];
+      const record = removed.length
+        ? { ...input, qty: roundStock(removed.reduce((sum, c) => sum + c.kg, 0)), carcasses: removed.map(cleanCarcass) }
+        : input;
+      tx.set(exitRef, { ...record, kind: 'sortie', matricule, createdAt: serverTimestamp() });
       return matricule;
     }));
     this.audit('exit.created', created, `${input.target.name} · ${input.qty} ${input.target.unit}${input.origin ? ` · ${input.origin}` : ''} · ${exitLabel(input.reason)}${input.lot ? ` · ${input.lot}` : ''}`);
@@ -612,7 +641,7 @@ export class AdminData {
       if (snap.data()?.['cancelled']) throw new Error('Cette sortie est déjà annulée.');
       const fridge = await this.fridgeInTx(tx);
       const product = exit.target.kind === 'product' ? await this.productInTx(tx, exit.target.id) : undefined;
-      this.moveLot(tx, this.asLot(exit), exit.qty, fridge, product);
+      this.moveLot(tx, { ...this.asLot(exit), back: exit.carcasses }, exit.qty, fridge, product);
       tx.update(exitRef, { cancelled: true });
     }));
     this.audit('exit.cancelled', exit.matricule, `${exit.target.name} · ${exit.qty} ${exit.target.unit} remis en stock`);
@@ -622,7 +651,8 @@ export class AdminData {
    * Découpe des bêtes entières : leurs kilos quittent la réserve, chaque coupe reçoit son poids
    * dans son propre stock (et son pays), le reste part en os et déchets.
    */
-  async addCut(input: CutInput): Promise<string> {
+  async addCut(cut: CutInput & { base?: Carcass[] }): Promise<string> {
+    const { base, ...input } = cut;
     const year = Number(input.date.slice(0, 4));
     const counterRef = doc(db, 'settings', 'lotCounter');
     const cutRef = doc(collection(db, 'lots'));
@@ -634,23 +664,18 @@ export class AdminData {
       const products = await Promise.all(input.cuts.map(c => this.productInTx(tx, c.id)));
       const reserve = fridge.find(f => f.id === input.reserve.id);
       if (!reserve) throw new StockError('Ce frigo n\'existe plus.');
-      const country = input.origin && reserve.wholeBy ? input.origin : undefined;
-      const beastsLeft = wholeLeft(reserve, country);
-      if (input.beasts > beastsLeft + 0.001) {
-        throw new StockError(`Il ne reste que ${beastsLeft} bête(s) entière(s) de ${reserve.name}${input.origin ? ` (${input.origin})` : ''} à découper.`);
-      }
-      const kgLeft = input.origin && reserve.countries ? reserve.countries[input.origin] ?? 0 : reserve.kg;
-      if (input.kg > kgLeft + 0.001) throw new StockError(`Il ne reste que ${roundStock(kgLeft)} kg de ${reserve.name}${input.origin ? ` (${input.origin})` : ''}.`);
+      // Les carcasses choisies doivent encore être suspendues
+      const current = reserve.carcasses ?? base ?? carcassesOf(reserve);
+      const chosen = input.carcasses ?? [];
+      const missing = chosen.filter(c => !current.some(x => x.id === c.id));
+      if (!chosen.length || missing.length) throw new StockError('Une des bêtes choisies n\'est plus au frigo (déjà découpée ou vendue). Rechargez la page.');
       const key = `D${year}`;
       const next = (counter.data()?.[key] ?? 0) + 1;
       const matricule = cutNumber(year, next);
       tx.set(counterRef, { [key]: next }, { merge: true });
-      tx.set(cutRef, { ...input, waste: Math.max(0, waste), kind: 'decoupe', matricule, createdAt: serverTimestamp() });
+      tx.set(cutRef, { ...input, carcasses: chosen.map(cleanCarcass), waste: Math.max(0, waste), kind: 'decoupe', matricule, createdAt: serverTimestamp() });
       tx.set(doc(db, 'settings', 'fridge'), {
-        list: fridge.map(f => (f.id !== reserve.id ? f : moveBeasts({
-          ...f, kg: Math.max(0, roundStock(f.kg - input.kg)),
-          ...(input.origin && f.countries ? { countries: moveCountryStock(f.countries, input.origin, -input.kg) } : {}),
-        }, -input.beasts, country))),
+        list: fridge.map(f => (f.id !== reserve.id ? f : withCarcasses(f, current.filter(x => !chosen.some(c => c.id === x.id))))),
       });
       input.cuts.forEach((c, i) => this.moveCut(tx, products[i], c.kg, input.origin, true));
       return matricule;
@@ -673,11 +698,11 @@ export class AdminData {
         const left = o?.stock ?? p?.stock ?? 0;
         if (p && c.kg > left + 0.001) throw new StockError(`Impossible d'annuler : il ne reste que ${roundStock(left)} kg de ${c.name}, une partie a déjà été vendue.`);
       });
+      const back = cut.carcasses?.length
+        ? cut.carcasses
+        : [cleanCarcass({ id: `retour-${cut.matricule}`, kg: cut.kg, origin: cut.origin, half: cut.beasts < 1 || undefined })];
       tx.set(doc(db, 'settings', 'fridge'), {
-        list: fridge.map(f => (f.id !== cut.reserve.id ? f : moveBeasts({
-          ...f, kg: roundStock(f.kg + cut.kg),
-          ...(cut.origin && f.countries ? { countries: moveCountryStock(f.countries, cut.origin, cut.kg) } : {}),
-        }, cut.beasts, cut.origin && f.wholeBy ? cut.origin : undefined))),
+        list: fridge.map(f => (f.id !== cut.reserve.id ? f : withCarcasses(f, [...carcassesOf(f), ...back]))),
       });
       cut.cuts.forEach((c, i) => this.moveCut(tx, products[i], -c.kg, cut.origin, false));
       tx.update(cutRef, { cancelled: true });
@@ -752,15 +777,15 @@ export class AdminData {
   }
 
   /** Ajoute (sign 1) ou retire (sign -1) un arrivage, pays par pays. */
-  private moveLotParts(tx: Transaction, lot: LotInput, sign: number, fridge: FridgeItem[], product?: Product) {
+  private moveLotParts(tx: Transaction, lot: LotMove, sign: number, fridge: FridgeItem[], product?: Product) {
     let list = fridge;
     for (const part of lotParts(lot)) {
-      list = this.moveLot(tx, { ...lot, origin: part.origin, beasts: part.beasts, lines: undefined }, sign * part.qty, list, product);
+      list = this.moveLot(tx, { ...lot, origin: part.origin, beasts: part.beasts }, sign * part.qty, list, product);
     }
   }
 
   /** Ajoute (qty > 0) ou retire (qty < 0) la quantité d'un arrivage ; rend le frigo mis à jour. */
-  private moveLot(tx: Transaction, lot: LotInput, qty: number, fridge: FridgeItem[], product?: Product): FridgeItem[] {
+  private moveLot(tx: Transaction, lot: LotMove, qty: number, fridge: FridgeItem[], product?: Product): FridgeItem[] {
     const arrival = qty > 0;
     if (lot.target.kind === 'product') {
       const origins = lot.origin && product ? originsOf(product) : [];
@@ -774,12 +799,24 @@ export class AdminData {
     const list = fridge.map(f => {
       if (f.id !== lot.target.id) return f;
       const { restockDate, ...rest } = f;
-      const moved = moveBeasts({
-        ...(arrival ? rest : f), kg: Math.max(0, roundStock(f.kg + qty)),
-        ...(lot.origin ? { countries: moveCountryStock(f.countries, lot.origin, qty) } : {}),
-      }, Math.sign(qty) * (lot.beasts ?? 0), lot.origin);
-      // Le poids moyen suit les vraies bêtes reçues
-      return arrival && lot.beasts && moved.whole ? { ...moved, kgEach: roundStock(moved.kg / moved.whole) } : moved;
+      const current = carcassesOf(f);
+      let next: Carcass[];
+      if (arrival) {
+        next = [...current, ...(lot.back?.length ? lot.back : newCarcasses(lot, qty))];
+      } else if (lot.matricule && current.some(c => c.lot === lot.matricule)) {
+        const mine = current.filter(c => c.lot === lot.matricule && (!lot.origin || c.origin === lot.origin));
+        if (mine.length < (lot.beasts ?? 0)) {
+          throw new StockError(`Impossible d'annuler ${lot.matricule} : des bêtes de cet arrivage ont déjà été découpées ou vendues.`);
+        }
+        next = current.filter(c => !mine.includes(c));
+      } else {
+        const out = removeOldest(current, lot.beasts ?? 0, lot.origin);
+        if (!out) throw new StockError(`Il n'y a pas assez de bêtes entières de ${f.name}${lot.origin ? ` (${lot.origin})` : ''} au frigo.`);
+        next = out;
+      }
+      const moved = withCarcasses(arrival ? rest : f, next);
+      // Le poids moyen suit les vraies bêtes
+      return moved.whole ? { ...moved, kgEach: roundStock(moved.kg / moved.whole) } : moved;
     });
     tx.set(doc(db, 'settings', 'fridge'), { list });
     return list;
@@ -798,7 +835,7 @@ export class AdminData {
       const matricule = lotNumber(year, next);
       tx.set(counterRef, { [year]: next }, { merge: true });
       tx.set(lotRef, { ...input, matricule, createdAt: serverTimestamp() });
-      this.moveLotParts(tx, input, 1, fridge, product);
+      this.moveLotParts(tx, { ...input, matricule }, 1, fridge, product);
       return matricule;
     }));
     await this.markArrival(input);

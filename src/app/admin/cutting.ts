@@ -1,14 +1,16 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { FridgeItem, isCabinet, roundStock, wholeLeft } from '../core/data';
+import { FridgeItem, isCabinet, roundStock } from '../core/data';
 import { localDay } from '../core/stats';
-import { CutRecord, beastWeight, cutWaste, cutsOf, reserveCountries } from '../core/stock-chain';
+import { Carcass, carcassLabel, rebuildCarcasses, shareOf } from '../core/carcasses';
+import { Lot } from '../core/lots';
+import { CutRecord, cutWaste, cutsOf, reserveCountries } from '../core/stock-chain';
 import { AdminData } from './admin-data';
 import { ChainSteps } from './chain-steps';
 
 const blank = (reserve = '') => ({
-  reserve, origin: '', beasts: 1 as number | null, kg: null as number | null, date: localDay(new Date()), note: '',
+  reserve, origin: '', kg: null as number | null, date: localDay(new Date()), note: '',
   pieces: {} as Record<string, number | null>,
 });
 
@@ -20,6 +22,7 @@ const blank = (reserve = '') => ({
     <app-chain-steps current="decoupe" />
     <p class="hint">Quand vous coupez une bête, dites ce qui en sort. Les bêtes entières quittent le frigo, chaque coupe reçoit son poids dans son propre stock, et le reste part en os et déchets.</p>
 
+    <svg class="defs" aria-hidden="true"><defs><linearGradient id="cut-half" x1="0" x2="1"><stop offset=".5" stop-color="#f1d3c8" /><stop offset=".5" stop-color="#fff" /></linearGradient></defs></svg>
     <form class="card-box" #f="ngForm" (ngSubmit)="save(f)">
       <div class="grid2">
         <label>Frigo
@@ -30,21 +33,45 @@ const blank = (reserve = '') => ({
         </label>
         @if (countries().length) {
           <label>Pays des bêtes
-            <select name="origin" required [(ngModel)]="draft.origin" (ngModelChange)="suggestKg()">
-              <option value="">Choisir…</option>
-              @for (c of countries(); track c) { <option [value]="c">{{ c }} · {{ left(c) }} bête(s)</option> }
+            <select name="origin" [(ngModel)]="draft.origin" (ngModelChange)="picked = []; suggestKg()">
+              <option value="">Tous les pays</option>
+              @for (c of countries(); track c) { <option [value]="c">{{ c }}</option> }
             </select>
           </label>
         }
-        <label>Nombre de bêtes découpées
-          <input name="beasts" type="number" min="0.5" step="0.5" required [(ngModel)]="draft.beasts" (ngModelChange)="suggestKg()">
-          @if (reserve(); as r) { <small class="why">Il reste {{ left(draft.origin || undefined) }} bête(s) entière(s){{ draft.origin ? ' (' + draft.origin + ')' : '' }}. 0,5 = une demi-bête.</small> }
-        </label>
-        <label>Poids des bêtes découpées (kg)
-          <input name="kg" type="number" min="0.1" step="0.1" required [(ngModel)]="draft.kg">
-          @if (reserve()) { <small class="why">Proposé avec le poids moyen ({{ avg() }} kg par bête). Corrigez si vous avez pesé.</small> }
-        </label>
       </div>
+
+      @if (reserve(); as r) {
+        <div class="hang">
+          <div class="hang-head">
+            <b>Choisissez les bêtes à découper</b>
+            <small class="why">Cliquez sur une carcasse pour la choisir, cliquez encore pour l'enlever.</small>
+          </div>
+          <div class="picker">
+            @for (c of hanging(); track c.id; let i = $index) {
+              <button type="button" class="pick" [class.on]="isPicked(c)" [attr.aria-pressed]="isPicked(c)" (click)="toggle(c)">
+                <svg viewBox="0 0 60 130" aria-hidden="true">
+                  <path class="hook" d="M30 0V5M9 6H51M13 6v3c0 2.5-2.5 2.5-2.5.5M47 6v3c0 2.5 2.5 2.5 2.5.5" />
+                  <path class="meat" [class.half]="c.half" d="M13 10C12 16 14 22 17 28C9 36 9 50 15 58C16 63 18 66 19 70C15 78 14 88 16 96C14 104 12 110 15 116C18 121 23 124 26 128H34C37 124 42 121 45 116C48 110 46 104 44 96C46 88 45 78 41 70C42 66 44 63 45 58C51 50 51 36 43 28C46 22 48 16 47 10L42 12C40 18 36 24 30 27C24 24 20 18 18 12Z" />
+                </svg>
+                <b>{{ c.kg }} kg</b>
+                <small>{{ label(c, i) }}</small>
+                <small>{{ c.origin || '' }}{{ c.date ? ' · ' + c.date : '' }}{{ c.half ? ' · demi' : '' }}</small>
+                <i class="check" aria-hidden="true">✓</i>
+              </button>
+            } @empty {
+              <p class="why">Aucune bête entière dans ce frigo{{ draft.origin ? ' pour ' + draft.origin : '' }}. Enregistrez d'abord un arrivage.</p>
+            }
+          </div>
+          <div class="picked">
+            <span><b>{{ beasts() }}</b> bête(s) choisie(s)</span>
+            <label>Poids découpé (kg)
+              <input name="kg" type="number" min="0.1" step="0.1" required [(ngModel)]="draft.kg">
+            </label>
+            <small class="why">Le poids se remplit avec celui des carcasses choisies. Corrigez si vous repesez.</small>
+          </div>
+        </div>
+      }
 
       @if (reserve(); as r) {
         <div class="pieces">
@@ -73,7 +100,7 @@ const blank = (reserve = '') => ({
         <label>Note (facultatif)<input name="note" placeholder="Ex. commande de l'Aïd" [(ngModel)]="draft.note"></label>
       </div>
       @if (error()) { <div class="msg">{{ error() }}</div> }
-      <div class="form-actions"><button class="btn" type="submit" [disabled]="f.invalid || busy() || waste() < 0 || !totalCuts()">{{ busy() ? 'Enregistrement…' : 'Enregistrer la découpe' }}</button></div>
+      <div class="form-actions"><button class="btn" type="submit" [disabled]="f.invalid || busy() || waste() < 0 || !totalCuts() || !picked.length">{{ busy() ? 'Enregistrement…' : 'Enregistrer la découpe' }}</button></div>
     </form>
 
     <div class="head list-head"><h3>Découpes enregistrées</h3></div>
@@ -83,6 +110,7 @@ const blank = (reserve = '') => ({
           <div class="info">
             <b>{{ c.matricule }} · {{ c.reserve.name }} @if (c.cancelled) { <span class="pill alert">Annulée</span> }</b>
             <small>{{ c.beasts }} bête(s) · {{ c.kg }} kg{{ c.origin ? ' · ' + c.origin : '' }} · le {{ c.date }}</small>
+            @if (c.carcasses?.length) { <small>Bêtes : {{ pickedText(c) }}</small> }
             <small>{{ pieceText(c) }} · os {{ c.waste }} kg</small>
           </div>
           @if (!c.cancelled) { <button class="btn light small" (click)="cancel(c)" [disabled]="busy()">Annuler</button> }
@@ -108,6 +136,24 @@ const blank = (reserve = '') => ({
     .waste small { color: var(--muted); }
     .waste.bad { border-color: #a10c20; color: #a10c20; }
     .waste.bad small { color: #a10c20; }
+    .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .hang { display: grid; gap: 10px; padding: 12px 14px; background: var(--bg); border-radius: 12px; }
+    .hang-head { display: grid; gap: 2px; }
+    .picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+    .pick { position: relative; display: grid; justify-items: center; gap: 2px; padding: 10px 6px 8px; background: #fff; border: 2px solid transparent; border-radius: 12px; font: inherit; cursor: pointer; box-shadow: 0 1px 0 var(--line); transition: border-color .15s, transform .15s; }
+    .pick:hover { transform: translateY(-2px); }
+    .pick.on { border-color: #a10c20; background: #fdf3f4; }
+    .pick svg { width: 34px; height: 74px; margin-bottom: 4px; }
+    .pick .hook { fill: none; stroke: #7d7872; stroke-width: 2.4; stroke-linecap: round; }
+    .pick .meat { fill: #f1d3c8; stroke: #9d4a48; stroke-width: 1.4; }
+    .pick .meat.half { fill: url(#cut-half); }
+    .pick b { font-size: 1rem; }
+    .pick small { color: var(--muted); font-size: .72rem; text-align: center; }
+    .pick .check { position: absolute; top: 6px; inset-inline-end: 6px; display: none; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #a10c20; color: #fff; font-style: normal; font-size: .75rem; }
+    .pick.on .check { display: grid; }
+    .picked { display: flex; flex-wrap: wrap; align-items: end; gap: 6px 16px; }
+    .picked label { margin: 0; }
+    .picked input { width: 120px; }
     .list-head h3 { font-family: Inter, sans-serif; font-size: 1.05rem; }
     .info small { display: block; }
   `,
@@ -116,6 +162,9 @@ export class Cutting implements OnInit {
   private readonly data = inject(AdminData);
   private readonly route = inject(ActivatedRoute);
   protected readonly history = signal<CutRecord[]>([]);
+  protected readonly lots = signal<Lot[]>([]);
+  protected readonly label = carcassLabel;
+  protected picked: Carcass[] = [];
   protected readonly loaded = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -134,7 +183,37 @@ export class Cutting implements OnInit {
   }
 
   private async reload() {
-    this.history.set((await this.data.listRegister()).cuts);
+    const { cuts, lots } = await this.data.listRegister();
+    this.history.set(cuts);
+    this.lots.set(lots);
+  }
+
+  /** Carcasses du frigo (retrouvées dans les arrivages si besoin), filtrées par pays */
+  private all(): Carcass[] {
+    const r = this.reserve();
+    return r ? rebuildCarcasses(r, this.lots()) : [];
+  }
+
+  protected hanging() {
+    const o = this.draft.origin;
+    return this.all().filter(c => !o || !c.origin || c.origin === o);
+  }
+
+  protected isPicked(c: Carcass) {
+    return this.picked.some(x => x.id === c.id);
+  }
+
+  protected toggle(c: Carcass) {
+    this.picked = this.isPicked(c) ? this.picked.filter(x => x.id !== c.id) : [...this.picked, c];
+    this.suggestKg();
+  }
+
+  protected beasts() {
+    return roundStock(this.picked.reduce((sum, c) => sum + shareOf(c), 0));
+  }
+
+  protected pickedText(c: CutRecord) {
+    return (c.carcasses ?? []).map((x, i) => `${carcassLabel(x, i)} (${x.kg} kg)`).join(' · ');
   }
 
   protected reserve(): FridgeItem | undefined {
@@ -151,25 +230,16 @@ export class Cutting implements OnInit {
     return r ? cutsOf(r, this.data.products()) : [];
   }
 
-  protected left(country?: string) {
-    const r = this.reserve();
-    return r ? wholeLeft(r, country && r.wholeBy ? country : undefined) : 0;
-  }
-
-  protected avg() {
-    const r = this.reserve();
-    return r ? beastWeight(r, this.draft.origin && r.wholeBy ? this.draft.origin : undefined) : 0;
-  }
-
   protected pickReserve() {
     this.draft.origin = this.countries().length === 1 ? this.countries()[0] : '';
     this.draft.pieces = {};
+    this.picked = [];
     this.suggestKg();
   }
 
   protected suggestKg() {
-    const n = Number(this.draft.beasts) || 0;
-    this.draft.kg = n && this.avg() ? roundStock(n * this.avg()) : null;
+    const kg = roundStock(this.picked.reduce((sum, c) => sum + c.kg, 0));
+    this.draft.kg = kg || null;
   }
 
   private pieceList() {
@@ -195,19 +265,21 @@ export class Cutting implements OnInit {
 
   protected async save(form: NgForm) {
     const r = this.reserve();
-    const beasts = Number(this.draft.beasts) || 0;
+    const beasts = this.beasts();
     const kg = Number(this.draft.kg) || 0;
     if (!r || !beasts || !kg) return;
-    if (this.countries().length && !this.draft.origin) {
-      this.error.set('Choisissez le pays des bêtes découpées.');
+    const origins = [...new Set(this.picked.map(c => c.origin).filter(Boolean))] as string[];
+    if (origins.length > 1) {
+      this.error.set('Choisissez des bêtes d\'un seul pays par découpe : chaque coupe garde le pays de sa viande.');
       return;
     }
+    const origin = origins[0] || this.draft.origin;
     this.busy.set(true);
     this.error.set('');
     try {
       const matricule = await this.data.addCut({
         reserve: { id: r.id, name: r.name }, beasts, kg, cuts: this.pieceList(), date: this.draft.date, note: this.draft.note.trim(),
-        ...(this.draft.origin ? { origin: this.draft.origin } : {}),
+        carcasses: this.picked, ...(r.carcasses ? {} : { base: this.all() }), ...(origin ? { origin } : {}),
       });
       this.data.notify(`Découpe enregistrée : ${matricule}`);
       const next = blank(r.id);

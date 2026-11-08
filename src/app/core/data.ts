@@ -1,3 +1,4 @@
+import type { Carcass } from './carcasses';
 // Types, données par défaut (affichées tant que Firestore est vide)
 // et illustrations par catégorie, partagés par le site et l'admin.
 
@@ -104,6 +105,8 @@ export interface FridgeItem {
   whole?: number;
   /** Bêtes entières par pays d'origine */
   wholeBy?: Record<string, number>;
+  /** Les bêtes suspendues, une par une (poids, pays, arrivage) */
+  carcasses?: Carcass[];
 }
 
 export interface Category {

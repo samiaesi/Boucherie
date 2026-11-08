@@ -1,4 +1,5 @@
 import { Category, FridgeItem, Order, Product, applyPools, carcassOf, isCabinet, isLowStock, isOutOfStock, itemQty, reserveOf, roundStock, wholeLeft } from './data';
+import type { Carcass } from './carcasses';
 import { Lot, LotTarget } from './lots';
 
 /** Pourquoi la marchandise sort du stock sans être vendue */
@@ -32,6 +33,8 @@ export interface StockExit {
   lot?: string;
   /** Bêtes entières retirées (réserve du frigo) */
   beasts?: number;
+  /** Les carcasses retirées, pour les remettre telles quelles si on annule */
+  carcasses?: Carcass[];
   note: string;
   cancelled?: boolean;
 }
@@ -50,6 +53,8 @@ export interface CutRecord {
   origin?: string;
   /** Bêtes entières découpées (0,5 = une demi-bête) */
   beasts: number;
+  /** Les carcasses choisies pour la découpe */
+  carcasses?: Carcass[];
   /** Poids des carcasses découpées */
   kg: number;
   /** Ce qui en sort, coupe par coupe */

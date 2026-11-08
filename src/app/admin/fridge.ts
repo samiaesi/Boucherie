@@ -37,6 +37,16 @@ const PRESETS = [
 
     @if (error()) { <div class="msg">{{ error() }}</div> }
 
+    <svg class="defs" aria-hidden="true">
+      <defs>
+        <linearGradient id="carcass-fat" x1="0" x2="1">
+          <stop offset="0" stop-color="#c9776f" /><stop offset=".22" stop-color="#ecc2b6" /><stop offset=".5" stop-color="#f8e9df" />
+          <stop offset=".78" stop-color="#ecc2b6" /><stop offset="1" stop-color="#c9776f" />
+        </linearGradient>
+        <radialGradient id="carcass-muscle"><stop offset="0" stop-color="#b8443f" stop-opacity=".55" /><stop offset="1" stop-color="#b8443f" stop-opacity="0" /></radialGradient>
+        <clipPath id="carcass-half"><rect x="0" y="0" width="30" height="130" /></clipPath>
+      </defs>
+    </svg>
     <div class="room">
       @for (l of lines(); track l.item.id) {
         <article class="unit" [class.is-open]="opened() === l.item.id">
@@ -69,13 +79,16 @@ const PRESETS = [
                 <span class="rail" [class]="'rail ' + iconOf(l.item) + (l.beasts > 4 ? ' many' : '')" [attr.aria-label]="l.beasts + ' bête(s) entière(s) suspendue(s)'">
                   @for (c of hanging(l.beasts); track k; let k = $index) {
                     <i class="carcass">
-                      <svg viewBox="0 0 60 120" aria-hidden="true">
-                        <defs><clipPath [attr.id]="'half-' + l.item.id + k"><rect x="0" y="0" width="30" height="120" /></clipPath></defs>
-                        <path class="hook" d="M30 0v4M12 5h36M14 5v3M46 5v3" />
-                        @if (c === 'half') { <path class="ghost" d="M16 7C14 15 14 22 18 30C10 40 12 52 18 58C16 66 15 74 16 82C12 92 14 104 24 110L27 118H33L36 110C46 104 48 92 44 82C45 74 44 66 42 58C48 52 50 40 42 30C46 22 46 15 44 7L38 9C36 16 33 21 30 24C27 21 24 16 22 9Z" /> }
-                        <g [attr.clip-path]="c === 'half' ? 'url(#half-' + l.item.id + k + ')' : null">
-                          <path class="meat" d="M16 7C14 15 14 22 18 30C10 40 12 52 18 58C16 66 15 74 16 82C12 92 14 104 24 110L27 118H33L36 110C46 104 48 92 44 82C45 74 44 66 42 58C48 52 50 40 42 30C46 22 46 15 44 7L38 9C36 16 33 21 30 24C27 21 24 16 22 9Z" />
-                          <path class="fat" d="M30 28V108M22 86c4 2 12 2 16 0M20 93c5 3 15 3 20 0M21 100c4 3 14 3 18 0M19 44c3 6 5 10 11 12M41 44c-3 6-5 10-11 12" />
+                      <svg viewBox="0 0 60 130" aria-hidden="true">
+                        <path class="hook" d="M30 0V5M9 6H51M13 6v3c0 2.5-2.5 2.5-2.5.5M47 6v3c0 2.5 2.5 2.5 2.5.5" />
+                        @if (c === 'half') { <path class="ghost" d="M13 10C12 16 14 22 17 28C9 36 9 50 15 58C16 63 18 66 19 70C15 78 14 88 16 96C14 104 12 110 15 116C18 121 23 124 26 128H34C37 124 42 121 45 116C48 110 46 104 44 96C46 88 45 78 41 70C42 66 44 63 45 58C51 50 51 36 43 28C46 22 48 16 47 10L42 12C40 18 36 24 30 27C24 24 20 18 18 12Z" /> }
+                        <g [attr.clip-path]="c === 'half' ? 'url(#carcass-half)' : null">
+                          <path class="meat" d="M13 10C12 16 14 22 17 28C9 36 9 50 15 58C16 63 18 66 19 70C15 78 14 88 16 96C14 104 12 110 15 116C18 121 23 124 26 128H34C37 124 42 121 45 116C48 110 46 104 44 96C46 88 45 78 41 70C42 66 44 63 45 58C51 50 51 36 43 28C46 22 48 16 47 10L42 12C40 18 36 24 30 27C24 24 20 18 18 12Z" />
+                          <ellipse class="muscle" cx="19.5" cy="44" rx="5" ry="10" />
+                          <ellipse class="muscle" cx="40.5" cy="44" rx="5" ry="10" />
+                          <ellipse class="kidney" cx="30" cy="66" rx="6" ry="3.6" />
+                          <path class="spine" d="M30 28V124" />
+                          <path class="ribs" d="M30 80c-6 1-10 3-12 7M30 80c6 1 10 3 12 7M30 88c-6 1-11 4-13 8M30 88c6 1 11 4 13 8M30 96c-6 1-11 4-13 9M30 96c6 1 11 4 13 9M30 104c-5 1-9 4-11 8M30 104c5 1 9 4 11 8" />
                         </g>
                       </svg>
                     </i>
@@ -218,22 +231,27 @@ const PRESETS = [
     .plate b { display: block; font-size: 1.1rem; }
     .plate small { display: block; color: var(--muted); font-size: .86rem; }
     /* Chambre froide : une carcasse suspendue par bête entière, une demi pour 0,5 */
-    .rail { position: relative; display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 8px 6px; width: 100%; min-height: 112px; padding: 4px 6px 6px; border-top: 5px solid #8e8880; border-radius: 3px; }
-    .rail::before { content: ""; position: absolute; inset: -5px 6% auto; height: 5px; background: linear-gradient(#c6c0b8, #8e8880); border-radius: 3px; }
-    .carcass { display: block; width: 50px; height: 100px; transform-origin: 50% 0; animation: sway 4s ease-in-out infinite; }
-    .rail.many .carcass { width: 34px; height: 68px; }
-    .carcass:nth-child(2n) { animation-delay: -1.3s; }
-    .carcass:nth-child(3n) { animation-delay: -2.4s; }
+    .rail { position: relative; display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 8px 6px; width: 100%; min-height: 112px; padding: 4px 6px 6px; border-radius: 3px; }
+    .rail::before { content: ""; position: absolute; inset: -6px 2% auto; height: 6px; background: linear-gradient(#d9d4cd, #8e8880 60%, #6f6a64); border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, .25); }
+    .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .carcass { display: block; width: 52px; height: 112px; transform-origin: 50% 0; animation: sway 5s ease-in-out infinite; filter: drop-shadow(0 4px 3px rgba(60, 20, 20, .28)); }
+    .rail.many .carcass { width: 36px; height: 78px; }
+    .carcass:nth-child(2n) { animation-delay: -1.6s; }
+    .carcass:nth-child(3n) { animation-delay: -3.1s; }
     .carcass svg { display: block; width: 100%; height: 100%; overflow: visible; }
-    .carcass .hook { fill: none; stroke: #6f6a64; stroke-width: 2.2; stroke-linecap: round; }
-    .carcass .meat { fill: #e8b4aa; stroke: #a8434c; stroke-width: 1.6; stroke-linejoin: round; }
-    .carcass .fat { fill: none; stroke: #b9525b; stroke-width: 1.3; stroke-linecap: round; opacity: .55; }
-    .carcass .ghost { fill: none; stroke: #a8434c; stroke-width: 1.2; stroke-dasharray: 3 3; opacity: .45; }
-    .rail.poulet .carcass { width: 34px; height: 68px; }
-    .rail.poulet .meat { fill: #f3d2b0; stroke: #c99a6c; }
-    .rail.poulet .fat { stroke: #c99a6c; }
-    .rail.boeuf .meat { fill: #c9564f; stroke: #8a1f2a; }
-    .rail.boeuf .fat { stroke: #f4dcd6; opacity: .8; }
+    .carcass .hook { fill: none; stroke: #7d7872; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .carcass .meat { fill: url(#carcass-fat); stroke: #9d4a48; stroke-width: 1.3; stroke-linejoin: round; }
+    .carcass .muscle { fill: url(#carcass-muscle); }
+    .carcass .kidney { fill: #fffaf3; opacity: .9; }
+    .carcass .spine { fill: none; stroke: #b9665f; stroke-width: 1.4; stroke-dasharray: 1.6 2.2; opacity: .8; }
+    .carcass .ribs { fill: none; stroke: #b9665f; stroke-width: 1.1; stroke-linecap: round; opacity: .65; }
+    .carcass .ghost { fill: none; stroke: #9d4a48; stroke-width: 1.1; stroke-dasharray: 3 3; opacity: .4; }
+    .rail.poulet .carcass { width: 36px; height: 78px; }
+    .rail.poulet .meat { fill: #f3d6b6; stroke: #c4935f; }
+    .rail.poulet :is(.muscle, .kidney, .spine, .ribs) { display: none; }
+    .rail.boeuf .carcass { width: 60px; height: 128px; }
+    .rail.boeuf .meat { fill: #c85a52; stroke: #7e2027; }
+    .rail.boeuf .muscle { fill: #9c2f2f; opacity: .5; }
     .rail .none { align-self: center; color: var(--muted); font-size: .82rem; font-style: normal; }
     .rail .more { align-self: center; padding: 3px 8px; border-radius: 999px; background: #fff; font-size: .82rem; }
     @keyframes sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
