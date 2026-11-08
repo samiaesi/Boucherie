@@ -1,3 +1,4 @@
+import { useAdminApp } from './admin-app';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Logo } from '../core/logo';
@@ -51,6 +52,7 @@ import { ROLE_LABELS, canOpen, menuFor } from './roles';
   `,
 })
 export class AdminLayout implements OnInit, OnDestroy {
+  private readonly installable = useAdminApp();
   // L'admin est en français, même si le visiteur a choisi l'arabe sur le site
   private readonly ltr = (document.documentElement.dir = 'ltr');
 

@@ -18,8 +18,18 @@
   </script>
   <link rel="icon" type="image/svg+xml" href="logo.svg">
   <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="theme-color" content="#d0102a">
+  <script>
+    // L'admin s'installe comme sa propre application (« Hallem Admin »), qui s'ouvre sur l'admin
+    if (location.pathname.indexOf('/admin') === 0) {
+      document.querySelector('link[rel=manifest]').href = 'admin.webmanifest';
+      document.querySelector('link[rel=apple-touch-icon]').href = 'icons/admin-192.png';
+      document.querySelector('meta[name=theme-color]').content = '#1d1613';
+      var t = document.createElement('meta'); t.name = 'apple-mobile-web-app-title'; t.content = 'Hallem Admin'; document.head.appendChild(t);
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
 </head>

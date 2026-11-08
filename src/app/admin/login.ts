@@ -1,3 +1,4 @@
+import { useAdminApp } from './admin-app';
 import { Logo } from '../core/logo';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -22,6 +23,7 @@ import { Auth } from './auth';
   `,
 })
 export class Login {
+  private readonly installable = useAdminApp();
   // L'admin est en français, même si le visiteur a choisi l'arabe sur le site
   private readonly ltr = (document.documentElement.dir = 'ltr');
 
