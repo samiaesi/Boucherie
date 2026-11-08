@@ -1,3 +1,4 @@
+import { shopOrigin } from './admin-app';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -123,7 +124,7 @@ export class Orders implements OnInit {
         ? `السلام عليكم ${o.name}، طلبكم رقم ${r} جاهز. يمكنكم استلامه من ${ar}. شكراً لكم!`
         : `Bonjour ${o.name}, votre commande ${r} est prête. Vous pouvez la récupérer chez ${name}. Merci !`;
     }
-    const link = invoiceId ? `${location.origin}/facture/${invoiceId}` : '';
+    const link = invoiceId ? `${shopOrigin()}/facture/${invoiceId}` : '';
     const invoice = !link ? '' : o.lang === 'ar' ? `\n\nفاتورتكم وتفاصيل طلبكم: ${link}` : `\n\nVotre facture avec le détail de vos articles : ${link}`;
     const when = o.lang === 'ar'
       ? (delivery ? `تاريخ التوصيل: ${o.date}\nالدفع عند التوصيل.` : `تاريخ الاستلام: ${o.date}\nالدفع في المحل عند الاستلام.`)
@@ -140,7 +141,7 @@ export class Orders implements OnInit {
     if (!win) this.data.notify('Autorisez les fenêtres pop-up pour ouvrir WhatsApp.', 6000);
     try {
       const invoiceId = await this.data.changeStatus(o, status);
-      const url = `https://wa.me/${this.waNumber(o.tel)}?text=${encodeURIComponent(`${this.message(o, status, invoiceId)}\n\n${o.lang === 'ar' ? 'تتبع طلبكم' : 'Suivre votre commande'} : ${location.origin}/suivi/${o.id}`)}`;
+      const url = `https://wa.me/${this.waNumber(o.tel)}?text=${encodeURIComponent(`${this.message(o, status, invoiceId)}\n\n${o.lang === 'ar' ? 'تتبع طلبكم' : 'Suivre votre commande'} : ${shopOrigin()}/suivi/${o.id}`)}`;
       if (win) win.location.href = url;
       if (status === 'confirmé' && o.items?.some(i => i.special)) this.data.notify(this.confirmedText(o, status), 7000);
       if (invoiceId && location.hostname === 'localhost') {

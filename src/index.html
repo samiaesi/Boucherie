@@ -22,13 +22,27 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="theme-color" content="#d0102a">
   <script>
-    // L'admin s'installe comme sa propre application (« Hallem Admin »), qui s'ouvre sur l'admin
-    if (location.pathname.indexOf('/admin') === 0) {
-      document.querySelector('link[rel=manifest]').href = 'admin.webmanifest';
-      document.querySelector('link[rel=apple-touch-icon]').href = 'icons/admin-192.png';
-      document.querySelector('meta[name=theme-color]').content = '#1d1613';
-      var t = document.createElement('meta'); t.name = 'apple-mobile-web-app-title'; t.content = 'Hallem Admin'; document.head.appendChild(t);
-    }
+    // L'admin a sa propre adresse (hallem-admin.web.app) : le téléphone l'installe comme une
+    // application à part, sans jamais toucher à l'application des clients.
+    (function () {
+      var ADMIN_HOST = 'hallem-admin.web.app', SHOP_HOST = 'boucherie-hallem.web.app';
+      var path = location.pathname;
+      if (location.hostname === SHOP_HOST && path.indexOf('/admin') === 0) {
+        location.replace('https://' + ADMIN_HOST + path + location.search);
+        return;
+      }
+      if (location.hostname === ADMIN_HOST && path.indexOf('/admin') !== 0 && path.indexOf('/facture') !== 0) {
+        location.replace('/admin');
+        return;
+      }
+      if (location.hostname === ADMIN_HOST) {
+        document.querySelector('link[rel=manifest]').href = 'admin.webmanifest';
+        document.querySelector('link[rel=apple-touch-icon]').href = 'icons/admin-192.png';
+        document.querySelector('meta[name=theme-color]').content = '#1d1613';
+        document.title = 'Hallem Admin';
+        var t = document.createElement('meta'); t.name = 'apple-mobile-web-app-title'; t.content = 'Hallem Admin'; document.head.appendChild(t);
+      }
+    })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">

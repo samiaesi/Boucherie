@@ -151,6 +151,12 @@ export class Notifications implements OnDestroy {
     .bell .badge { position: absolute; top: -5px; inset-inline-end: -6px; margin: 0; }
     .bell-scrim { position: fixed; inset: 0; z-index: 19; }
     .panel { position: absolute; top: 48px; inset-inline-end: 0; z-index: 20; width: min(380px, calc(100vw - 24px)); max-height: 70vh; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: 0 20px 40px -18px rgba(35, 26, 23, .5); text-align: start; color: var(--ink); }
+    /* Téléphone : la liste prend toute la largeur de l'écran, au lieu de partir à gauche hors de la vue */
+    @media (max-width: 700px) {
+      .bell-scrim { z-index: 999; background: rgba(29, 22, 19, .25); }
+      .panel { position: fixed; top: 64px; left: 10px; right: 10px; width: auto; max-height: calc(100dvh - 80px); z-index: 1000; }
+      .panel-head { flex-wrap: wrap; gap: 4px 10px; }
+    }
     .panel-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; }
     .link { border: 0; background: none; color: var(--bordeaux); font-size: .8rem; text-decoration: underline; }
     .link:disabled { opacity: .4; }

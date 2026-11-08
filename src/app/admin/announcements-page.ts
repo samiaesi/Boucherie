@@ -1,3 +1,4 @@
+import { shopOrigin } from './admin-app';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { Announcement, AnnouncementKind, KIND_LABELS, Subscriber, announcementMessage, liveAnnouncements, subscribers } from '../core/announcements';
@@ -140,7 +141,7 @@ export class Announcements implements OnInit {
   protected waLink(a: Announcement, c: Subscriber) {
     const tel = c.tel.replace(/\D/g, '');
     const number = tel.startsWith('0') ? `213${tel.slice(1)}` : tel;
-    const text = announcementMessage(a, c.lang, this.data.settings().name_fr, location.origin);
+    const text = announcementMessage(a, c.lang, this.data.settings().name_fr, shopOrigin());
     return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
   }
 
@@ -148,7 +149,7 @@ export class Announcements implements OnInit {
   protected async copy(a: Announcement) {
     const shop = this.data.settings();
     const fr = announcementMessage(a, 'fr', shop.name_fr, '');
-    const ar = announcementMessage(a, 'ar', shop.name_ar, location.origin);
+    const ar = announcementMessage(a, 'ar', shop.name_ar, shopOrigin());
     await navigator.clipboard.writeText(`${fr}\n\n${ar}`);
     this.copied.set(true);
     setTimeout(() => this.copied.set(false), 2500);
