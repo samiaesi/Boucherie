@@ -44,6 +44,10 @@ const PRESETS = [
           <stop offset=".78" stop-color="#ecc2b6" /><stop offset="1" stop-color="#c9776f" />
         </linearGradient>
         <radialGradient id="carcass-muscle"><stop offset="0" stop-color="#b8443f" stop-opacity=".55" /><stop offset="1" stop-color="#b8443f" stop-opacity="0" /></radialGradient>
+        <linearGradient id="chicken-skin" x1="0" x2="1">
+          <stop offset="0" stop-color="#e2ad7f" /><stop offset=".3" stop-color="#f7dcc0" /><stop offset=".5" stop-color="#fbe9d6" />
+          <stop offset=".7" stop-color="#f7dcc0" /><stop offset="1" stop-color="#e2ad7f" />
+        </linearGradient>
         <clipPath id="carcass-half"><rect x="0" y="0" width="30" height="130" /></clipPath>
       </defs>
     </svg>
@@ -79,6 +83,20 @@ const PRESETS = [
                 <span class="rail" [class]="'rail ' + iconOf(l.item) + (l.beasts > 4 ? ' many' : '')" [attr.aria-label]="l.beasts + ' bête(s) entière(s) suspendue(s)'">
                   @for (c of hanging(l.beasts); track k; let k = $index) {
                     <i class="carcass">
+                      @if (iconOf(l.item) === 'poulet') {
+                      <svg viewBox="0 0 60 100" aria-hidden="true">
+                        <path class="hook" d="M30 0V4M10 5H50M14 5v3M46 5v3" />
+                        <g [attr.clip-path]="c === 'half' ? 'url(#carcass-half)' : null">
+                          <path class="bone" d="M14 9l6 11M46 9l-6 11" />
+                          <path class="skin" d="M19 18C12 24 8 34 9 44C9 52 6 60 8 68C10 80 20 90 30 92C40 90 50 80 52 68C54 60 51 52 51 44C52 34 48 24 41 18C38 24 35 30 30 32C25 30 22 24 19 18Z" />
+                          <path class="skin wing" d="M9 61C3 69 5 81 14 84C12 76 13 68 16 62Z" />
+                          <path class="skin wing" d="M51 61C57 69 55 81 46 84C48 76 47 68 44 62Z" />
+                          <path class="skin" d="M27 91C27 95 29 98 30 99C31 98 33 95 33 91Z" />
+                          <path class="keel" d="M19 20C20 30 24 38 30 42M41 20C40 30 36 38 30 42M30 46V86M17 52c3 4 7 6 13 7M43 52c-3 4-7 6-13 7" />
+                        </g>
+                        @if (c === 'half') { <path class="ghost" d="M41 18C48 24 52 34 51 44C51 52 54 60 52 68C50 80 40 90 30 92" /> }
+                      </svg>
+                    } @else {
                       <svg viewBox="0 0 60 130" aria-hidden="true">
                         <path class="hook" d="M30 0V5M9 6H51M13 6v3c0 2.5-2.5 2.5-2.5.5M47 6v3c0 2.5 2.5 2.5 2.5.5" />
                         @if (c === 'half') { <path class="ghost" d="M13 10C12 16 14 22 17 28C9 36 9 50 15 58C16 63 18 66 19 70C15 78 14 88 16 96C14 104 12 110 15 116C18 121 23 124 26 128H34C37 124 42 121 45 116C48 110 46 104 44 96C46 88 45 78 41 70C42 66 44 63 45 58C51 50 51 36 43 28C46 22 48 16 47 10L42 12C40 18 36 24 30 27C24 24 20 18 18 12Z" /> }
@@ -91,6 +109,7 @@ const PRESETS = [
                           <path class="ribs" d="M30 80c-6 1-10 3-12 7M30 80c6 1 10 3 12 7M30 88c-6 1-11 4-13 8M30 88c6 1 11 4 13 8M30 96c-6 1-11 4-13 9M30 96c6 1 11 4 13 9M30 104c-5 1-9 4-11 8M30 104c5 1 9 4 11 8" />
                         </g>
                       </svg>
+                    }
                     </i>
                   } @empty {
                     <em class="none">Aucune bête suspendue</em>
@@ -246,9 +265,12 @@ const PRESETS = [
     .carcass .spine { fill: none; stroke: #b9665f; stroke-width: 1.4; stroke-dasharray: 1.6 2.2; opacity: .8; }
     .carcass .ribs { fill: none; stroke: #b9665f; stroke-width: 1.1; stroke-linecap: round; opacity: .65; }
     .carcass .ghost { fill: none; stroke: #9d4a48; stroke-width: 1.1; stroke-dasharray: 3 3; opacity: .4; }
-    .rail.poulet .carcass { width: 36px; height: 78px; }
-    .rail.poulet .meat { fill: #f3d6b6; stroke: #c4935f; }
-    .rail.poulet :is(.muscle, .kidney, .spine, .ribs) { display: none; }
+    .rail.poulet .carcass { width: 44px; height: 74px; }
+    .rail.poulet.many .carcass { width: 32px; height: 54px; }
+    .carcass .skin { fill: url(#chicken-skin); stroke: #b07a4c; stroke-width: 1.3; stroke-linejoin: round; }
+    .carcass .skin.wing { fill: #edc9a4; }
+    .carcass .bone { fill: none; stroke: #e9dccd; stroke-width: 3; stroke-linecap: round; }
+    .carcass .keel { fill: none; stroke: #c99467; stroke-width: 1.1; stroke-linecap: round; opacity: .6; }
     .rail.boeuf .carcass { width: 60px; height: 128px; }
     .rail.boeuf .meat { fill: #c85a52; stroke: #7e2027; }
     .rail.boeuf .muscle { fill: #9c2f2f; opacity: .5; }

@@ -55,8 +55,9 @@ function newCarcasses(lot: LotMove, qty: number): Carcass[] {
     }));
   }
   const n = Math.max(0, Math.floor(lot.beasts ?? 0));
+  // Un lot (poulets) peut compter des centaines de bêtes : chaque carcasse garde le strict nécessaire
   return Array.from({ length: n }, (_, i) => cleanCarcass({
-    id: `${lot.matricule ?? 'retour-' + Date.now()}-${i + 1}`, kg: roundStock(qty / n), origin: lot.origin, lot: lot.matricule, n: lot.matricule ? i + 1 : undefined, date: lot.arrivalDate,
+    id: `${lot.matricule ?? 'r' + Date.now()}-${i + 1}`, kg: roundStock(qty / n), origin: lot.origin, lot: lot.matricule,
   }));
 }
 
@@ -829,7 +830,7 @@ export class AdminData {
       const next = known
         ? origins.map(o => (o.country === lot.origin ? { ...o, stock: Math.max(0, roundStock((o.stock ?? 0) + qty)) } : o))
         : lot.origin ? [...origins, { country: lot.origin, price: product?.price ?? 0, stock: Math.max(0, qty) }] : [];
-      tx.update(doc(db, 'products', lot.target.id), { stock: increment(qty), ...(arrival ? { restockDate: '' } : {}), ...(lot.origin ? { origins: next } : {}) });
+      tx.update(doc(db, 'products', lot.target.id), { stock: increment(qty), ...(arrival ? { restockDate: '', trackStock: true } : {}), ...(lot.origin ? { origins: next } : {}) });
       return fridge;
     }
     const list = fridge.map(f => {

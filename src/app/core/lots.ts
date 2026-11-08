@@ -14,6 +14,8 @@ export interface LotTarget {
   id: string;
   name: string;
   unit: string;
+  /** Rayon du produit, pour ranger la liste */
+  group?: string;
 }
 
 /** Arrivage de marchandise, identifié par son matricule */
@@ -70,12 +72,16 @@ export function parseWeights(text: string) {
 
 export const lotNumber = (year: number, n: number) => `LOT-${year}-${String(n).padStart(4, '0')}`;
 
-/** Les réserves d'abord, puis les produits dont le stock ne dépend pas d'une réserve. */
+/**
+ * Les réserves (bêtes entières) d'abord, puis tous les produits qui ont leur propre stock :
+ * poissons, surgelés, coupes… Un premier arrivage met le produit en suivi de stock.
+ * Le mouton entier et le demi sortent des bêtes : on reçoit les bêtes, pas le produit.
+ */
 export function lotTargets(products: Product[], fridge: FridgeItem[]): LotTarget[] {
   return [
     ...fridge.filter(f => !isCabinet(f)).map(f => ({ kind: 'fridge' as const, id: f.id, name: f.name, unit: 'kg' })),
-    ...applyPools(products, fridge).filter(p => p.trackStock && !poolOf(p, fridge))
-      .map(p => ({ kind: 'product' as const, id: p.id, name: p.name_fr, unit: stockUnit(p) })),
+    ...applyPools(products, fridge).filter(p => !poolOf(p, fridge) && p.unit !== 'order' && !p.custom)
+      .map(p => ({ kind: 'product' as const, id: p.id, name: p.name_fr, unit: stockUnit(p), ...(p.category ? { group: p.category } : {}) })),
   ];
 }
 

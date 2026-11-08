@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
-import { COUNTRIES, formatNumber, roundStock } from '../core/data';
+import { RouterLink } from '@angular/router';
+import { COUNTRIES, Category, formatNumber, roundStock } from '../core/data';
 import { BeastLine, Lot, LotTarget, linesCost, lotOrigins, lotTargets, parseWeights, searchLots, supplierNames } from '../core/lots';
 import { localDay } from '../core/stats';
 import { AdminData } from './admin-data';
@@ -13,12 +14,14 @@ const MAX_BEASTS = 200;
 
 const blank = () => ({
   target: null as LotTarget | null, qty: null as number | null, price: null as number | null, count: null as number | null,
+  /** Bête par bête (moutons, bœufs) ou en lot (poulets : nombre et poids total) */
+  mode: 'each' as 'each' | 'lot',
   arrivalDate: localDay(new Date()), supplierName: '', supplierRef: '', note: '', origin: '',
 });
 
 @Component({
   selector: 'app-arrivals',
-  imports: [FormsModule, ChainSteps],
+  imports: [FormsModule, RouterLink, ChainSteps],
   template: `
     <div class="head"><h2>Arrivages</h2></div>
     <app-chain-steps current="arrivages" />
@@ -28,15 +31,43 @@ const blank = () => ({
       <datalist id="lot-countries">@for (c of countries; track c.fr) { <option [value]="c.fr"></option> }</datalist>
       <div class="grid2">
         <label>Article reçu
-          <select name="target" required [(ngModel)]="draft.target">
+          <select name="target" required [(ngModel)]="draft.target" (ngModelChange)="pickTarget()">
             <option [ngValue]="null">Choisir…</option>
-            @for (t of targets(); track t.kind + t.id) { <option [ngValue]="t">{{ t.name }} ({{ t.unit }})</option> }
+            @for (g of groups(); track g.label) {
+              <optgroup [label]="g.label">
+                @for (t of g.targets; track t.kind + t.id) { <option [ngValue]="t">{{ t.name }} ({{ t.unit }})</option> }
+              </optgroup>
+            }
           </select>
+          <small class="why">Un produit manque (ex. sole) ? Créez-le dans <a routerLink="/admin/produits">Produits</a>, il apparaîtra ici.</small>
         </label>
         @if (isBeasts()) {
-          <label>Nombre de bêtes reçues
-            <input name="count" type="number" min="1" [max]="maxBeasts" step="1" required [(ngModel)]="draft.count" (ngModelChange)="resize($event)">
-          </label>
+          <div class="mode" role="radiogroup" aria-label="Façon de compter">
+            <span class="mode-title">Comment compter ?</span>
+            <label [class.on]="draft.mode === 'each'"><input type="radio" name="mode" value="each" [(ngModel)]="draft.mode"> Bête par bête <small>moutons, bœufs</small></label>
+            <label [class.on]="draft.mode === 'lot'"><input type="radio" name="mode" value="lot" [(ngModel)]="draft.mode"> En lot <small>poulets : nombre et poids total</small></label>
+          </div>
+          @if (draft.mode === 'each') {
+            <label>Nombre de bêtes reçues
+              <input name="count" type="number" min="1" [max]="maxBeasts" step="1" required [(ngModel)]="draft.count" (ngModelChange)="resize($event)">
+              @if ((draft.count ?? 0) > 30) { <small class="why">Beaucoup de bêtes ? Choisissez plutôt « En lot ».</small> }
+            </label>
+          } @else {
+            <label>Nombre reçu
+              <input name="lotCount" type="number" min="1" step="1" required placeholder="700" [(ngModel)]="draft.count">
+            </label>
+            <label>Poids total du lot (kg)
+              <input name="lotKg" type="number" min="0.1" step="0.1" required placeholder="1540" [(ngModel)]="draft.qty">
+              @if (lotAverage()) { <small class="why">Moyenne : {{ lotAverage() }} kg par bête</small> }
+            </label>
+            <label>Pays d'origine
+              <input name="lotOrigin" list="lot-countries" autocomplete="off" required placeholder="Algérie" [(ngModel)]="draft.origin">
+            </label>
+            <label>Prix d'achat (DA / kg, facultatif)
+              <input name="lotPrice" type="number" min="0" step="10" [(ngModel)]="draft.price">
+              @if (draft.qty && draft.price) { <small class="why">Coût du lot : {{ money(draft.qty * draft.price) }}</small> }
+            </label>
+          }
         } @else {
           <label>Quantité reçue {{ draft.target ? '(' + draft.target.unit + ')' : '' }}
             <input name="qty" type="number" min="0.01" step="0.01" required [(ngModel)]="draft.qty">
@@ -50,7 +81,7 @@ const blank = () => ({
         }
       </div>
 
-      @if (isBeasts() && rows.length) {
+      @if (isBeasts() && draft.mode === 'each' && rows.length) {
         <div class="beasts">
           <div class="beast titles" aria-hidden="true"><span>N°</span><span>Poids (kg)</span><span>Pays</span><span>Prix d'achat (DA / kg)</span><span></span><span>Coût</span></div>
           @for (r of rows; track $index; let i = $index) {
@@ -125,6 +156,12 @@ const blank = () => ({
     .list-head h3 { font-family: Inter, sans-serif; font-size: 1.05rem; }
     .list-head input { max-width: 300px; }
     .info small { display: block; }
+    .mode { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .mode-title { color: var(--muted); font-size: .86rem; font-weight: 600; }
+    .mode label { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; font-weight: 500; cursor: pointer; }
+    .mode label small { color: var(--muted); font-size: .76rem; font-weight: 400; }
+    .mode label.on { border-color: #a10c20; background: #fbeef0; }
+    .mode input { position: absolute; opacity: 0; pointer-events: none; }
     .beasts { display: grid; gap: 6px; padding: 12px 14px; background: var(--bg); border-radius: 12px; }
     .beast { display: grid; grid-template-columns: 34px minmax(80px, 1fr) minmax(120px, 1.5fr) minmax(110px, 1.2fr) 38px 100px; gap: 8px; align-items: center; }
     .brush { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; background: #fff; border: 1px solid var(--line); border-radius: 10px; color: #a10c20; cursor: pointer; }
@@ -163,10 +200,38 @@ export class Arrivals implements OnInit {
 
   protected readonly targets = computed(() => lotTargets(this.data.products(), this.data.fridge()));
   protected readonly suppliers = computed(() => supplierNames(this.lots()));
+  protected readonly categories = signal<Category[]>([]);
+
+  /** Frigos d'abord, puis un groupe par rayon, dans l'ordre des rayons */
+  protected readonly groups = computed(() => {
+    const all = this.targets();
+    const out = [{ label: 'Frigos : bêtes entières', targets: all.filter(t => t.kind === 'fridge') }];
+    const cats = [...this.categories()].sort((a, b) => a.order - b.order);
+    for (const c of cats) {
+      const targets = all.filter(t => t.kind === 'product' && t.group === c.id);
+      if (targets.length) out.push({ label: c.name_fr, targets });
+    }
+    const other = all.filter(t => t.kind === 'product' && !cats.some(c => c.id === t.group));
+    if (other.length) out.push({ label: 'Autres produits', targets: other });
+    return out.filter(g => g.targets.length);
+  });
   protected readonly shown = computed(() => searchLots(this.lots(), this.search()));
 
   protected isBeasts() {
     return this.draft.target?.kind === 'fridge';
+  }
+
+  /** Petites bêtes (poulets) : en lot ; grosses bêtes : une ligne chacune */
+  protected pickTarget() {
+    const t = this.draft.target;
+    if (t?.kind !== 'fridge') return;
+    const f = this.data.fridge().find(x => x.id === t.id);
+    this.draft.mode = t.id === 'poulets' || (f?.kgEach ?? 0) > 0 && (f?.kgEach ?? 0) <= 5 ? 'lot' : 'each';
+  }
+
+  protected lotAverage() {
+    const n = Number(this.draft.count) || 0, kg = Number(this.draft.qty) || 0;
+    return n && kg ? roundStock(kg / n) : 0;
   }
 
   /** Une ligne par bête ; une nouvelle ligne reprend le pays et le prix de la précédente. */
@@ -230,6 +295,7 @@ export class Arrivals implements OnInit {
 
   async ngOnInit() {
     try {
+      this.categories.set(await this.data.getCategories());
       await this.reload();
     } catch (e) {
       this.error.set((e as Error).message);
@@ -246,7 +312,17 @@ export class Arrivals implements OnInit {
     if (!target) return;
     const common = { target, arrivalDate, supplierName: supplierName.trim(), supplierRef: supplierRef.trim(), note: note.trim() };
     let input;
-    if (this.isBeasts()) {
+    if (this.isBeasts() && this.draft.mode === 'lot') {
+      const beasts = Math.floor(Number(this.draft.count) || 0);
+      const qty = Number(this.draft.qty) || 0;
+      const origin = this.draft.origin.trim();
+      const price = Number(this.draft.price) || 0;
+      if (!beasts || !qty || !origin) {
+        this.error.set('Indiquez le nombre, le poids total et le pays du lot.');
+        return;
+      }
+      input = { ...common, qty: roundStock(qty), beasts, origin, ...(price ? { price, cost: Math.round(qty * price) } : {}) };
+    } else if (this.isBeasts()) {
       const lines = this.lines();
       if (!lines.length || lines.some(l => !l.kg || !l.origin)) {
         this.error.set('Indiquez le poids et le pays de chaque bête.');

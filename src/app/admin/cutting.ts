@@ -13,7 +13,7 @@ const blank = (reserve = '') => ({
   reserve, origin: '', kg: null as number | null, date: localDay(new Date()), note: '',
   pieces: {} as Record<string, number | null>,
   /** Ce qui n'est pas coupé : à la poubelle (os) ou gardé au frigo */
-  keep: false, rest: null as number | null,
+  keep: true, rest: null as number | null,
 });
 
 @Component({
@@ -50,17 +50,27 @@ const blank = (reserve = '') => ({
             <small class="why">Cliquez sur une carcasse pour la choisir, cliquez encore pour l'enlever.</small>
           </div>
           <div class="picker">
-            @for (c of hanging(); track c.id; let i = $index) {
-              <button type="button" class="pick" [class.on]="isPicked(c)" [attr.aria-pressed]="isPicked(c)" (click)="toggle(c)">
+            @for (g of groups(); track g.key; let i = $index) {
+              @let c = g.first;
+              <div class="pick-wrap">
+              <button type="button" class="pick" [class.on]="pickedIn(g) > 0" [attr.aria-pressed]="pickedIn(g) > 0" (click)="g.items.length > 1 ? add(g) : toggle(c)">
                 <svg viewBox="0 0 60 130" aria-hidden="true">
                   <path class="hook" d="M30 0V5M9 6H51M13 6v3c0 2.5-2.5 2.5-2.5.5M47 6v3c0 2.5 2.5 2.5 2.5.5" />
                   <path class="meat" [class.half]="c.half" d="M13 10C12 16 14 22 17 28C9 36 9 50 15 58C16 63 18 66 19 70C15 78 14 88 16 96C14 104 12 110 15 116C18 121 23 124 26 128H34C37 124 42 121 45 116C48 110 46 104 44 96C46 88 45 78 41 70C42 66 44 63 45 58C51 50 51 36 43 28C46 22 48 16 47 10L42 12C40 18 36 24 30 27C24 24 20 18 18 12Z" />
                 </svg>
-                <b>{{ c.kg }} kg</b>
-                <small>{{ label(c, i) }}</small>
+                <b>{{ c.kg }} kg{{ g.items.length > 1 ? ' chacun' : '' }}</b>
+                <small>{{ g.items.length > 1 ? (c.lot || 'Lot') + ' · ' + g.items.length + ' bêtes' : label(c, i) }}</small>
                 <small>{{ c.origin || '' }}{{ c.date ? ' · ' + c.date : '' }}{{ c.half ? ' · demi' : '' }}</small>
-                <i class="check" aria-hidden="true">✓</i>
+                <i class="check" aria-hidden="true">{{ g.items.length > 1 ? pickedIn(g) : '✓' }}</i>
               </button>
+              @if (g.items.length > 1) {
+                <div class="stepper">
+                  <button type="button" [disabled]="!pickedIn(g)" [attr.aria-label]="'Une bête de moins'" (click)="remove(g)">−</button>
+                  <input type="number" min="0" [max]="g.items.length" [attr.aria-label]="'Nombre de bêtes à découper'" [value]="pickedIn(g)" (change)="setCount(g, $any($event.target).value)">
+                  <button type="button" [disabled]="pickedIn(g) >= g.items.length" [attr.aria-label]="'Une bête de plus'" (click)="add(g)">+</button>
+                </div>
+              }
+              </div>
             } @empty {
               <p class="why">Aucune bête entière dans ce frigo{{ draft.origin ? ' pour ' + draft.origin : '' }}. Enregistrez d'abord un arrivage.</p>
             }
@@ -91,11 +101,11 @@ const blank = (reserve = '') => ({
             <div class="left-over">
               <b>Il reste {{ leftOver() }} kg non découpés</b>
               <div class="choice" role="radiogroup" aria-label="Que devient le reste ?">
-                <label [class.on]="!draft.keep"><input type="radio" name="keep" [value]="false" [(ngModel)]="draft.keep"> Tout part en os et déchets</label>
-                <label [class.on]="draft.keep"><input type="radio" name="keep" [value]="true" [(ngModel)]="draft.keep" (ngModelChange)="draft.rest = null"> J'en garde au frigo pour plus tard</label>
+                <label [class.on]="draft.keep"><input type="radio" name="keep" [value]="true" [(ngModel)]="draft.keep" (ngModelChange)="draft.rest = null"> Je garde le reste au frigo pour la prochaine découpe</label>
+                <label [class.on]="!draft.keep"><input type="radio" name="keep" [value]="false" [(ngModel)]="draft.keep"> Tout le reste, c'est des os et déchets</label>
               </div>
               @if (draft.keep) {
-                <label class="os">Dont os et déchets (kg)
+                <label class="os">Os et déchets jetés (kg)
                   <input name="os" type="number" min="0" step="0.1" placeholder="0" [(ngModel)]="draft.rest">
                 </label>
                 <small class="why">Gardé au frigo : <b>{{ kept() }} kg</b>. Il apparaîtra comme « reste » à choisir dans votre prochaine découpe.</small>
@@ -129,11 +139,11 @@ const blank = (reserve = '') => ({
             <b>{{ c.matricule }} · {{ c.reserve.name }} @if (c.cancelled) { <span class="pill alert">Annulée</span> }</b>
             <small>{{ c.beasts }} bête(s) · {{ c.kg }} kg{{ c.origin ? ' · ' + c.origin : '' }} · le {{ c.date }}</small>
             @if (c.carcasses?.length) { <small>Bêtes : {{ pickedText(c) }}</small> }
-            <small>{{ pieceText(c) }} · os {{ c.waste }} kg{{ c.rest ? ' · gardé au frigo ' + c.rest + ' kg' : '' }}</small>
+            <small>{{ pieceText(c) }} · {{ c.rest ? 'gardé au frigo ' + c.rest + ' kg · ' : '' }}{{ c.waste ? 'non découpé ' + c.waste + ' kg (compté en os)' : 'aucun os' }}</small>
           </div>
           @if (!c.cancelled) {
             <div class="row-actions">
-              @if (c.waste > 0) { <button class="btn small" (click)="keep(c)" [disabled]="busy()">Remettre des os au frigo</button> }
+              @if (c.waste > 0) { <button class="btn small" (click)="keep(c)" [disabled]="busy()" [title]="'Une partie des ' + c.waste + ' kg est encore de la viande à découper'">Garder le reste au frigo</button> }
               <button class="btn light small" (click)="cancel(c)" [disabled]="busy()">Annuler</button>
             </div>
           }
@@ -176,6 +186,12 @@ const blank = (reserve = '') => ({
     .pick .meat { fill: #f1d3c8; stroke: #9d4a48; stroke-width: 1.4; }
     .pick .meat.half { fill: url(#cut-half); }
     .pick b { font-size: 1rem; }
+    .pick-wrap { display: grid; gap: 4px; }
+    .stepper { display: grid; grid-template-columns: 30px 1fr 30px; gap: 4px; }
+    .stepper button { padding: 0; height: 30px; background: #fff; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-weight: 700; cursor: pointer; }
+    .stepper button:disabled { opacity: .35; cursor: default; }
+    .stepper input { height: 30px; padding: 0 4px; text-align: center; }
+    .pick .check { min-width: 20px; width: auto; padding: 0 5px; border-radius: 999px; }
     .pick small { color: var(--muted); font-size: .72rem; text-align: center; }
     .pick .check { position: absolute; top: 6px; inset-inline-end: 6px; display: none; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #a10c20; color: #fff; font-style: normal; font-size: .75rem; }
     .pick.on .check { display: grid; }
@@ -226,6 +242,38 @@ export class Cutting implements OnInit {
   protected hanging() {
     const o = this.draft.origin;
     return this.all().filter(c => !o || !c.origin || c.origin === o);
+  }
+
+  /** Carcasses identiques d'un même lot (poulets) : une seule carte avec un compteur */
+  protected groups() {
+    const map = new Map<string, { key: string; first: Carcass; items: Carcass[] }>();
+    for (const c of this.hanging()) {
+      const key = c.n !== undefined || c.part ? c.id : `${c.lot ?? ''}|${c.kg}|${c.origin ?? ''}|${c.half ? 1 : 0}`;
+      const g = map.get(key);
+      if (g) g.items.push(c); else map.set(key, { key, first: c, items: [c] });
+    }
+    return [...map.values()];
+  }
+
+  protected pickedIn(g: { items: Carcass[] }) {
+    return g.items.filter(c => this.isPicked(c)).length;
+  }
+
+  protected add(g: { items: Carcass[] }) {
+    const next = g.items.find(c => !this.isPicked(c));
+    if (next) { this.picked = [...this.picked, next]; this.suggestKg(); }
+  }
+
+  protected remove(g: { items: Carcass[] }) {
+    const last = [...g.items].reverse().find(c => this.isPicked(c));
+    if (last) { this.picked = this.picked.filter(x => x.id !== last.id); this.suggestKg(); }
+  }
+
+  protected setCount(g: { items: Carcass[] }, value: string) {
+    const n = Math.min(g.items.length, Math.max(0, Math.floor(Number(value) || 0)));
+    const others = this.picked.filter(x => !g.items.some(c => c.id === x.id));
+    this.picked = [...others, ...g.items.slice(0, n)];
+    this.suggestKg();
   }
 
   protected isPicked(c: Carcass) {
@@ -336,7 +384,7 @@ export class Cutting implements OnInit {
 
   /** Les « os » comptaient encore de la viande : ces kilos redeviennent un reste à découper. */
   protected async keep(c: CutRecord) {
-    const answer = prompt(`Combien de kilos remettre au frigo, à découper plus tard ? (os enregistrés : ${c.waste} kg)`, String(c.waste));
+    const answer = prompt(`Sur les ${c.waste} kg non découpés, combien de kilos de viande gardez-vous au frigo pour la prochaine découpe ?`, String(c.waste));
     if (answer === null) return;
     const kg = roundStock(Number(answer.replace(',', '.')) || 0);
     if (kg <= 0 || kg > c.waste) {
@@ -347,7 +395,7 @@ export class Cutting implements OnInit {
     this.error.set('');
     try {
       await this.data.keepWaste(c, kg);
-      this.data.notify(`${kg} kg remis au frigo : choisissez « reste » dans la découpe`);
+      this.data.notify(`${kg} kg gardés au frigo : choisissez « reste » dans la prochaine découpe`);
       await this.reload();
       this.picked = [];
     } catch (e) {

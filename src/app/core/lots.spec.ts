@@ -16,14 +16,17 @@ describe('Matricule', () => {
 describe('lotTargets', () => {
   const fridge = [{ id: 'moutons', name: 'Moutons', tracked: true, kg: 0, min: 0, max: 0, kgEach: 0 }] as FridgeItem[];
 
-  it('propose les réserves, les coupes et les produits suivis seuls, pas le mouton entier', () => {
+  it('propose les réserves et tous les produits à stock propre, même pas encore suivis ; ni le mouton entier ni les commandes spéciales', () => {
     const products = [
       { id: 'merlan', name_fr: 'Merlan', unit: 'kg', trackStock: true, source: 'none' },
       { id: 'gigot', name_fr: 'Gigot', unit: 'kg', trackStock: false, source: 'moutons' },
       { id: 'mouton-entier', name_fr: 'Mouton entier', unit: 'kg', source: 'moutons' },
-      { id: 'sauce', name_fr: 'Sauce', unit: 'kg', trackStock: false, source: 'none' },
+      { id: 'sole', name_fr: 'Sole', unit: 'kg', trackStock: false, source: 'none', category: 'poissons' },
+      { id: 'farci', name_fr: 'Poulet farci', unit: 'order', source: 'none' },
     ] as Product[];
-    expect(lotTargets(products, fridge).map(t => [t.kind, t.id])).toEqual([['fridge', 'moutons'], ['product', 'merlan'], ['product', 'gigot']]);
+    const targets = lotTargets(products, fridge);
+    expect(targets.map(t => [t.kind, t.id])).toEqual([['fridge', 'moutons'], ['product', 'merlan'], ['product', 'gigot'], ['product', 'sole']]);
+    expect(targets.find(t => t.id === 'sole')?.group).toBe('poissons');
   });
 
   it('lit les poids tapés un par un', () => {
