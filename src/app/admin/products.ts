@@ -78,12 +78,17 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
             </select>
           </label>
           <div class="origin-rows">
-            <b>Pays d'origine et prix</b>
+            <b>Pays d'origine et prix payé par le client</b>
+            @if (rows.length) {
+              <small class="price-hint">Le client choisit le pays sur la fiche et paie <b>le prix de ce pays</b>, en DA {{ perUnit() }}.</small>
+            } @else {
+              <small class="price-hint">Facultatif. Sans pays, le client paie le « Prix (DA) » plus bas.</small>
+            }
             <datalist id="countries">@for (c of countries; track c.fr) { <option [value]="c.fr"></option> }</datalist>
             @for (r of rows; track r; let i = $index) {
               <div class="origin-row">
                 <input [name]="'country' + i" list="countries" autocomplete="off" required placeholder="Espagne" aria-label="Pays" [(ngModel)]="r.country">
-                <input [name]="'countryPrice' + i" type="number" min="0" step="10" aria-label="Prix en DA" [(ngModel)]="r.price">
+                <span class="money"><input [name]="'countryPrice' + i" type="number" min="0" step="10" [attr.aria-label]="'Prix en DA ' + perUnit()" [(ngModel)]="r.price"><small>DA {{ perUnit() }}</small></span>
                 <label class="check"><input type="checkbox" [name]="'countryOn' + i" [ngModel]="r.available !== false" (ngModelChange)="r.available = $event"> Disponible</label>
                 <button type="button" class="btn danger small" aria-label="Retirer ce pays" (click)="removeRow(i)">✕</button>
               </div>
@@ -118,7 +123,14 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
               </select>
             </label>
           }
-          <label>{{ draft.custom ? "Prix de base avec main-d'œuvre (DA), jamais affiché au client" : 'Prix (DA)' }}<input name="price" type="number" min="0" step="10" [(ngModel)]="draft.price"></label>
+          @if (!draft.custom && hasCountries()) {
+            <div class="price-note">
+              <b>Prix (DA)</b>
+              <span>Ce produit a des pays : le client paie le prix de chaque pays, plus haut ({{ countryRange() }}).</span>
+            </div>
+          } @else if (draft.unit !== 'order' || draft.custom) {
+            <label>{{ draft.custom ? "Prix de base avec main-d'œuvre (DA), jamais affiché au client" : 'Prix payé par le client (DA ' + perUnit() + ')' }}<input name="price" type="number" min="0" step="10" [(ngModel)]="draft.price"></label>
+          }
           @if (draft.special && draft.custom; as c) {
             <div class="origin-rows">
               <b>Viande hachée : prix au kg</b>
@@ -182,7 +194,13 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
   `,
   styles: `
     .origin-rows { grid-column: 1 / -1; display: grid; gap: 8px; }
-    .origin-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto auto; gap: 8px; align-items: center; }
+    .origin-row { display: grid; grid-template-columns: minmax(0, 1fr) 170px auto auto; gap: 8px; align-items: center; }
+    .money { display: flex; align-items: center; gap: 6px; }
+    .money input { min-width: 0; }
+    .money small { flex: none; color: var(--muted); font-size: .8rem; white-space: nowrap; }
+    .price-hint { color: var(--muted); font-size: .84rem; font-weight: 400; }
+    .price-note { display: grid; gap: 4px; align-content: start; padding: 10px 12px; background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; font-size: .86rem; }
+    .price-note span { color: var(--muted); }
     .custom-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 110px auto; gap: 8px; align-items: center; }
     .finder { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 10px; align-items: center; margin-bottom: 14px; max-width: 760px; }
     .finder span { color: var(--muted); font-size: .86rem; white-space: nowrap; }
@@ -249,6 +267,23 @@ export class Products implements OnInit {
   protected icon(category: string) {
     const name = this.categories().find(c => c.id === category)?.icon ?? '';
     return this.icons[name] ?? this.icons['boeuf'];
+  }
+
+  /** « / kg » ou « / pièce », selon la vente du produit */
+  protected perUnit() {
+    return this.draft.unit === 'piece' ? '/ pièce' : '/ kg';
+  }
+
+  protected hasCountries() {
+    return this.rows.some(r => r.country.trim());
+  }
+
+  /** « 1 500 à 1 800 DA / kg » */
+  protected countryRange() {
+    const prices = this.rows.filter(r => r.country.trim()).map(r => Number(r.price) || 0).filter(n => n > 0);
+    if (!prices.length) return 'prix à remplir';
+    const low = Math.min(...prices), high = Math.max(...prices);
+    return `${formatNumber(low)}${high > low ? ' à ' + formatNumber(high) : ''} DA ${this.perUnit()}`;
   }
 
   protected addRow() {
@@ -345,6 +380,9 @@ export class Products implements OnInit {
     delete data.origin;
     if (rows.length) data.origins = rows;
     else delete data.origins;
+    // Avec des pays, le prix général suit le pays le moins cher : la liste et les menus montrent un vrai prix.
+    const countryPrices = rows.filter(r => r.available !== false && r.price > 0).map(r => r.price);
+    if (!data.custom && countryPrices.length) data.price = Math.min(...countryPrices);
     const image = this.image();
     if (image) data.image = image;
     try {
