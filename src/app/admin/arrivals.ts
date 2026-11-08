@@ -16,7 +16,7 @@ const blank = () => ({
   template: `
     <div class="head"><h2>Arrivages</h2></div>
     <app-chain-steps current="arrivages" />
-    <p class="hint">Chaque arrivage reçoit un matricule et s'ajoute automatiquement au stock.</p>
+    <p class="hint">Chaque arrivage reçoit un matricule et s'ajoute automatiquement au stock de son pays.</p>
 
     <form class="card-box" #f="ngForm" (ngSubmit)="save(f)">
       <div class="grid2">
@@ -37,8 +37,9 @@ const blank = () => ({
         <label>Référence du fournisseur
           <input name="ref" required placeholder="Bon de livraison, facture…" [(ngModel)]="draft.supplierRef">
         </label>
-        <label>Pays d'origine
-          <input name="origin" list="lot-countries" autocomplete="off" placeholder="Algérie, Espagne…" [(ngModel)]="draft.origin">
+        <label>Pays d'origine de la viande
+          <input name="origin" list="lot-countries" autocomplete="off" required placeholder="Algérie, Espagne…" [(ngModel)]="draft.origin">
+          <small class="why">Obligatoire : chaque pays a son propre stock, pour que les ventes et le déstockage retirent le bon.</small>
           <datalist id="lot-countries">@for (c of countries; track c.fr) { <option [value]="c.fr"></option> }</datalist>
         </label>
         <label>Note (facultatif)<input name="note" [(ngModel)]="draft.note"></label>
@@ -72,6 +73,7 @@ const blank = () => ({
     .list-head h3 { font-family: Inter, sans-serif; font-size: 1.05rem; }
     .list-head input { max-width: 300px; }
     .info small { display: block; }
+    .why { color: var(--muted); font-size: .78rem; font-weight: 400; }
   `,
 })
 export class Arrivals implements OnInit {
@@ -104,6 +106,10 @@ export class Arrivals implements OnInit {
   protected async save(form: NgForm) {
     const { target, qty, arrivalDate, supplierName, supplierRef, note, origin } = this.draft;
     if (!target || !qty) return;
+    if (!origin.trim()) {
+      this.error.set('Indiquez le pays d\'origine de cet arrivage.');
+      return;
+    }
     this.busy.set(true);
     this.error.set('');
     try {
