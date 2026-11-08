@@ -14,7 +14,7 @@ import { AuditAction, AuditEntry, describeChanges, trimDetail } from '../core/au
 import { db, firebaseConfig } from '../core/firebase';
 import { Invoice, buildInvoice, counterAfterDelete, invoiceNumber } from '../core/invoice';
 import { Company, PaymentMode, ProLine, amountInWords, computePro } from '../core/pro-invoice';
-import { Lot, LotInput, lotNumber } from '../core/lots';
+import { Lot, LotInput, lotNumber, lotParts } from '../core/lots';
 import { CutInput, CutRecord, ExitInput, StockExit, availableQty, cutNumber, cutWaste, exitLabel, exitNumber, splitRegister } from '../core/stock-chain';
 import { DEFAULT_ORDERING, OrderingRules } from '../core/ordering';
 import { Auth } from './auth';
@@ -751,8 +751,16 @@ export class AdminData {
     return snap.exists() ? ({ ...snap.data(), id: snap.id } as Product) : undefined;
   }
 
-  /** Ajoute (qty > 0) ou retire (qty < 0) la quantité d'un arrivage. */
-  private moveLot(tx: Transaction, lot: LotInput, qty: number, fridge: FridgeItem[], product?: Product) {
+  /** Ajoute (sign 1) ou retire (sign -1) un arrivage, pays par pays. */
+  private moveLotParts(tx: Transaction, lot: LotInput, sign: number, fridge: FridgeItem[], product?: Product) {
+    let list = fridge;
+    for (const part of lotParts(lot)) {
+      list = this.moveLot(tx, { ...lot, origin: part.origin, beasts: part.beasts, lines: undefined }, sign * part.qty, list, product);
+    }
+  }
+
+  /** Ajoute (qty > 0) ou retire (qty < 0) la quantité d'un arrivage ; rend le frigo mis à jour. */
+  private moveLot(tx: Transaction, lot: LotInput, qty: number, fridge: FridgeItem[], product?: Product): FridgeItem[] {
     const arrival = qty > 0;
     if (lot.target.kind === 'product') {
       const origins = lot.origin && product ? originsOf(product) : [];
@@ -761,7 +769,7 @@ export class AdminData {
         ? origins.map(o => (o.country === lot.origin ? { ...o, stock: Math.max(0, roundStock((o.stock ?? 0) + qty)) } : o))
         : lot.origin ? [...origins, { country: lot.origin, price: product?.price ?? 0, stock: Math.max(0, qty) }] : [];
       tx.update(doc(db, 'products', lot.target.id), { stock: increment(qty), ...(arrival ? { restockDate: '' } : {}), ...(lot.origin ? { origins: next } : {}) });
-      return;
+      return fridge;
     }
     const list = fridge.map(f => {
       if (f.id !== lot.target.id) return f;
@@ -774,6 +782,7 @@ export class AdminData {
       return arrival && lot.beasts && moved.whole ? { ...moved, kgEach: roundStock(moved.kg / moved.whole) } : moved;
     });
     tx.set(doc(db, 'settings', 'fridge'), { list });
+    return list;
   }
 
   /** Enregistre un arrivage, lui attribue son matricule et met le stock à jour d'un seul coup. */
@@ -789,11 +798,11 @@ export class AdminData {
       const matricule = lotNumber(year, next);
       tx.set(counterRef, { [year]: next }, { merge: true });
       tx.set(lotRef, { ...input, matricule, createdAt: serverTimestamp() });
-      this.moveLot(tx, input, input.qty, fridge, product);
+      this.moveLotParts(tx, input, 1, fridge, product);
       return matricule;
     }));
     await this.markArrival(input);
-    this.audit('lot.created', created, `${input.target.name} · ${input.qty} ${input.target.unit}${input.origin ? ` · ${input.origin}` : ''} · ${input.supplierName} · réf. ${input.supplierRef}`);
+    this.audit('lot.created', created, `${input.target.name} · ${input.beasts ? `${input.beasts} bête(s) · ` : ''}${input.qty} ${input.target.unit} · ${lotParts(input).map(p => p.origin).filter(Boolean).join(', ')}${input.cost ? ` · ${formatNumber(input.cost)} DA` : ''} · ${input.supplierName} · réf. ${input.supplierRef}`);
     return created;
   }
 
@@ -830,7 +839,7 @@ export class AdminData {
       if (snap.data()?.['cancelled']) throw new Error('Cet arrivage est déjà annulé.');
       const fridge = await this.fridgeInTx(tx);
       const product = await this.lotProduct(tx, lot);
-      this.moveLot(tx, lot, -lot.qty, fridge, product);
+      this.moveLotParts(tx, lot, -1, fridge, product);
       tx.update(lotRef, { cancelled: true });
     }));
     this.audit('lot.cancelled', lot.matricule, `${lot.target.name} · ${lot.qty} ${lot.target.unit}`);

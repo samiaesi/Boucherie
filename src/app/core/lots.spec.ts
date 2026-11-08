@@ -1,5 +1,5 @@
 import { FridgeItem, Product } from './data';
-import { Lot, lotNumber, lotTargets, searchLots, supplierNames, parseWeights } from './lots';
+import { Lot, lotNumber, lotTargets, searchLots, supplierNames, parseWeights, lotParts, linesCost, lotOrigins } from './lots';
 
 const lot = (over: Partial<Lot>): Lot => ({
   id: '1', matricule: 'LOT-2026-0001', target: { kind: 'fridge', id: 'moutons', name: 'Moutons', unit: 'kg' },
@@ -54,3 +54,24 @@ describe('searchLots', () => {
     expect(searchLots(lots, '  ')).toHaveLength(2);
   });
 });
+
+describe('arrivage bête par bête', () => {
+  const lines = [
+    { kg: 21, origin: 'Algérie', price: 1400 }, { kg: 23.5, origin: 'Espagne', price: 1200 }, { kg: 24, origin: 'Algérie' },
+  ];
+
+  it('regroupe les bêtes par pays pour le stock', () => {
+    expect(lotParts({ qty: 68.5, lines })).toEqual([{ origin: 'Algérie', qty: 45, beasts: 2 }, { origin: 'Espagne', qty: 23.5, beasts: 1 }]);
+    expect(lotParts({ qty: 90, origin: 'Algérie', beasts: 4 })).toEqual([{ origin: 'Algérie', qty: 90, beasts: 4 }]);
+  });
+
+  it('calcule le coût des bêtes dont le prix est connu', () => {
+    expect(linesCost(lines)).toBe(21 * 1400 + 23.5 * 1200);
+  });
+
+  it('liste les pays sans doublon', () => {
+    expect(lotOrigins({ lines })).toBe('Algérie, Espagne');
+    expect(lotOrigins({ origin: 'Brésil' })).toBe('Brésil');
+  });
+});
+
