@@ -656,7 +656,7 @@ export class AdminData {
     const year = Number(input.date.slice(0, 4));
     const counterRef = doc(db, 'settings', 'lotCounter');
     const cutRef = doc(collection(db, 'lots'));
-    const waste = cutWaste(input.kg, input.cuts);
+    const waste = cutWaste(input.kg, input.cuts, input.rest);
     if (waste < -0.001) throw new StockError('Les coupes pèsent plus que les bêtes découpées : vérifiez les poids.');
     const created = await this.guarded(runTransaction(db, async tx => {
       const counter = await tx.get(counterRef);
@@ -674,8 +674,12 @@ export class AdminData {
       const matricule = cutNumber(year, next);
       tx.set(counterRef, { [key]: next }, { merge: true });
       tx.set(cutRef, { ...input, carcasses: chosen.map(cleanCarcass), waste: Math.max(0, waste), kind: 'decoupe', matricule, createdAt: serverTimestamp() });
+      const [first] = chosen;
+      const rest = input.rest ? [cleanCarcass({
+        id: `${matricule}-reste`, kg: roundStock(input.rest), origin: input.origin ?? first.origin, lot: first.lot, n: first.n, price: first.price, date: first.date, part: true,
+      })] : [];
       tx.set(doc(db, 'settings', 'fridge'), {
-        list: fridge.map(f => (f.id !== reserve.id ? f : withCarcasses(f, current.filter(x => !chosen.some(c => c.id === x.id))))),
+        list: fridge.map(f => (f.id !== reserve.id ? f : withCarcasses(f, [...current.filter(x => !chosen.some(c => c.id === x.id)), ...rest]))),
       });
       input.cuts.forEach((c, i) => this.moveCut(tx, products[i], c.kg, input.origin, true));
       return matricule;
@@ -701,8 +705,13 @@ export class AdminData {
       const back = cut.carcasses?.length
         ? cut.carcasses
         : [cleanCarcass({ id: `retour-${cut.matricule}`, kg: cut.kg, origin: cut.origin, half: cut.beasts < 1 || undefined })];
+      const restId = `${cut.matricule}-reste`;
+      const reserveNow = fridge.find(f => f.id === cut.reserve.id);
+      if (cut.rest && reserveNow && !carcassesOf(reserveNow).some(x => x.id === restId)) {
+        throw new StockError(`Impossible d'annuler ${cut.matricule} : son reste a déjà été redécoupé. Annulez d'abord la découpe suivante.`);
+      }
       tx.set(doc(db, 'settings', 'fridge'), {
-        list: fridge.map(f => (f.id !== cut.reserve.id ? f : withCarcasses(f, [...carcassesOf(f), ...back]))),
+        list: fridge.map(f => (f.id !== cut.reserve.id ? f : withCarcasses(f, [...carcassesOf(f).filter(x => x.id !== restId), ...back]))),
       });
       cut.cuts.forEach((c, i) => this.moveCut(tx, products[i], -c.kg, cut.origin, false));
       tx.update(cutRef, { cancelled: true });

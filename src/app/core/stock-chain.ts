@@ -59,8 +59,10 @@ export interface CutRecord {
   kg: number;
   /** Ce qui en sort, coupe par coupe */
   cuts: { id: string; name: string; kg: number }[];
-  /** Os et déchets : poids des carcasses moins les coupes */
+  /** Os et déchets : poids des carcasses moins les coupes et le reste gardé */
   waste: number;
+  /** Kilos gardés au frigo pour une prochaine découpe */
+  rest?: number;
   /** AAAA-MM-JJ */
   date: string;
   note: string;
@@ -72,7 +74,8 @@ export type CutInput = Omit<CutRecord, 'id' | 'kind' | 'matricule' | 'cancelled'
 export const cutNumber = (year: number, n: number) => `DEC-${year}-${String(n).padStart(4, '0')}`;
 
 /** Os et déchets d'une découpe */
-export const cutWaste = (kg: number, cuts: { kg: number }[]) => roundStock(kg - cuts.reduce((sum, c) => sum + (Number(c.kg) || 0), 0));
+export const cutWaste = (kg: number, cuts: { kg: number }[], rest = 0) =>
+  roundStock(kg - (Number(rest) || 0) - cuts.reduce((sum, c) => sum + (Number(c.kg) || 0), 0));
 
 type RegisterDoc = Lot | StockExit | CutRecord;
 
@@ -172,7 +175,7 @@ export function chainSummary(input: {
     cuts: {
       count: cuts.length,
       beasts: roundStock(cuts.reduce((sum, c) => sum + c.beasts, 0)),
-      kg: roundStock(cuts.reduce((sum, c) => sum + c.kg - Math.max(0, c.waste), 0)),
+      kg: roundStock(cuts.reduce((sum, c) => sum + c.kg - Math.max(0, c.waste) - (c.rest ?? 0), 0)),
     },
     sold,
     exits: { count: exits.length + cuts.filter(c => c.waste > 0).length, ...exitTotal, byReason: [...byReason].map(([reason, amount]) => ({ reason, ...amount })) },

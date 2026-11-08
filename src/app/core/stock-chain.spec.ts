@@ -84,6 +84,7 @@ describe('découpe', () => {
     expect(cutNumber(2026, 3)).toBe('DEC-2026-0003');
     expect(cutWaste(22, [{ kg: 6 }, { kg: 4 }, { kg: 9 }])).toBe(3);
     expect(cutWaste(10, [{ kg: 12 }])).toBe(-2);
+    expect(cutWaste(35, [{ kg: 20 }, { kg: 5 }], 8)).toBe(2);
   });
 
   it('range les découpes à part dans le registre', () => {

@@ -295,7 +295,8 @@ export class Fridge implements OnInit {
 
   protected amount(l: ReturnType<typeof fridgeLine>) {
     if (l.cabinet) return `${this.contents(l.item).length} produit(s) · ${roundStock(l.total)} kg`;
-    return `${l.beasts} bête(s) entière(s) · ${roundStock(l.item.kg)} kg`;
+    const rest = roundStock((l.item.carcasses ?? []).filter(c => c.part).reduce((sum, c) => sum + c.kg, 0));
+    return `${l.beasts} bête(s) entière(s) · ${roundStock(l.item.kg)} kg${rest ? ` · dont ${rest} kg de reste à découper` : ''}`;
   }
 
   /** « Algérie 2 bêtes 44 kg · Espagne 0 bête 0 kg » */

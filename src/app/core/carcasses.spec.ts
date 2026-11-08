@@ -49,4 +49,12 @@ describe('carcasses', () => {
   it('enlève les champs vides avant Firebase', () => {
     expect(cleanCarcass({ id: 'x', kg: 2, origin: undefined, half: undefined })).toEqual({ id: 'x', kg: 2 });
   });
+
+  it('un reste de découpe compte en kilos mais pas comme une bête, et ne se vend pas en entier', () => {
+    const rest = c('r', 10, { part: true });
+    const f = withCarcasses(fridge(), [c('a', 22), rest]);
+    expect([f.whole, f.kg]).toEqual([1, 32]);
+    expect(sellCarcass([rest], 1, undefined, 10)).toBeNull();
+    expect(removeOldest([rest, c('a', 22)], 1)!.map(x => x.id)).toEqual(['r']);
+  });
 });

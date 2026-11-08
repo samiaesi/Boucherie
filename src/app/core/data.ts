@@ -593,6 +593,18 @@ export function poolOf(p: Product, fridge: FridgeItem[]) {
 /** Coupe d'une réserve suivie : elle a son propre stock, rempli par la découpe */
 export const isCutOf = (p: Product, fridge: FridgeItem[]) => !!reserveOf(p, fridge)?.tracked && !carcassOf(p);
 
+/**
+ * Poids proposés au client pour une bête entière ou une demi : ceux des vraies carcasses du frigo,
+ * en grammes, du plus léger au plus lourd.
+ */
+export function realWeights(f: FridgeItem, share: 0.5 | 1): number[] {
+  const list = (f.carcasses ?? []).filter(c => !c.part);
+  const kgs = share === 1
+    ? list.filter(c => !c.half).map(c => c.kg)
+    : [...list.filter(c => c.half).map(c => c.kg), ...list.filter(c => !c.half).map(c => c.kg / 2)];
+  return [...new Set(kgs.map(kg => Math.round(kg * 10) * 100).filter(g => g > 0))].sort((a, b) => a - b);
+}
+
 /** Bêtes entières restantes, pour un pays quand il est séparé */
 export const wholeLeft = (f: FridgeItem, country?: string) => (country && f.wholeBy ? f.wholeBy[country] ?? 0 : f.whole ?? 0);
 
@@ -605,8 +617,9 @@ export const applyPools = (products: Product[], fridge: FridgeItem[]) => product
   if (!pool) return isCutOf(p, fridge) && !p.trackStock ? { ...p, trackStock: true } : p;
   const share = BEAST_SHARE[carcassOf(p)!];
   const kgIf = (kg: number, beasts: number) => (beasts + 1e-9 >= share ? kg : 0);
+  const real = realWeights(pool, share);
   return {
-    ...p, trackStock: true, stock: kgIf(pool.kg, wholeLeft(pool)), stockAlert: pool.min, stockMax: pool.max, restockDate: pool.restockDate,
+    ...p, trackStock: true, ...(real.length ? { weights: real } : {}), stock: kgIf(pool.kg, wholeLeft(pool)), stockAlert: pool.min, stockMax: pool.max, restockDate: pool.restockDate,
     ...(pool.countries ? { origins: originsOf(p).map(o => ({ ...o, stock: kgIf(pool.countries?.[o.country] ?? 0, wholeLeft(pool, o.country)) })) } : {}),
   };
 });

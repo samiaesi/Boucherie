@@ -12,6 +12,8 @@ import { ChainSteps } from './chain-steps';
 const blank = (reserve = '') => ({
   reserve, origin: '', kg: null as number | null, date: localDay(new Date()), note: '',
   pieces: {} as Record<string, number | null>,
+  /** Ce qui n'est pas coupé : à la poubelle (os) ou gardé au frigo */
+  keep: false, rest: null as number | null,
 });
 
 @Component({
@@ -85,10 +87,26 @@ const blank = (reserve = '') => ({
           } @empty {
             <p class="why">Aucune coupe reliée à {{ r.name }}. Dans <a routerLink="/admin/produits">Produits</a>, choisissez « Stock : Réserve {{ r.name }} » et « Vendu comme : Coupe ».</p>
           }
+          @if (draft.kg && totalCuts()) {
+            <div class="left-over">
+              <b>Il reste {{ leftOver() }} kg non découpés</b>
+              <div class="choice" role="radiogroup" aria-label="Que devient le reste ?">
+                <label [class.on]="!draft.keep"><input type="radio" name="keep" [value]="false" [(ngModel)]="draft.keep"> Tout part en os et déchets</label>
+                <label [class.on]="draft.keep"><input type="radio" name="keep" [value]="true" [(ngModel)]="draft.keep" (ngModelChange)="draft.rest = null"> J'en garde au frigo pour plus tard</label>
+              </div>
+              @if (draft.keep) {
+                <label class="os">Dont os et déchets (kg)
+                  <input name="os" type="number" min="0" step="0.1" placeholder="0" [(ngModel)]="draft.rest">
+                </label>
+                <small class="why">Gardé au frigo : <b>{{ kept() }} kg</b>. Il apparaîtra comme « reste » à choisir dans votre prochaine découpe.</small>
+              }
+            </div>
+          }
           <div class="waste" [class.bad]="waste() < 0">
             <span>Os et déchets</span>
             <b>{{ waste() }} kg</b>
             @if (draft.kg && waste() >= 0) { <small>{{ wastePct() }} % du poids</small> }
+            @if (kept()) { <span>· gardé au frigo <b>{{ kept() }} kg</b></span> }
             @if (waste() < 0) { <small>Les coupes pèsent plus que les bêtes : vérifiez les poids.</small> }
           </div>
           @if (!r.tracked) { <p class="msg">Le frigo {{ r.name }} n'est pas suivi : cochez « Suivre ce frigo » dans la page Frigo pour que les ventes retirent ces coupes.</p> }
@@ -111,7 +129,7 @@ const blank = (reserve = '') => ({
             <b>{{ c.matricule }} · {{ c.reserve.name }} @if (c.cancelled) { <span class="pill alert">Annulée</span> }</b>
             <small>{{ c.beasts }} bête(s) · {{ c.kg }} kg{{ c.origin ? ' · ' + c.origin : '' }} · le {{ c.date }}</small>
             @if (c.carcasses?.length) { <small>Bêtes : {{ pickedText(c) }}</small> }
-            <small>{{ pieceText(c) }} · os {{ c.waste }} kg</small>
+            <small>{{ pieceText(c) }} · os {{ c.waste }} kg{{ c.rest ? ' · gardé au frigo ' + c.rest + ' kg' : '' }}</small>
           </div>
           @if (!c.cancelled) { <button class="btn light small" (click)="cancel(c)" [disabled]="busy()">Annuler</button> }
         </div>
@@ -131,6 +149,11 @@ const blank = (reserve = '') => ({
     .pic img { width: 100%; height: 100%; object-fit: cover; }
     .kg { display: flex; align-items: center; gap: 6px; color: var(--muted); }
     .kg input { width: 96px; }
+    .left-over { display: grid; gap: 8px; margin-top: 4px; padding: 10px 12px; background: #fff; border-radius: 10px; }
+    .choice { display: flex; flex-wrap: wrap; gap: 8px; }
+    .choice label { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; font-weight: 500; cursor: pointer; }
+    .choice label.on { border-color: #a10c20; background: #fbeef0; }
+    .os { margin: 0; max-width: 220px; }
     .waste { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 4px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 10px; }
     .waste b { font-size: 1.1rem; }
     .waste small { color: var(--muted); }
@@ -250,8 +273,19 @@ export class Cutting implements OnInit {
     return this.pieceList().length;
   }
 
+  /** Poids pas encore découpé : les carcasses moins les coupes */
+  protected leftOver() {
+    return Math.max(0, cutWaste(Number(this.draft.kg) || 0, this.pieceList()));
+  }
+
+  /** Ce qu'on garde au frigo : le reste moins les os déclarés */
+  protected kept() {
+    if (!this.draft.keep) return 0;
+    return Math.max(0, roundStock(this.leftOver() - (Number(this.draft.rest) || 0)));
+  }
+
   protected waste() {
-    return cutWaste(Number(this.draft.kg) || 0, this.pieceList());
+    return cutWaste(Number(this.draft.kg) || 0, this.pieceList(), this.kept());
   }
 
   protected wastePct() {
@@ -267,7 +301,7 @@ export class Cutting implements OnInit {
     const r = this.reserve();
     const beasts = this.beasts();
     const kg = Number(this.draft.kg) || 0;
-    if (!r || !beasts || !kg) return;
+    if (!r || !this.picked.length || !kg) return;
     const origins = [...new Set(this.picked.map(c => c.origin).filter(Boolean))] as string[];
     if (origins.length > 1) {
       this.error.set('Choisissez des bêtes d\'un seul pays par découpe : chaque coupe garde le pays de sa viande.');
@@ -279,7 +313,7 @@ export class Cutting implements OnInit {
     try {
       const matricule = await this.data.addCut({
         reserve: { id: r.id, name: r.name }, beasts, kg, cuts: this.pieceList(), date: this.draft.date, note: this.draft.note.trim(),
-        carcasses: this.picked, ...(r.carcasses ? {} : { base: this.all() }), ...(origin ? { origin } : {}),
+        carcasses: this.picked, ...(r.carcasses ? {} : { base: this.all() }), ...(origin ? { origin } : {}), ...(this.kept() ? { rest: this.kept() } : {}),
       });
       this.data.notify(`Découpe enregistrée : ${matricule}`);
       const next = blank(r.id);

@@ -1,4 +1,4 @@
-import { formatNumber, DEFAULT_PRODUCTS, FAT_LABELS, FridgeItem, OrderItem, Product, animals, applyPools, carcassOf, isCutOf, moveBeasts, wholeLeft, availableOrigins, countriesIn, defaultOriginIndex, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, moveCountryStock, sumCountries, noOriginLeft, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
+import { realWeights, formatNumber, DEFAULT_PRODUCTS, FAT_LABELS, FridgeItem, OrderItem, Product, animals, applyPools, carcassOf, isCutOf, moveBeasts, wholeLeft, availableOrigins, countriesIn, defaultOriginIndex, countryFlag, countryName, hasPriceRange, itemQty, lowestPrice, moveCountryStock, sumCountries, noOriginLeft, originLabel, originsOf, poolOf, readFridge, stockShortages } from './data';
 
 const sheep: FridgeItem = { id: 'moutons', name: 'Moutons', tracked: true, kg: 66, min: 100, max: 300, kgEach: 20 };
 const find = (id: string) => DEFAULT_PRODUCTS.find(p => p.id === id)!;
@@ -230,3 +230,23 @@ describe('Affichage des nombres', () => {
     expect(formatNumber(1800)).toBe('1 800');
   });
 });
+
+describe('vrais poids des carcasses', () => {
+  const herd = {
+    id: 'moutons', name: 'Moutons', tracked: true, kg: 59, min: 0, max: 0, kgEach: 20, whole: 2.5,
+    carcasses: [{ id: 'a', kg: 22 }, { id: 'b', kg: 26.04 }, { id: 'c', kg: 11, half: true }, { id: 'r', kg: 10, part: true }],
+  } as FridgeItem;
+
+  it('propose au client le poids réel de chaque mouton et de chaque demi', () => {
+    expect(realWeights(herd, 1)).toEqual([22000, 26000]);
+    expect(realWeights(herd, 0.5)).toEqual([11000, 13000]);
+    const [whole] = applyPools([find('mouton-entier')], [herd]);
+    expect(whole.weights).toEqual([22000, 26000]);
+  });
+
+  it('garde les poids de la fiche tant que les carcasses ne sont pas connues', () => {
+    const [whole] = applyPools([find('mouton-entier')], [{ ...herd, carcasses: undefined }]);
+    expect(whole.weights).toEqual(find('mouton-entier').weights);
+  });
+});
+

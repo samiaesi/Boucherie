@@ -16,9 +16,11 @@ export interface Carcass {
   date?: string;
   /** Il ne reste que la moitié de cette bête */
   half?: boolean;
+  /** Reste d'une découpe, gardé au frigo pour être redécoupé ; ce n'est plus une bête entière */
+  part?: boolean;
 }
 
-export const shareOf = (c: Carcass) => (c.half ? 0.5 : 1);
+export const shareOf = (c: Carcass) => (c.part ? 0 : c.half ? 0.5 : 1);
 
 /** Firestore refuse les champs vides : on ne garde que ceux qui ont une valeur. */
 export function cleanCarcass(c: Carcass): Carcass {
@@ -26,7 +28,8 @@ export function cleanCarcass(c: Carcass): Carcass {
 }
 
 /** Nom affiché : « N° 1 · LOT-2026-0001 » ou « Bête 2 » */
-export const carcassLabel = (c: Carcass, i: number) => (c.lot ? `N° ${c.n ?? i + 1} · ${c.lot}` : `Bête ${i + 1}`);
+export const carcassLabel = (c: Carcass, i: number) =>
+  `${c.lot ? `N° ${c.n ?? i + 1} · ${c.lot}` : `Bête ${i + 1}`}${c.part ? ' · reste' : ''}`;
 
 /** Carcasses génériques au poids moyen, pour un frigo enregistré avant le suivi bête par bête */
 function generic(f: FridgeItem): Carcass[] {
@@ -80,14 +83,14 @@ export function withCarcasses(f: FridgeItem, list: Carcass[]): FridgeItem {
   }
   const byCountry = Object.keys(countries).length > 0;
   return {
-    ...f, carcasses: list.map(cleanCarcass),
+    ...f, carcasses: list.map(({ price, ...c }) => cleanCarcass(c)),
     whole: roundStock(list.reduce((sum, c) => sum + shareOf(c), 0)),
     kg: roundStock(list.reduce((sum, c) => sum + c.kg, 0)),
     ...(byCountry ? { countries, wholeBy } : {}),
   };
 }
 
-const fits = (c: Carcass, origin?: string) => !origin || !c.origin || c.origin === origin;
+const fits = (c: Carcass, origin?: string) => !c.part && (!origin || !c.origin || c.origin === origin);
 
 /**
  * Vente d'une bête entière ou d'une demi : on prend la carcasse dont le poids est le plus proche
