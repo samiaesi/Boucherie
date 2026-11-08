@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { COUNTRIES, formatNumber, roundStock } from '../core/data';
-import { BeastLine, Lot, LotTarget, linesCost, lotOrigins, lotTargets, searchLots, supplierNames } from '../core/lots';
+import { BeastLine, Lot, LotTarget, linesCost, lotOrigins, lotTargets, parseWeights, searchLots, supplierNames } from '../core/lots';
 import { localDay } from '../core/stats';
 import { AdminData } from './admin-data';
 import { ChainSteps } from './chain-steps';
@@ -52,18 +52,21 @@ const blank = () => ({
 
       @if (isBeasts() && rows.length) {
         <div class="beasts">
-          <div class="beast titles" aria-hidden="true"><span>N°</span><span>Poids (kg)</span><span>Pays</span><span>Prix d'achat (DA / kg)</span><span>Coût</span></div>
+          <div class="beast titles" aria-hidden="true"><span>N°</span><span>Poids (kg)</span><span>Pays</span><span>Prix d'achat (DA / kg)</span><span></span><span>Coût</span></div>
           @for (r of rows; track $index; let i = $index) {
             <div class="beast">
               <span class="num">{{ i + 1 }}</span>
-              <input [name]="'kg' + i" type="number" min="0.1" step="0.1" required placeholder="22" [attr.aria-label]="'Poids de la bête ' + (i + 1)" [(ngModel)]="r.kg">
+              <input [name]="'kg' + i" type="number" min="0.1" step="0.1" required placeholder="22" [attr.aria-label]="'Poids de la bête ' + (i + 1)" [(ngModel)]="r.kg" (paste)="pasteWeights($event, i)">
               <input [name]="'origin' + i" list="lot-countries" autocomplete="off" required placeholder="Algérie" [attr.aria-label]="'Pays de la bête ' + (i + 1)" [(ngModel)]="r.origin">
               <input [name]="'price' + i" type="number" min="0" step="10" placeholder="1400" [attr.aria-label]="'Prix au kg de la bête ' + (i + 1)" [(ngModel)]="r.price">
+              <button type="button" class="brush" [disabled]="i === rows.length - 1" [title]="'Coller le pays et le prix de la bête ' + (i + 1) + ' sur les lignes suivantes'" [attr.aria-label]="'Coller le pays et le prix de la bête ' + (i + 1) + ' sur les lignes suivantes'" (click)="brush(i)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 3l3 3-8 8-3-3zM10 11l3 3M9 13c-2 0-4 1.5-4 4 0 1-1 2-2 2 1.5 1.5 6 1.5 7.5-1 .8-1.3.5-3-1.5-5z"/></svg>
+              </button>
               <span class="cost">{{ r.kg && r.price ? money(r.kg * r.price) : '—' }}</span>
             </div>
           }
           @if (rows.length > 1) {
-            <button type="button" class="link-btn" (click)="copyFirst()">Mettre le pays et le prix de la bête n° 1 sur toutes les lignes</button>
+            <small class="tip">Le pinceau colle le pays et le prix de sa ligne sur toutes les lignes en dessous. Vous pouvez aussi coller plusieurs poids d'un coup dans la première case (ex. « 35 22 26 »).</small>
           }
           <div class="totals">
             <span><b>{{ rows.length }}</b> bête(s)</span>
@@ -123,7 +126,12 @@ const blank = () => ({
     .list-head input { max-width: 300px; }
     .info small { display: block; }
     .beasts { display: grid; gap: 6px; padding: 12px 14px; background: var(--bg); border-radius: 12px; }
-    .beast { display: grid; grid-template-columns: 34px minmax(80px, 1fr) minmax(120px, 1.5fr) minmax(110px, 1.2fr) 110px; gap: 8px; align-items: center; }
+    .beast { display: grid; grid-template-columns: 34px minmax(80px, 1fr) minmax(120px, 1.5fr) minmax(110px, 1.2fr) 38px 100px; gap: 8px; align-items: center; }
+    .brush { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; background: #fff; border: 1px solid var(--line); border-radius: 10px; color: #a10c20; cursor: pointer; }
+    .brush svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .brush:hover:not(:disabled) { background: #fbeef0; border-color: #a10c20; }
+    .brush:disabled { opacity: .3; cursor: default; }
+    .tip { color: var(--muted); font-size: .8rem; }
     .beast.titles { color: var(--muted); font-size: .78rem; font-weight: 600; }
     .num { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; font-weight: 700; font-size: .85rem; }
     .cost { color: var(--muted); font-size: .86rem; text-align: end; white-space: nowrap; }
@@ -133,7 +141,7 @@ const blank = () => ({
     summary { color: #a10c20; cursor: pointer; }
     ol { margin: 4px 0; padding-inline-start: 22px; color: var(--muted); }
     @media (max-width: 700px) {
-      .beast { grid-template-columns: 30px 1fr 1fr; }
+      .beast { grid-template-columns: 30px 1fr 1fr 38px; }
       .beast.titles { display: none; }
       .beast input[name^='price'] { grid-column: 2; }
       .cost { grid-column: 3; text-align: start; }
@@ -169,9 +177,22 @@ export class Arrivals implements OnInit {
     this.rows.length = n;
   }
 
-  protected copyFirst() {
-    const [first] = this.rows;
-    this.rows.forEach(r => { r.origin = first.origin; r.price = first.price; });
+  /** Pinceau : le pays et le prix de cette ligne vont sur toutes les lignes en dessous ; les poids ne bougent pas. */
+  protected brush(i: number) {
+    const from = this.rows[i];
+    this.rows.slice(i + 1).forEach(r => { r.origin = from.origin; r.price = from.price; });
+  }
+
+  /** Coller « 35 22 26 » (ou une colonne copiée) remplit les poids à partir de cette ligne. */
+  protected pasteWeights(e: ClipboardEvent, i: number) {
+    const weights = parseWeights(e.clipboardData?.getData('text') ?? '');
+    if (weights.length < 2) return;
+    e.preventDefault();
+    if (i + weights.length > this.rows.length) {
+      this.draft.count = i + weights.length;
+      this.resize(this.draft.count);
+    }
+    weights.forEach((w, k) => { this.rows[i + k].kg = w; });
   }
 
   private lines(): BeastLine[] {
