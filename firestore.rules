@@ -36,11 +36,14 @@ service cloud.firestore {
         || (id == 'lotCounter' && isManager());
     }
 
-    // Commandes : tout le monde peut en créer une depuis le site, seule l'équipe les lit
+    // Commandes : tout le monde peut en créer une depuis le site, seule l'équipe les lit.
+    // L'équipe en crée aussi (caisse comptoir, panier de la semaine).
     match /orders/{id} {
-      allow create: if request.resource.data.keys().hasOnly(
+      allow create: if isMember() || request.resource.data.keys().hasOnly(
                          ['name', 'tel', 'type', 'typeLabel', 'date', 'details', 'lang', 'status', 'createdAt',
-                          'items', 'address', 'zone', 'delivery', 'total', 'marketing'])
+                          'items', 'address', 'zone', 'delivery', 'total', 'marketing', 'promoCode', 'discount', 'referrer'])
+        && (!('discount' in request.resource.data) || (request.resource.data.discount is number && request.resource.data.discount >= 0))
+        && (!('promoCode' in request.resource.data) || exists(/databases/$(database)/documents/promoCodes/$(request.resource.data.promoCode)))
         && (!('items' in request.resource.data) || (request.resource.data.items is list && request.resource.data.items.size() <= 60))
         && (!('address' in request.resource.data) || (request.resource.data.address is string && request.resource.data.address.size() <= 300))
         && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
@@ -87,6 +90,30 @@ service cloud.firestore {
             && request.resource.data.status == 'nouveau');
       allow update: if isMember();
       allow delete: if isManager();
+    }
+
+    // Codes promo : le site lit un code par son nom et compte une utilisation de plus
+    match /promoCodes/{code} {
+      allow get: if true;
+      allow list, create, delete: if isManager();
+      allow update: if isManager()
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uses'])
+            && request.resource.data.uses == resource.data.uses + 1
+            && resource.data.active == true
+            && (!('maxUses' in resource.data) || resource.data.uses < resource.data.maxUses));
+    }
+
+    // Panier de la semaine : le client le crée en commandant, l'équipe le gère
+    match /subscriptions/{id} {
+      allow create: if request.resource.data.keys().hasOnly(
+                         ['name', 'tel', 'type', 'day', 'items', 'lang', 'address', 'zone', 'active', 'lastOrder', 'createdAt'])
+        && request.resource.data.active == true
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+        && request.resource.data.tel is string && request.resource.data.tel.size() <= 30
+        && request.resource.data.day is int && request.resource.data.day >= 0 && request.resource.data.day <= 6
+        && request.resource.data.items is list && request.resource.data.items.size() <= 60
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isMember();
     }
 
     // Clients professionnels : jamais lisibles par le public
