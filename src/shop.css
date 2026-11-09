@@ -992,4 +992,32 @@ app-shop-layout {
     .foot-card { grid-template-columns: 1fr; border-radius: 24px; }
     .foot-bottom { flex-direction: column; text-align: center; padding-inline: 6px; padding-bottom: 70px; }
   }
+
+  /* Haut de page : verre fumé neutre et net (la photo ne déteint plus en rouge), infos utiles */
+  .hero-text.glass, .htile.glass {
+    background: linear-gradient(150deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05) 42%, rgba(255, 255, 255, .09));
+    -webkit-backdrop-filter: blur(30px) saturate(115%) brightness(.44);
+    backdrop-filter: blur(30px) saturate(115%) brightness(.44);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 0 0 1px rgba(255, 255, 255, .12), 0 40px 70px -40px rgba(0, 0, 0, .85);
+  }
+  .hero-status { background: rgba(255, 255, 255, .12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), inset 0 0 0 1px rgba(255, 255, 255, .08); font-weight: 500; }
+  .hero-status b { font-weight: 700; }
+  .hero-status .sep { opacity: .55; }
+  .hero-status:not(.closed) b { color: #7ef0ad; }
+  .hero-status.closed b { color: #ff98a5; }
+  .hero-link { display: inline-flex; align-items: center; gap: 8px; }
+  .hero-link svg { width: 18px; height: 18px; fill: none; stroke: #ffc46b; stroke-width: 1.8; stroke-linejoin: round; }
+  .hero-points { gap: 8px; }
+  .hero-points li { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px 7px 9px; border-radius: 999px; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); font-weight: 500; }
+  [dir="rtl"] & .hero-points li { padding: 7px 9px 7px 13px; }
+  .hero-points li::before { content: none; }
+  .hero-points svg { width: 18px; height: 18px; fill: none; stroke: #ffc46b; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .htile-text { flex: 1; min-width: 0; display: grid; gap: 3px; }
+  .htile-text b { font-size: 1.12rem; }
+  .htile-text small { color: rgba(255, 255, 255, .72); font-size: .8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 960px) {
+    .hero-points li { padding: 6px 11px 6px 8px; font-size: .8rem; }
+    .htile-text b { font-size: .9rem; }
+    .htile-text small { white-space: normal; font-size: .68rem; line-height: 1.3; }
+  }
 }

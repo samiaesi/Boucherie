@@ -6,7 +6,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { Announcement, KIND_LABELS } from '../core/announcements';
 import { Cart } from '../core/cart';
-import { HERO_PHOTOS, formatNumber } from '../core/data';
+import { HERO_PHOTOS, formatNumber, lowestPrice } from '../core/data';
 import { I18n, TKey } from '../core/i18n';
 import { IconPipe } from '../core/icon';
 import { Shop } from '../core/shop';
@@ -26,7 +26,7 @@ const STEP_MS = 2200;
       <div class="wrap hero-grid">
         <div class="hero-text glass">
           <div class="hero-pills">
-            <span class="hero-status" [class.closed]="!shop.ordering().open"><i></i>{{ i18n.t(shop.ordering().open ? 'heroOpen' : 'closedTitle') }}</span>
+            <span class="hero-status" [class.closed]="!shop.ordering().open"><i></i><b>{{ i18n.t(shop.ordering().open ? 'ctOpen' : 'ctClosed') }}</b>@if (statusText()) { <span class="sep">·</span>{{ statusText() }} }</span>
             @if (reservation(); as c) { <a routerLink="/reservation" class="hero-status hero-res">{{ i18n.t('resBannerBtn') }} : {{ i18n.pick(c, 'name') }}</a> }
           </div>
           <h1>
@@ -36,17 +36,30 @@ const STEP_MS = 2200;
           <p>{{ i18n.t('heroText') }}</p>
           <div class="hero-actions">
             <a routerLink="/boutique" class="hero-cta">{{ i18n.t('order') }}<span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></a>
-            <a routerLink="/boutique" class="hero-link">{{ i18n.t('seeAll') }}</a>
+            @if (shop.category('speciales')) {
+              <a routerLink="/boutique" [queryParams]="{ cat: 'speciales' }" class="hero-link">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></svg>{{ i18n.t('specialOrder') }}
+              </a>
+            } @else {
+              <a routerLink="/boutique" class="hero-link">{{ i18n.t('seeAll') }}</a>
+            }
           </div>
           <ul class="hero-points">
-            @for (k of heroPoints; track k) { <li>{{ i18n.t(k) }}</li> }
+            @for (k of heroPoints; track k.key) {
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="k.icon" /></svg>{{ i18n.t(k.key) }}</li>
+            }
           </ul>
         </div>
         <div class="hero-tiles">
           @for (t of heroTiles(); track t.id; let i = $index) {
             <a class="htile glass" routerLink="/boutique" [queryParams]="{ cat: t.id }" [style.--d]="i">
               <img [src]="t.image" alt="">
-              <b>{{ t.name }}</b>
+              <span class="htile-text">
+                <b>{{ t.name }}</b>
+                @if (t.count) {
+                  <small>{{ i18n.t('heroCount').replace('{n}', '' + t.count) }}@if (t.from) { · {{ i18n.t('priceFrom') }} {{ i18n.money(t.from) }} {{ i18n.t('perKgFrom') }} }</small>
+                }
+              </span>
               <span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
             </a>
           }
@@ -346,7 +359,12 @@ export class Home implements OnInit, OnDestroy {
   protected readonly step = signal(0);
   private stepTimer?: ReturnType<typeof setInterval>;
 
-  protected readonly heroPoints: TKey[] = ['pointHalal', 'pointCut', 'pointDelivery'];
+  /** Points forts du haut de page, chacun avec son pictogramme */
+  protected readonly heroPoints: { key: TKey; icon: string }[] = [
+    { key: 'pointHalal', icon: 'M12 3l7 3v5.5c0 4.4-3 8.2-7 9.5-4-1.3-7-5.1-7-9.5V6zM8.5 12l2.5 2.5 4.5-5' },
+    { key: 'pointCut', icon: 'M4 20l9.5-9.5M14.5 3.5l6 6-3 3-6-6zM6 18l1.5 1.5' },
+    { key: 'pointDelivery', icon: 'M2.5 7h11v9.5h-11zM13.5 10H18l3.5 3.5v3h-8M6.5 19.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 19.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z' },
+  ];
 
   /** Le grand bloc montre le bœuf, ou la photo choisie dans l'admin. */
   protected readonly heroTiles = computed(() => [
@@ -355,7 +373,13 @@ export class Home implements OnInit, OnDestroy {
     { id: 'poulet', fallback: HERO_PHOTOS[0] },
   ].map(t => {
     const c = this.shop.category(t.id);
-    return { id: t.id, image: t.own || c?.image || t.fallback, name: c ? this.i18n.pick(c, 'name') : t.id };
+    // Ce que contient le rayon : nombre d'articles et prix de départ au kg
+    const items = this.shop.products().filter(p => p.category === t.id && p.available);
+    const kgPrices = items.filter(p => p.unit === 'kg').map(p => lowestPrice(p)).filter(n => n > 0);
+    return {
+      id: t.id, image: t.own || c?.image || t.fallback, name: c ? this.i18n.pick(c, 'name') : t.id,
+      count: items.length, from: kgPrices.length ? Math.min(...kgPrices) : 0,
+    };
   }));
 
   /** Fond plein écran : les photos Unsplash sont demandées en grand pour rester nettes. */
