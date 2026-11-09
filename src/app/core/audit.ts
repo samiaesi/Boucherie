@@ -32,6 +32,7 @@ export const AUDIT_ACTIONS = {
   'categories.updated': { label: 'Rayons modifiés', category: 'Catalogue' },
   'menus.updated': { label: 'Menus proposés modifiés', category: 'Catalogue' },
   'recipes.updated': { label: 'Recettes modifiées', category: 'Catalogue' },
+  'promo.updated': { label: 'Code promo modifié', category: 'Clients' },
   'reservations.updated': { label: 'Réservations modifiées', category: 'Catalogue' },
   'loyalty.updated': { label: 'Points de fidélité modifiés', category: 'Commandes' },
   'announcement.created': { label: 'Annonce publiée', category: 'Clients' },

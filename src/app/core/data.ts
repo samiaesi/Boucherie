@@ -165,6 +165,9 @@ export interface Settings {
   loyaltyGoal: number;
   loyaltyReward_fr: string;
   loyaltyReward_ar: string;
+  /** Parrainage : réduction du filleul en %, points offerts au parrain (0 = désactivé) */
+  referralPercent?: number;
+  referralPoints?: number;
   /** Créneaux de livraison au choix, ex. « 10:00-12:00 » (vide = pas de choix) */
   deliverySlots: string[];
   /** Livraisons maximum par créneau, 0 = sans limite */
@@ -205,6 +208,12 @@ export interface Order {
   delivery?: number;
   /** Montant total en DA */
   total?: number;
+  /** Code promo utilisé */
+  promoCode?: string;
+  /** Réduction accordée en DA (code promo ou parrainage) */
+  discount?: number;
+  /** Numéro du parrain (sa carte de fidélité reçoit des points) */
+  referrer?: string;
   /** Facture créée à la confirmation */
   invoiceId?: string;
 }

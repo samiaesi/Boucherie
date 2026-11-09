@@ -41,6 +41,8 @@ export const PAGES: Page[] = [
     icon: 'M4 10v4h3l9 5V5l-9 5zM19 9a4 4 0 0 1 0 6M7 14v5h3v-3.5' },
   { path: 'reservations', label: 'Réservations', group: 'Ventes', roles: ADMINS,
     icon: 'M5 5h14v15H5zM5 10h14M9 3v4M15 3v4M9 15l2 2 4-4' },
+  { path: 'codes-promo', label: 'Codes promo', group: 'Ventes', roles: ADMINS,
+    icon: 'M3 12V4h8l10 10-8 8zM8 8.5h.01M9 15l6-6M10 10h.01M14 14h.01' },
   { path: 'fidelite', label: 'Fidélité', group: 'Ventes', roles: MANAGERS,
     icon: 'M12 3l2.7 5.6 6.1.8-4.5 4.2 1.2 6.1L12 16.8l-5.5 2.9 1.2-6.1L3.2 9.4l6.1-.8z' },
   { path: 'pro', label: 'Entreprises', group: 'Ventes', roles: MANAGERS,

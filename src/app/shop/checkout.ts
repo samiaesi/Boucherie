@@ -1,6 +1,7 @@
 import { slotFull } from '../core/delivery-slots';
 import { Suggest } from './suggest';
-import { pointsFor } from '../core/loyalty';
+import { normalizeTel, pointsFor } from '../core/loyalty';
+import { codeProblem, discountFor } from '../core/promo-codes';
 import { ChangeDetectorRef, afterNextRender, effect, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -88,6 +89,20 @@ const PHONE = /^0[567]\d{8}$/;
                   </div>
                 }
               }
+              <div class="promo-box">
+                <label>{{ i18n.t('promoLabel') }}
+                  <span class="promo-row">
+                    <input name="promo" autocomplete="off" [placeholder]="i18n.t('promoPlaceholder')" [ngModel]="codeText()" (ngModelChange)="codeText.set($event)" [disabled]="!!applied()">
+                    @if (applied()) {
+                      <button type="button" class="btn btn-white" (click)="removeCode()">{{ i18n.t('remove') }}</button>
+                    } @else {
+                      <button type="button" class="btn btn-white" [disabled]="!codeText().trim() || checking()" (click)="applyCode()">{{ i18n.t('promoApply') }}</button>
+                    }
+                  </span>
+                </label>
+                @if (applied(); as a) { <p class="promo-ok">✓ {{ a.kind === 'promo' ? i18n.t('promoOk').replace('{p}', '' + a.percent) : i18n.t('referralOk').replace('{p}', '' + a.percent) }}</p> }
+                @if (codeError()) { <p class="form-error">{{ codeError() }}</p> }
+              </div>
               <label class="optin"><input type="checkbox" name="marketing" [(ngModel)]="form.marketing"> <span>{{ i18n.t('marketing') }}</span></label>
               <label>{{ i18n.t('notes') }}<textarea name="notes" [(ngModel)]="form.notes"></textarea></label>
               @if (error()) { <div class="form-error" role="alert">{{ error() }}</div> }
@@ -117,6 +132,9 @@ const PHONE = /^0[567]\d{8}$/;
                 <div class="sum-line"><span>{{ i18n.t('subtotal') }}</span><b>{{ i18n.total(cart.total(), cart.pending()) }}</b></div>
                 <div class="sum-line"><span>{{ i18n.t('delivery') }}</span><b>{{ feeLabel(fee()) }}</b></div>
                 @if (freeLeft() > 0) { <p class="serve-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7C10 3 7 3 7 5s3 2 5 2zM12 7c2-4 5-4 5-2s-3 2-5 2z" /></svg>{{ freeLeftText() }}</p> }
+              }
+              @if (discount() > 0) {
+                <div class="sum-line promo-line"><span>{{ i18n.t('promoDiscount') }}</span><b>−{{ i18n.money(discount()) }}</b></div>
               }
               <div class="sum"><span>{{ i18n.t('total') }}</span><b>{{ i18n.total(grandTotal(), cart.pending()) }}</b></div>
               @if (cart.specialPriced()) { <p class="note">{{ i18n.t('finalPrice') }}</p> }
@@ -189,7 +207,45 @@ export class Checkout {
     const s = this.shop.settings();
     return s.loyaltyEnabled ? pointsFor(this.cart.total(), s.loyaltyEvery) : 0;
   });
-  protected readonly grandTotal = computed(() => this.cart.total() + this.fee());
+  /** Code promo ou parrainage accepté : la réduction suit le panier */
+  protected readonly codeText = signal('');
+  protected readonly applied = signal<{ kind: 'promo' | 'referral'; id: string; percent: number } | null>(null);
+  protected readonly codeError = signal('');
+  protected readonly checking = signal(false);
+  protected readonly discount = computed(() => {
+    const a = this.applied();
+    return a ? discountFor(a.percent, this.cart.total()) : 0;
+  });
+  protected readonly grandTotal = computed(() => this.cart.total() - this.discount() + this.fee());
+
+  protected async applyCode() {
+    const t = (k: TKey) => this.i18n.t(k);
+    this.codeError.set('');
+    this.checking.set(true);
+    try {
+      const found = await this.shop.findCode(this.codeText());
+      const s = this.shop.settings();
+      if (found?.kind === 'referral') {
+        const own = this.form.tel && normalizeTel(this.form.tel) === found.tel;
+        if (!s.referralPercent || own) this.codeError.set(t('promoUnknown'));
+        else this.applied.set({ kind: 'referral', id: found.tel, percent: s.referralPercent });
+      } else {
+        const problem = codeProblem(found?.kind === 'promo' ? found.code : undefined, this.cart.total(), this.today);
+        if (problem) this.codeError.set(t(problem).replace('{x}', this.i18n.money(found?.kind === 'promo' ? found.code.minOrder ?? 0 : 0)));
+        else if (found?.kind === 'promo') this.applied.set({ kind: 'promo', id: found.code.id, percent: found.code.percent });
+      }
+    } catch {
+      this.codeError.set(t('promoUnknown'));
+    } finally {
+      this.checking.set(false);
+    }
+  }
+
+  protected removeCode() {
+    this.applied.set(null);
+    this.codeText.set('');
+  }
+
   /** Ce qu'il manque au panier pour une livraison offerte */
   protected readonly freeLeft = computed(() => {
     const s = this.shop.settings();
@@ -268,6 +324,7 @@ export class Checkout {
     const details = [
       ...lines,
       delivery && `${t('delivery')} : ${this.feeLabel(this.fee())}`,
+      this.discount() > 0 && `${t('promoDiscount')}${this.applied()?.kind === 'promo' ? ` (${this.applied()!.id})` : ''} : −${this.i18n.money(this.discount())}`,
       `${t('total')} : ${total}`,
       special && `${t('specialOrder')} · ${slotText}`,
       chosenSlot && `${t('deliverySlot')} : ${date} ${chosenSlot}`,
@@ -280,12 +337,16 @@ export class Checkout {
     try {
       this.ref.set(await this.shop.createOrder({
         name: f.name.trim(), tel, type: this.mode(), date, details, lang: this.i18n.lang(), items: this.items(),
-        ...(f.marketing ? { marketing: true } : {}), delivery: this.fee(), total: this.grandTotal(), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
+        ...(f.marketing ? { marketing: true } : {}), delivery: this.fee(), total: this.grandTotal(),
+        ...(this.discount() ? { discount: this.discount() } : {}),
+        ...(this.applied()?.kind === 'promo' ? { promoCode: this.applied()!.id } : {}),
+        ...(this.applied()?.kind === 'referral' ? { referrer: this.applied()!.id } : {}), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
         typeLabel: `${special ? `${t('specialOrder')} ${this.slot()} · ` : ''}${chosenSlot ? `${t('modeDelivery')} ${chosenSlot} · ` : ''}${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
       }, chosenSlot));
       this.shop.rememberCustomer({ name: f.name, tel: f.tel, ...(delivery ? { zone: f.zone, address: f.address } : {}) });
       this.cart.remember();
       this.cart.clear();
+      this.applied.set(null);
     } catch (err) {
       console.error('Commande non enregistrée', err);
       this.error.set(t('orderFail'));

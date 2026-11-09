@@ -4,6 +4,7 @@ import { applyPromos } from './promo';
 import { normalizeTel, validTel } from './loyalty';
 import type { Campaign } from './campaigns';
 import { DEFAULT_RECIPES, Recipe } from './recipes';
+import { PromoCode, normalizeCode } from './promo-codes';
 import { rebuildBasket } from './basket';
 import type { Cart } from './cart';
 import type { I18n } from './i18n';
@@ -78,6 +79,20 @@ export class Shop {
   readonly campaigns = signal<Campaign[]>([]);
   readonly recipes = signal<Recipe[]>(DEFAULT_RECIPES);
   private recipesLoaded = false;
+
+  /** Code promo du client : un nom de code, ou le numéro d'un parrain (carte de fidélité) */
+  async findCode(text: string): Promise<{ kind: 'promo'; code: PromoCode } | { kind: 'referral'; tel: string } | null> {
+    const digits = text.replace(/\D/g, '');
+    if (validTel(digits)) {
+      const tel = normalizeTel(digits);
+      const card = await getDoc(doc(db, 'loyalty', tel));
+      return card.exists() ? { kind: 'referral', tel } : null;
+    }
+    const id = normalizeCode(text);
+    if (!id) return null;
+    const snap = await getDoc(doc(db, 'promoCodes', id));
+    return snap.exists() ? { kind: 'promo', code: { ...(snap.data() as PromoCode), id } } : null;
+  }
 
   /** Recettes enregistrées dans l'admin, sinon celles de départ */
   async loadRecipes() {
@@ -252,6 +267,7 @@ export class Shop {
     const ref = doc(collection(db, 'orders'));
     const batch = writeBatch(db);
     batch.set(ref, { ...order, status: 'nouveau', createdAt: serverTimestamp() });
+    if (order.promoCode) batch.update(doc(db, 'promoCodes', order.promoCode), { uses: increment(1) });
     batch.set(doc(db, 'tracking', ref.id), {
       status: 'nouveau', delivery: order.type === 'livraison', date: order.date, ref: orderRef(ref.id),
       steps: { nouveau: serverTimestamp() },

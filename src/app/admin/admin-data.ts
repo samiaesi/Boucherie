@@ -1,3 +1,4 @@
+import { PromoCode } from '../core/promo-codes';
 import { DEFAULT_RECIPES, Recipe } from '../core/recipes';
 import { slotInLabel, slotKey } from '../core/delivery-slots';
 import type { Campaign } from '../core/campaigns';
@@ -247,22 +248,56 @@ export class AdminData {
     if (points <= 0) return;
     const orderRefDoc = doc(db, 'orders', o.id);
     const cardRef = doc(db, 'loyalty', normalizeTel(o.tel));
+    // Parrainage : le parrain gagne des points quand la commande de son filleul est terminée
+    const bonus = o.referrer && s.referralPoints && o.referrer !== normalizeTel(o.tel) ? s.referralPoints : 0;
+    const sponsorRef = bonus ? doc(db, 'loyalty', o.referrer!) : null;
     try {
       await runTransaction(db, async tx => {
         const [order, card] = [await tx.get(orderRefDoc), await tx.get(cardRef)];
+        const sponsor = sponsorRef ? await tx.get(sponsorRef) : null;
         if (order.data()?.['loyaltyDone']) return;
         tx.update(orderRefDoc, { loyaltyDone: true });
         tx.set(cardRef, {
           points: ((card.data()?.['points'] as number) ?? 0) + points,
           earned: ((card.data()?.['earned'] as number) ?? 0) + points,
         });
+        if (sponsorRef && sponsor) {
+          tx.set(sponsorRef, {
+            points: ((sponsor.data()?.['points'] as number) ?? 0) + bonus,
+            earned: ((sponsor.data()?.['earned'] as number) ?? 0) + bonus,
+          });
+        }
       });
+      if (bonus) this.audit('loyalty.updated', o.referrer!, `+${bonus} points de parrainage · ${orderRef(o.id)}`);
       this.audit('loyalty.updated', normalizeTel(o.tel), `+${points} points · ${orderRef(o.id)}`);
     } catch (e) {
       // La commande reste valide : seuls les points manquent
       console.warn('Points de fidélité non ajoutés', e);
       this.notify('Statut mis à jour, mais les points de fidélité n\'ont pas pu être ajoutés.', 7000);
     }
+  }
+
+  async listPromoCodes(): Promise<PromoCode[]> {
+    const snap = await getDocs(collection(db, 'promoCodes'));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id }) as PromoCode).sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  async savePromoCode(c: PromoCode) {
+    const { id, ...data } = c;
+    await this.guarded(setDoc(doc(db, 'promoCodes', id), Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined && v !== ''))));
+    this.audit('promo.updated', id, `-${c.percent} %${c.until ? ` jusqu'au ${c.until}` : ''}${c.active ? '' : ' · désactivé'}`);
+  }
+
+  async deletePromoCode(id: string) {
+    await this.guarded(deleteDoc(doc(db, 'promoCodes', id)));
+    this.audit('promo.updated', id, 'supprimé');
+  }
+
+  /** Réglages du parrainage, sans toucher au reste des paramètres */
+  async saveReferral(percent: number, points: number) {
+    await this.guarded(setDoc(doc(db, 'settings', 'main'), { referralPercent: percent, referralPoints: points }, { merge: true }));
+    this.settings.update(s => ({ ...s, referralPercent: percent, referralPoints: points }));
+    this.audit('settings.updated', 'Parrainage', `filleul -${percent} % · parrain +${points} points`);
   }
 
   async listLoyalty(): Promise<LoyaltyCard[]> {
