@@ -797,6 +797,25 @@ export class AdminData {
     return snap.docs.length;
   }
 
+  /**
+   * Correction d'inventaire : un manque devient une sortie de stock (motif inventaire),
+   * un surplus est simplement ajouté au stock du produit (et de son pays).
+   */
+  async correctStock(p: Product, gap: number, origin: string | undefined, date: string) {
+    const target = { kind: 'product' as const, id: p.id, name: p.name_fr, unit: p.unit === 'kg' ? 'kg' : 'pièce(s)' };
+    if (gap < 0) {
+      await this.addExit({ target, qty: roundStock(-gap), date, reason: 'inventaire', note: 'Inventaire du soir', ...(origin ? { origin } : {}) });
+      return;
+    }
+    await this.guarded(runTransaction(db, async tx => {
+      const fresh = await this.productInTx(tx, p.id);
+      if (!fresh) throw new StockError(`${p.name_fr} n'existe plus.`);
+      const origins = originsOf(fresh).map(o => (o.country === origin ? { ...o, stock: roundStock((o.stock ?? 0) + gap) } : o));
+      tx.update(doc(db, 'products', p.id), { stock: increment(gap), trackStock: true, ...(origin ? { origins } : {}) });
+    }));
+    this.audit('product.updated', p.name_fr, `Inventaire : +${roundStock(gap)} ${target.unit}${origin ? ` (${origin})` : ''} trouvés en plus`);
+  }
+
   /** Promotion du jour pour écouler une viande qui attend */
   async promoteToday(products: Product[], percent: number, today: string) {
     const batch = writeBatch(db);
