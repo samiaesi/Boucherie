@@ -1,3 +1,4 @@
+import { Cost, marginOf, productCosts } from '../core/margins';
 import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -49,7 +50,14 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
               @if (p.promoPercent) { <span class="pill">-{{ p.promoPercent }}% jusqu'au {{ p.promoUntil }}</span> }</b>
             <small>Réf. {{ ref(p) }} · {{ rayonName(p) }}{{ origin(p) ? ' · ' + origin(p) : '' }}</small>
           </div>
-          <div class="price">{{ price(p) }}</div>
+          <div class="price">
+            {{ price(p) }}
+            @if (margin(p); as m) {
+              <small class="margin" [class.loss]="m.gain < 0" [title]="'Coût de revient : ' + m.from">
+                Coût {{ money(m.cost) }} · {{ m.gain >= 0 ? '+' : '' }}{{ money(m.gain) }} ({{ m.rate }} %)
+              </small>
+            }
+          </div>
           <div class="item-actions">
             <button class="btn light small" (click)="toggle(p)">{{ p.available ? 'Masquer' : 'Afficher' }}</button>
             <button class="btn light small" (click)="open(p)">Modifier</button>
@@ -94,6 +102,12 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
               </div>
             }
             <div><button type="button" class="btn add-row" (click)="addRow()">+ Ajouter un pays</button></div>
+            @if (draftMargin(); as m) {
+              <div class="cost-note" [class.loss]="m.gain < 0">
+                <b>Prix de revient : {{ money(m.cost) }} {{ perUnit() }}</b>
+                <span>{{ m.from }} · avec le prix le plus bas ({{ money(m.price) }}) : {{ m.gain >= 0 ? 'vous gagnez' : 'vous perdez' }} {{ money(m.gain < 0 ? -m.gain : m.gain) }} {{ perUnit() }} ({{ m.rate }} %)</span>
+              </div>
+            }
             @if (rows.length) {
               <label class="check"><input type="checkbox" name="originAll" [(ngModel)]="originAll"> Mettre ces pays sur tous les produits de ce rayon, avec les mêmes écarts de prix</label>
             }
@@ -210,6 +224,11 @@ const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean);
     .price-hint { color: var(--muted); font-size: .84rem; font-weight: 400; }
     .price-note { display: grid; gap: 4px; align-content: start; padding: 10px 12px; background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; font-size: .86rem; }
     .price-note span { color: var(--muted); }
+    .cost-note { display: grid; gap: 2px; padding: 9px 12px; border-radius: 10px; background: #e9f6ee; color: #17603a; font-size: .84rem; }
+    .cost-note.loss { background: #fdecef; color: #a3122a; }
+    .cost-note span { font-weight: 400; }
+    .price small.margin { display: block; margin-top: 2px; color: #1f7a45; font-size: .74rem; font-weight: 600; }
+    .price small.margin.loss { color: #b3142c; }
     .custom-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 110px auto; gap: 8px; align-items: center; }
     .finder { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 10px; align-items: center; margin-bottom: 14px; max-width: 760px; }
     .finder span { color: var(--muted); font-size: .86rem; white-space: nowrap; }
@@ -268,8 +287,34 @@ export class Products implements OnInit {
     };
   }
 
+  /** Prix de revient calculé depuis les arrivages et les découpes */
+  private readonly costs = signal(new Map<string, Cost>());
+
+  /** Marge avec les prix en train d'être tapés dans la fiche */
+  protected draftMargin() {
+    if (!this.editingId) return undefined;
+    const cost = this.costs().get(this.editingId);
+    const rows = this.rows.filter(r => r.country.trim() && Number(r.price) > 0);
+    const draft = { ...this.draft, origins: rows.length ? rows.map(r => ({ ...r, price: Number(r.price) })) : undefined, price: Number(this.draft.price) || 0 };
+    return marginOf(draft as unknown as Product, cost);
+  }
+
+  protected margin(p: Product) {
+    return marginOf(p, this.costs().get(p.id));
+  }
+
+  protected money(n: number) {
+    return `${formatNumber(Math.round(n))} DA`;
+  }
+
   private async reload() {
     this.products.set(await this.data.list<Product>('products'));
+    try {
+      const { lots, cuts } = await this.data.listRegister();
+      this.costs.set(productCosts(this.products(), this.data.fridge(), lots, cuts));
+    } catch {
+      this.costs.set(new Map());
+    }
     this.loaded.set(true);
   }
 
