@@ -64,6 +64,7 @@ export const routes: Routes = [
       page('caisse', () => import('./admin/counter').then(m => m.Counter)),
       page('recettes', () => import('./admin/recipes-admin').then(m => m.RecipesAdmin)),
       page('codes-promo', () => import('./admin/promo-codes-admin').then(m => m.PromoCodesAdmin)),
+      page('paniers', () => import('./admin/subscriptions-admin').then(m => m.SubscriptionsAdmin)),
       page('rayons', () => import('./admin/categories').then(m => m.Categories)),
       page('produits', () => import('./admin/products').then(m => m.Products)),
       page('reservations', () => import('./admin/reservations').then(m => m.Reservations)),

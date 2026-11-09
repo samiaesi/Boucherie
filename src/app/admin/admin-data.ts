@@ -1,3 +1,6 @@
+import { Subscription, refreshItems } from '../core/subscriptions';
+
+const NL = String.fromCharCode(10);
 import { PromoCode } from '../core/promo-codes';
 import { DEFAULT_RECIPES, Recipe } from '../core/recipes';
 import { slotInLabel, slotKey } from '../core/delivery-slots';
@@ -24,7 +27,7 @@ import { Auth } from './auth';
 import { Role } from './roles';
 import {
   Category, DEFAULT_CATEGORIES, DEFAULT_FRIDGE, DEFAULT_SETTINGS, FridgeItem, Offer, Order, OrderItem, OrderStatus, Product, Settings,
-  BEAST_SHARE, byOrder, carcassOf, formatNumber, isCutOf, itemQty, moveBeasts, wholeLeft, moveCountryStock, orderRef, originsOf, poolOf, readFridge, roundStock, stockShortages,
+  BEAST_SHARE, byOrder, deliveryCost, carcassOf, formatNumber, isCutOf, itemQty, moveBeasts, wholeLeft, moveCountryStock, orderRef, originsOf, poolOf, readFridge, roundStock, stockShortages,
 } from '../core/data';
 
 type Col = 'products' | 'offers' | 'orders';
@@ -275,6 +278,41 @@ export class AdminData {
       console.warn('Points de fidélité non ajoutés', e);
       this.notify('Statut mis à jour, mais les points de fidélité n\'ont pas pu être ajoutés.', 7000);
     }
+  }
+
+  async listSubscriptions(): Promise<Subscription[]> {
+    const snap = await getDocs(collection(db, 'subscriptions'));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id }) as Subscription);
+  }
+
+  async updateSubscription(id: string, patch: Partial<Subscription>) {
+    await this.guarded(updateDoc(doc(db, 'subscriptions', id), patch));
+  }
+
+  async deleteSubscription(id: string) {
+    await this.guarded(deleteDoc(doc(db, 'subscriptions', id)));
+  }
+
+  /** Crée la commande de la semaine, aux prix du jour, comme si le client l'avait passée */
+  async createSubscriptionOrder(s: Subscription, date: string, products: Product[]) {
+    const { items, missing, total } = refreshItems(s.items, products);
+    if (!items.length) throw new Error("Aucun produit de ce panier n'est disponible aujourd'hui.");
+    const delivery = s.type === 'livraison' ? deliveryCost(this.settings(), total) : 0;
+    const ref = doc(collection(db, 'orders'));
+    const batch = writeBatch(db);
+    const lines = items.map(i => `- ${i.unit === 'kg' ? `${i.grams} g` : `${i.qty} ×`} ${i.name_fr}${i.origin ? ` (${i.origin})` : ''} : ${formatNumber(i.total ?? 0)} DA`);
+    batch.set(ref, {
+      name: s.name, tel: s.tel, type: s.type, date, lang: s.lang, status: 'nouveau', items, total: total + delivery, delivery,
+      typeLabel: `Panier de la semaine · ${items.length} article(s) · ${formatNumber(total + delivery)} DA`,
+      details: [...lines, missing.length ? `Indisponible cette semaine : ${missing.join(', ')}` : ''].filter(Boolean).join(NL),
+      ...(s.address ? { address: `${s.zone ?? ''} — ${s.address}` } : {}), ...(s.zone ? { zone: s.zone } : {}),
+      createdAt: serverTimestamp(),
+    });
+    batch.set(doc(db, 'tracking', ref.id), { status: 'nouveau', delivery: s.type === 'livraison', date, ref: orderRef(ref.id), steps: { nouveau: serverTimestamp() } });
+    batch.update(doc(db, 'subscriptions', s.id), { lastOrder: date });
+    await this.guarded(batch.commit());
+    this.audit('order.created', orderRef(ref.id), `Panier de la semaine · ${s.name} · ${formatNumber(total + delivery)} DA`);
+    return { id: ref.id, missing };
   }
 
   async listPromoCodes(): Promise<PromoCode[]> {

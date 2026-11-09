@@ -7,7 +7,7 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Cart, CartLine, lineTotal } from '../core/cart';
 import { OrderItem, deliveryCost, orderRef } from '../core/data';
-import { I18n, TKey } from '../core/i18n';
+import { DAY_NAMES, I18n, TKey } from '../core/i18n';
 import { canReserveSpecial, dayIsOpen, firstSpecialDate, specialSlots } from '../core/ordering';
 import { Shop } from '../core/shop';
 import { ClosedNotice } from './closed-notice';
@@ -103,6 +103,19 @@ const PHONE = /^0[567]\d{8}$/;
                 @if (applied(); as a) { <p class="promo-ok">✓ {{ a.kind === 'promo' ? i18n.t('promoOk').replace('{p}', '' + a.percent) : i18n.t('referralOk').replace('{p}', '' + a.percent) }}</p> }
                 @if (codeError()) { <p class="form-error">{{ codeError() }}</p> }
               </div>
+              @if (!hasSpecial()) {
+                <div class="weekly">
+                  <label class="optin"><input type="checkbox" name="weekly" [(ngModel)]="weekly"> <span>{{ i18n.t('weeklyLabel') }}</span></label>
+                  @if (weekly) {
+                    <label class="weekly-day">{{ i18n.t('weeklyDay') }}
+                      <select name="weeklyDay" [(ngModel)]="weeklyDay">
+                        @for (d of weekDays(); track d.n) { <option [ngValue]="d.n">{{ d.name }}</option> }
+                      </select>
+                    </label>
+                    <p class="note">{{ i18n.t('weeklyNote') }}</p>
+                  }
+                </div>
+              }
               <label class="optin"><input type="checkbox" name="marketing" [(ngModel)]="form.marketing"> <span>{{ i18n.t('marketing') }}</span></label>
               <label>{{ i18n.t('notes') }}<textarea name="notes" [(ngModel)]="form.notes"></textarea></label>
               @if (error()) { <div class="form-error" role="alert">{{ error() }}</div> }
@@ -208,6 +221,13 @@ export class Checkout {
     return s.loyaltyEnabled ? pointsFor(this.cart.total(), s.loyaltyEvery) : 0;
   });
   /** Code promo ou parrainage accepté : la réduction suit le panier */
+  /** Panier de la semaine */
+  protected weekly = false;
+  protected weeklyDay = new Date().getDay();
+  protected weekDays() {
+    return [6, 0, 1, 2, 3, 4, 5].map(n => ({ n, name: DAY_NAMES[this.i18n.lang()][n] }));
+  }
+
   protected readonly codeText = signal('');
   protected readonly applied = signal<{ kind: 'promo' | 'referral'; id: string; percent: number } | null>(null);
   protected readonly codeError = signal('');
@@ -343,6 +363,17 @@ export class Checkout {
         ...(this.applied()?.kind === 'referral' ? { referrer: this.applied()!.id } : {}), ...(delivery ? { address: `${f.zone} — ${f.address.trim()}`, zone: f.zone } : {}),
         typeLabel: `${special ? `${t('specialOrder')} ${this.slot()} · ` : ''}${chosenSlot ? `${t('modeDelivery')} ${chosenSlot} · ` : ''}${t('basket')} · ${this.cart.count()} ${t('articles')} · ${total}`,
       }, chosenSlot));
+      if (this.weekly && !special) {
+        try {
+          await this.shop.createSubscription({
+            name: f.name.trim(), tel, type: this.mode(), day: Number(this.weeklyDay), items: this.items(), lang: this.i18n.lang(),
+            ...(delivery ? { address: f.address.trim(), zone: f.zone } : {}),
+          }, date);
+        } catch (e) {
+          console.warn('Panier de la semaine non enregistré', e);
+        }
+        this.weekly = false;
+      }
       this.shop.rememberCustomer({ name: f.name, tel: f.tel, ...(delivery ? { zone: f.zone, address: f.address } : {}) });
       this.cart.remember();
       this.cart.clear();

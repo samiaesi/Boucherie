@@ -5,11 +5,12 @@ import { normalizeTel, validTel } from './loyalty';
 import type { Campaign } from './campaigns';
 import { DEFAULT_RECIPES, Recipe } from './recipes';
 import { PromoCode, normalizeCode } from './promo-codes';
+import type { Subscription } from './subscriptions';
 import { rebuildBasket } from './basket';
 import type { Cart } from './cart';
 import type { I18n } from './i18n';
 import { Injectable, computed, signal } from '@angular/core';
-import { collection, doc, getDoc, getDocs, increment, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, increment, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AboutInfo, Certificate, DEFAULT_ABOUT, hasAboutContent } from './about';
 import { Announcement, liveAnnouncements } from './announcements';
 import { db } from './firebase';
@@ -79,6 +80,11 @@ export class Shop {
   readonly campaigns = signal<Campaign[]>([]);
   readonly recipes = signal<Recipe[]>(DEFAULT_RECIPES);
   private recipesLoaded = false;
+
+  /** Panier de la semaine : la boucherie le retrouve dans l'admin chaque semaine */
+  async createSubscription(sub: Omit<Subscription, 'id' | 'active' | 'lastOrder'>, firstDate: string) {
+    await addDoc(collection(db, 'subscriptions'), { ...sub, active: true, lastOrder: firstDate, createdAt: serverTimestamp() });
+  }
 
   /** Code promo du client : un nom de code, ou le numéro d'un parrain (carte de fidélité) */
   async findCode(text: string): Promise<{ kind: 'promo'; code: PromoCode } | { kind: 'referral'; tel: string } | null> {

@@ -31,6 +31,8 @@ export const PAGES: Page[] = [
     icon: 'M6 8h12l-1 12H7zM9 8V6a3 3 0 0 1 6 0v2' },
   { path: 'caisse', label: 'Caisse comptoir', group: 'Ventes', roles: MANAGERS,
     icon: 'M4 9h16v11H4zM7 9V5h10v4M8 13h2M12 13h2M16 13h0M8 16.5h8' },
+  { path: 'paniers', label: 'Paniers de la semaine', group: 'Ventes', roles: MANAGERS,
+    icon: 'M5 5h14v15H5zM5 10h14M9 3v4M15 3v4M9 15l2 2 4-4' },
   { path: 'factures', label: 'Factures', group: 'Ventes', roles: EVERYONE,
     icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6' },
   { path: 'planning', label: 'Planning', group: 'Ventes', roles: EVERYONE,
