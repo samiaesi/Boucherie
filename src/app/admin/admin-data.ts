@@ -816,6 +816,27 @@ export class AdminData {
     this.audit('product.updated', p.name_fr, `Inventaire : +${roundStock(gap)} ${target.unit}${origin ? ` (${origin})` : ''} trouvés en plus`);
   }
 
+  /**
+   * Vente au comptoir : une commande déjà récupérée, le stock retiré d'un seul coup
+   * (carcasses comprises), puis les points de fidélité si le client donne son numéro.
+   */
+  async counterSale(items: OrderItem[], total: number, tel: string, date: string): Promise<{ id: string; points: number }> {
+    const orderRef = doc(collection(db, 'orders'));
+    const products = await this.list<Product>('products');
+    const client = validTel(tel) ? normalizeTel(tel) : '';
+    await this.guarded(runTransaction(db, async tx => {
+      const fridge = await this.fridgeInTx(tx);
+      this.moveStock(tx, items, -1, products, fridge);
+      tx.set(orderRef, {
+        name: client ? `Client ${client}` : 'Client comptoir', tel: client, type: 'comptoir', typeLabel: 'Vente au comptoir',
+        date, details: '', lang: 'fr', status: 'récupéré', items, total, stockDone: true, loyaltyDone: true, createdAt: serverTimestamp(),
+      });
+    }));
+    this.audit('order.created', orderRef.id, `Vente au comptoir · ${formatNumber(total)} DA · ${items.length} article(s)`);
+    const points = client && this.settings().loyaltyEnabled ? await this.addStorePoints(client, total) : 0;
+    return { id: orderRef.id, points };
+  }
+
   /** Promotion du jour pour écouler une viande qui attend */
   async promoteToday(products: Product[], percent: number, today: string) {
     const batch = writeBatch(db);

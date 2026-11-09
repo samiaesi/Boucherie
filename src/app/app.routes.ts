@@ -60,6 +60,7 @@ export const routes: Routes = [
       page('destockage', () => import('./admin/destock').then(m => m.Destock)),
       page('decoupe', () => import('./admin/cutting').then(m => m.Cutting)),
       page('inventaire', () => import('./admin/inventory').then(m => m.Inventory)),
+      page('caisse', () => import('./admin/counter').then(m => m.Counter)),
       page('rayons', () => import('./admin/categories').then(m => m.Categories)),
       page('produits', () => import('./admin/products').then(m => m.Products)),
       page('reservations', () => import('./admin/reservations').then(m => m.Reservations)),
