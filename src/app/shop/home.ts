@@ -1,6 +1,6 @@
 import { countdown, secondsLeft } from '../core/promo';
 import { openCampaigns } from '../core/campaigns';
-import { algeriaClock } from '../core/ordering';
+import { WEEK_ORDER, algeriaClock, scheduleLines } from '../core/ordering';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
@@ -211,21 +211,78 @@ const STEP_MS = 2200;
         </div>
         <div class="contact-grid" appReveal>
           <div class="info">
-            <div class="info-block"><span class="info-icon">📍</span><div><h3>{{ i18n.t('addrT') }}</h3><p>{{ i18n.pick(shop.settings(), 'address') }}</p><a class="map-link" [href]="shop.settings().mapLink" target="_blank" rel="noopener">{{ i18n.t('mapLink') }}</a></div></div>
-            <div class="info-block"><span class="info-icon">📞</span><div><h3>{{ i18n.t('telT') }}</h3><p dir="ltr">{{ shop.settings().phone }}</p></div></div>
-            <div class="info-block">
-              <span class="info-icon">🕒</span>
-              <div class="grow">
-                <h3>{{ i18n.t('hoursT') }}</h3>
-                <table class="hours">
-                  @for (h of hours(); track h.days) {
-                    <tr><td>{{ h.days }}</td><td>{{ h.hours }}</td></tr>
-                  }
-                </table>
-              </div>
+            <div class="status-pill" [class.open]="shop.ordering().open">
+              <i class="dot"></i>
+              <b>{{ shop.ordering().open ? i18n.t('ctOpen') : i18n.t('ctClosed') }}</b>
+              <span>{{ statusText() }}</span>
             </div>
+
+            <article class="ct-card">
+              <span class="ct-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 21.5s-7.5-6.6-7.5-12.2a7.5 7.5 0 0 1 15 0c0 5.6-7.5 12.2-7.5 12.2z" /><circle cx="12" cy="9.5" r="2.8" /></svg>
+              </span>
+              <div class="ct-body">
+                <h3>{{ i18n.t('addrT') }}</h3>
+                <p>{{ i18n.pick(shop.settings(), 'address') }}</p>
+                <div class="ct-actions">
+                  @if (shop.settings().mapLink) {
+                    <a class="ct-btn primary" [href]="shop.settings().mapLink" target="_blank" rel="noopener">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3L3 10.5l7.5 3 3 7.5z" /></svg>{{ i18n.t('ctRoute') }}
+                    </a>
+                  }
+                  <button type="button" class="ct-btn" (click)="copyAddress()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></svg>{{ copied() ? i18n.t('ctCopied') : i18n.t('ctCopy') }}
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="ct-card">
+              <span class="ct-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5.5 3.5h3.2l1.8 4.6-2.3 1.5a11.5 11.5 0 0 0 6.2 6.2l1.5-2.3 4.6 1.8v3.2a2 2 0 0 1-2.1 2A16.5 16.5 0 0 1 3.5 5.6a2 2 0 0 1 2-2.1z" /></svg>
+              </span>
+              <div class="ct-body">
+                <h3>{{ i18n.t('telT') }}</h3>
+                @if (realPhone()) { <p dir="ltr" class="ct-phone"><bdi>{{ shop.settings().phone }}</bdi></p> }
+                @else { <p>{{ i18n.t('ctWaOnly') }}</p> }
+                <div class="ct-actions">
+                  @if (realPhone()) {
+                    <a class="ct-btn primary" [href]="'tel:' + shop.settings().phone.replace(' ', '')">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 3.5h3.2l1.8 4.6-2.3 1.5a11.5 11.5 0 0 0 6.2 6.2l1.5-2.3 4.6 1.8v3.2a2 2 0 0 1-2.1 2A16.5 16.5 0 0 1 3.5 5.6a2 2 0 0 1 2-2.1z" /></svg>{{ i18n.t('ctCall') }}
+                    </a>
+                  }
+                  <a class="ct-btn wa" [href]="'https://wa.me/' + shop.settings().whatsapp" target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 20l1.2-4.1A8.3 8.3 0 1 1 9 19z" /><path d="M9.2 8.7c.3 2.6 2.4 4.9 5.2 5.6l1.1-1.3-1.8-.9-.8.8c-1-.4-1.9-1.3-2.4-2.4l.8-.8-.8-1.8z" /></svg>WhatsApp
+                  </a>
+                </div>
+              </div>
+            </article>
+
+            <article class="ct-card">
+              <span class="ct-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+              </span>
+              <div class="ct-body">
+                <h3>{{ i18n.t('hoursT') }}</h3>
+                <ul class="ct-hours">
+                  @for (h of hoursToday(); track h.days) {
+                    <li [class.today]="h.today" [class.off]="h.closed">
+                      <span>{{ h.days }} @if (h.today) { <em>{{ i18n.t('ctToday') }}</em> }</span>
+                      <b dir="ltr">{{ h.hours }}</b>
+                    </li>
+                  }
+                </ul>
+              </div>
+            </article>
           </div>
-          <iframe class="map" [src]="mapUrl()" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Carte"></iframe>
+          <div class="map-wrap">
+            <iframe class="map" [src]="mapUrl()" loading="lazy" referrerpolicy="no-referrer-when-downgrade" [title]="i18n.t('addrT')"></iframe>
+            @if (shop.settings().mapLink) {
+              <a class="map-chip" [href]="shop.settings().mapLink" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3L3 10.5l7.5 3 3 7.5z" /></svg>{{ i18n.t('ctRoute') }}
+              </a>
+            }
+          </div>
         </div>
       </div>
     </section>
@@ -234,6 +291,44 @@ const STEP_MS = 2200;
 export class Home implements OnInit, OnDestroy {
   protected readonly i18n = inject(I18n);
   protected readonly hours = computed(() => this.i18n.hoursLines(this.shop.orderingRules().schedule));
+  protected readonly copied = signal(false);
+
+  /** Horaires, avec la ligne du jour mise en avant */
+  protected readonly hoursToday = computed(() => {
+    const schedule = this.shop.orderingRules().schedule;
+    const today = new Date(`${algeriaClock(new Date()).date}T12:00:00Z`).getUTCDay();
+    const lines = scheduleLines(schedule);
+    return this.hours().map((h, i) => {
+      const l = lines[i];
+      const days = WEEK_ORDER.slice(WEEK_ORDER.indexOf(l.first), WEEK_ORDER.indexOf(l.last) + 1);
+      return { ...h, today: days.includes(today), closed: !l.open };
+    });
+  });
+
+  /** « ferme à 20:00 » quand c'est ouvert, sinon le moment de la reprise */
+  protected readonly statusText = computed(() => {
+    const state = this.shop.ordering();
+    if (!state.open) return this.i18n.closedMessage(state);
+    const today = new Date(`${algeriaClock(new Date()).date}T12:00:00Z`).getUTCDay();
+    const d = this.shop.orderingRules().schedule.find(x => x.day === today);
+    return d?.open ? this.i18n.t('ctCloses').replace('{t}', d.to) : '';
+  });
+
+  /** Le numéro d'exemple (0X XX…) n'est pas affiché aux clients */
+  protected realPhone() {
+    const phone = this.shop.settings().phone ?? '';
+    return phone.replace(/\D/g, '').length >= 9 && !/x/i.test(phone);
+  }
+
+  protected async copyAddress() {
+    try {
+      await navigator.clipboard.writeText(this.i18n.pick(this.shop.settings(), 'address'));
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2000);
+    } catch {
+      this.copied.set(false);
+    }
+  }
   protected readonly shop = inject(Shop);
   protected readonly cart = inject(Cart);
   private readonly sanitizer = inject(DomSanitizer);
