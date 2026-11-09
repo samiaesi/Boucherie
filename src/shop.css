@@ -1082,6 +1082,7 @@ app-shop-layout {
   .weekly .note { margin: 0; }
 
   /* Recettes : lien du menu (caché sur les écrans moyens pour ne pas déborder) et bannière d'accueil */
-  @media (min-width: 961px) and (max-width: 1360px) { .menu-recipes { display: none; } }
+  /* Écrans moyens : « Recettes » reste, « Contact » (aussi en bas de page) laisse la place */
+  @media (min-width: 961px) and (max-width: 1360px) { .menu-contact { display: none; } }
   .recipes-banner { margin-top: 12px; }
 }

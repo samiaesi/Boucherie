@@ -46,7 +46,7 @@ function savedSeen(): Set<string> {
           <a class="menu-plan" routerLink="/mon-menu" routerLinkActive="on">{{ i18n.t('menuNav') }}</a>
           <a class="menu-recipes" routerLink="/recettes" routerLinkActive="on">{{ i18n.t('recipesNav') }}</a>
           @if (shop.hasAbout()) { <a routerLink="/notre-boucherie" routerLinkActive="on">{{ i18n.t('aboutNav') }}</a> }
-          <a routerLink="/" fragment="contact">{{ i18n.t('navContact') }}</a>
+          <a class="menu-contact" routerLink="/" fragment="contact">{{ i18n.t('navContact') }}</a>
           @if (shop.lastOrder() && !reservation()) { <a class="menu-track" [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
         </nav>
         <div class="nav-actions">
