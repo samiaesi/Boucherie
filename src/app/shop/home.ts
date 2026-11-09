@@ -85,6 +85,10 @@ const STEP_MS = 2200;
           <span><b>{{ i18n.t('menuBannerTitle') }}</b><small>{{ i18n.t('menuBannerText') }}</small></span>
           <span class="hero-cta">{{ i18n.t('menuBannerBtn') }}<span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></span>
         </a>
+        <a routerLink="/recettes" class="menu-banner recipes-banner">
+          <span><b>{{ i18n.t('recipesBannerTitle') }}</b><small>{{ i18n.t('recipesBannerText') }}</small></span>
+          <span class="hero-cta">{{ i18n.t('recipesBannerBtn') }}<span class="round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></span>
+        </a>
       </div>
     </section>
 
