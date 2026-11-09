@@ -151,6 +151,8 @@ export interface Settings {
   address_ar: string;
   /** Lien de la fiche Google Maps */
   mapLink: string;
+  /** Lien pour laisser un avis Google (fiche d'établissement › Demander des avis) */
+  reviewLink?: string;
   phone: string;
   whatsapp: string;
   /** Photos du site (data URL JPEG), choisies depuis l'admin */

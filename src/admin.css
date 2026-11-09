@@ -145,4 +145,5 @@
   .btn.add-row { width: 100%; padding: 10px 14px; border: 1.5px dashed var(--line); background: transparent; color: var(--bordeaux); font-weight: 600; box-shadow: none; }
   .btn.add-row:hover { border-color: currentColor; background: rgba(122, 31, 43, .05); }
   @media (max-width: 600px) { .form-actions .btn { flex: 1; min-width: 0; } }
+  .btn.review { background: #fff4d6; color: #7a5200; border-color: #f3d27a; }
 }

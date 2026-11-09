@@ -1,3 +1,4 @@
+import { Shop } from '../core/shop';
 import { Component, OnDestroy, OnInit, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Timestamp, doc, onSnapshot } from 'firebase/firestore';
@@ -51,6 +52,16 @@ const STEP_LABELS: Record<OrderStatus, TKey> = {
         } @else if (missing()) {
           <p class="empty">{{ i18n.t('trackMissing') }}</p>
         }
+        @if (track(); as t) {
+          @if (t.status === 'livré' || t.status === 'récupéré') {
+            <div class="review-card">
+              <span class="stars" aria-hidden="true">★★★★★</span>
+              <b>{{ i18n.t('reviewTitle') }}</b>
+              <p>{{ i18n.t('reviewText') }}</p>
+              <a class="btn btn-red" target="_blank" rel="noopener" [href]="shop.settings().reviewLink || shop.settings().mapLink">{{ i18n.t('reviewBtn') }}</a>
+            </div>
+          }
+        }
         <app-my-points />
         <div class="center"><a routerLink="/boutique" class="btn btn-red">{{ i18n.t('keepShopping') }}</a></div>
       </div>
@@ -59,6 +70,7 @@ const STEP_LABELS: Record<OrderStatus, TKey> = {
 })
 export class TrackPage implements OnInit, OnDestroy {
   protected readonly i18n = inject(I18n);
+  protected readonly shop = inject(Shop);
   /** Paramètre de route :id */
   readonly id = input.required<string>();
   protected readonly track = signal<Tracking | null>(null);

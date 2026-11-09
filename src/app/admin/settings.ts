@@ -26,6 +26,10 @@ type PhotoKey = 'heroImage' | 'aboutImage';
           <label>Numéro WhatsApp (format international)
             <input name="whatsapp" placeholder="213555123456" pattern="[0-9]{8,15}" [(ngModel)]="s.whatsapp">
           </label>
+          <label style="grid-column: 1 / -1">Lien pour laisser un avis Google
+            <input name="reviewLink" type="url" placeholder="https://g.page/r/…/review" [(ngModel)]="s.reviewLink">
+            <small style="color:var(--muted);font-weight:400">Dans votre fiche Google (business.google.com) : « Demander des avis », puis copiez le lien. Sans lien, on envoie celui de Google Maps.</small>
+          </label>
         </div>
         <p class="hours-link">Les horaires se règlent dans <a routerLink="/admin/horaires">Horaires et commandes</a>.</p>
         <div>

@@ -56,6 +56,9 @@ type Filter = 'actives' | 'toutes' | OrderStatus;
             @if (o.invoiceId) { <a class="btn light small" target="_blank" [href]="'/facture/' + o.invoiceId">Voir la facture</a> }
             @if (o.items?.length) { <a class="btn light small" routerLink="/admin/etiquettes" [queryParams]="{ order: o.id }">Étiquettes</a> }
             <a class="btn light small" target="_blank" [href]="'https://wa.me/' + waNumber(o.tel)">Écrire au client</a>
+            @if (o.status === 'livré' || o.status === 'récupéré') {
+              <a class="btn small review" target="_blank" rel="noopener" [href]="reviewHref(o)">⭐ Demander un avis</a>
+            }
             @if (canDelete(auth.role())) { <button class="btn danger small" (click)="remove(o)">Supprimer</button> }
           </div>
         </article>
@@ -157,6 +160,17 @@ export class Orders implements OnInit {
   }
 
   /** 0555 12 34 56 → 213555123456 */
+  /** Message WhatsApp de remerciement avec le lien pour laisser un avis Google */
+  protected reviewHref(o: Order) {
+    const s = this.data.settings();
+    const link = s.reviewLink || s.mapLink;
+    const first = o.name.split(' ')[0];
+    const text = o.lang === 'ar'
+      ? `السلام عليكم ${first}، شكرا على طلبكم من ${s.name_ar}! إذا أعجبتكم، اتركوا لنا رأيكم على Google، يساعدنا كثيرا 🙏\n${link}`
+      : `Bonjour ${first}, merci pour votre commande chez ${s.name_fr} ! Si vous avez été satisfait, laissez-nous un avis sur Google, ça nous aide beaucoup 🙏\n${link}`;
+    return `https://wa.me/${this.waNumber(o.tel)}?text=${encodeURIComponent(text)}`;
+  }
+
   protected waNumber(tel: string) {
     const d = tel.replace(/\D/g, '');
     return d.startsWith('0') ? '213' + d.slice(1) : d;
