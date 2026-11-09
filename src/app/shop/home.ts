@@ -210,14 +210,14 @@ const STEP_MS = 2200;
           <h2>{{ i18n.t('cTitle') }}</h2>
         </div>
         <div class="contact-grid" appReveal>
-          <div class="info">
+          <div class="info ct-panel">
             <div class="status-pill" [class.open]="shop.ordering().open">
               <i class="dot"></i>
               <b>{{ shop.ordering().open ? i18n.t('ctOpen') : i18n.t('ctClosed') }}</b>
               <span>{{ statusText() }}</span>
             </div>
 
-            <article class="ct-card">
+            <div class="ct-row">
               <span class="ct-ico" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 21.5s-7.5-6.6-7.5-12.2a7.5 7.5 0 0 1 15 0c0 5.6-7.5 12.2-7.5 12.2z" /><circle cx="12" cy="9.5" r="2.8" /></svg>
               </span>
@@ -235,9 +235,9 @@ const STEP_MS = 2200;
                   </button>
                 </div>
               </div>
-            </article>
+            </div>
 
-            <article class="ct-card">
+            <div class="ct-row">
               <span class="ct-ico" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M5.5 3.5h3.2l1.8 4.6-2.3 1.5a11.5 11.5 0 0 0 6.2 6.2l1.5-2.3 4.6 1.8v3.2a2 2 0 0 1-2.1 2A16.5 16.5 0 0 1 3.5 5.6a2 2 0 0 1 2-2.1z" /></svg>
               </span>
@@ -256,9 +256,9 @@ const STEP_MS = 2200;
                   </a>
                 </div>
               </div>
-            </article>
+            </div>
 
-            <article class="ct-card">
+            <div class="ct-row">
               <span class="ct-ico" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
               </span>
@@ -273,7 +273,7 @@ const STEP_MS = 2200;
                   }
                 </ul>
               </div>
-            </article>
+            </div>
           </div>
           <div class="map-wrap">
             <iframe class="map" [src]="mapUrl()" loading="lazy" referrerpolicy="no-referrer-when-downgrade" [title]="i18n.t('addrT')"></iframe>
