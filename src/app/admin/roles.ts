@@ -54,7 +54,7 @@ export const PAGES: Page[] = [
   { path: 'frigo', label: 'Frigo', group: 'Stock et catalogue', roles: MANAGERS,
     icon: 'M7 3h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM6 10h12M9 6v2M9 13v3' },
   { path: 'decoupe', label: 'Découpe', group: 'Stock et catalogue', roles: MANAGERS,
-    icon: 'M14 4l6 6-9 9H5v-6zM12 6l6 6M4 21h16' },
+    icon: 'M10.2 13.8L20.6 3.4C21.8 6.4 20.3 10 16.7 13.6L13.4 16.9ZM9.4 14.4L11.6 16.6L5.6 22.6C5 23.2 4 23.2 3.4 22.6C2.8 22 2.8 21 3.4 20.4ZM6.9 19.2h.01' },
   { path: 'destockage', label: 'Déstockage', group: 'Stock et catalogue', roles: MANAGERS,
     icon: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6' },
   { path: 'produits', label: 'Produits', group: 'Stock et catalogue', roles: MANAGERS,

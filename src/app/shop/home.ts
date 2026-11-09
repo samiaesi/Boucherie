@@ -362,7 +362,7 @@ export class Home implements OnInit, OnDestroy {
   /** Points forts du haut de page, chacun avec son pictogramme */
   protected readonly heroPoints: { key: TKey; icon: string; tilt?: string }[] = [
     { key: 'pointHalal', icon: 'M12 3l7 3v5.5c0 4.4-3 8.2-7 9.5-4-1.3-7-5.1-7-9.5V6zM8.5 12l2.5 2.5 4.5-5' },
-    { key: 'pointCut', icon: 'M2.5 7.5h11v6.8c0 .9-.7 1.7-1.7 1.7H5.2a2.7 2.7 0 0 1-2.7-2.7zM13.5 10h6.8a1.6 1.6 0 0 1 0 3.2h-6.8M6 10.2h.01', tilt: 'rotate(-28 12 12)' },
+    { key: 'pointCut', icon: 'M10.2 13.8L20.6 3.4C21.8 6.4 20.3 10 16.7 13.6L13.4 16.9ZM9.4 14.4L11.6 16.6L5.6 22.6C5 23.2 4 23.2 3.4 22.6C2.8 22 2.8 21 3.4 20.4ZM6.9 19.2h.01' },
     { key: 'pointDelivery', icon: 'M2.5 6.5h11v9h-11zM13.5 9.5h4l3.5 3.5v2.5h-7.5M6.5 18.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zM17 18.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z' },
   ];
 
