@@ -81,33 +81,81 @@ function savedSeen(): Set<string> {
     <main><router-outlet /></main>
     <app-install />
 
-    <footer>
-      <div class="wrap footer-grid">
-        <div>
-          <a routerLink="/" class="logo light">
-            <app-logo />
-            <span><b>{{ i18n.pick(shop.settings(), 'name') }}</b><small>{{ i18n.t('brandSub') }}</small></span>
-          </a>
-          <p>{{ i18n.t('footerText') }}</p>
+    <footer class="site-foot">
+      <div class="wrap">
+        <div class="foot-cta">
+          <div>
+            <b>{{ i18n.t('footCtaTitle') }}</b>
+            <span>{{ i18n.t('footCtaText') }}</span>
+          </div>
+          <div class="foot-cta-btns">
+            <a class="btn btn-white" routerLink="/boutique">{{ i18n.t('order') }}</a>
+            <a class="btn foot-wa" [href]="waHref()" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3zm4.6 12.3c-.2.6-1.1 1.1-1.6 1.1-.4.1-.9.1-1.5-.1-2.6-.9-4.3-3.5-4.4-3.7-.1-.2-1-1.4-1-2.6s.6-1.8.9-2.1c.2-.2.5-.3.6-.3h.5c.1 0 .3 0 .5.4l.7 1.7c.1.1.1.3 0 .4l-.3.5-.4.4c-.1.1-.2.3-.1.5.2.3.7 1.1 1.4 1.7.9.8 1.7 1.1 1.9 1.2.2.1.4.1.5-.1l.7-.8c.2-.2.3-.2.5-.1l1.6.8c.2.1.4.2.4.3.1.1.1.6-.1 1.2z" /></svg>
+              WhatsApp
+            </a>
+          </div>
         </div>
-        <div>
-          <h4>{{ i18n.t('navShop') }}</h4>
-          @for (c of shop.categories(); track c.id) {
-            <a routerLink="/boutique" [queryParams]="{ cat: c.id }">{{ i18n.pick(c, 'name') }}</a>
-          }
+
+        <div class="foot-card">
+          <div class="foot-brand">
+            <a routerLink="/" class="logo">
+              <app-logo />
+              <span><b>{{ i18n.pick(shop.settings(), 'name') }}</b><small>{{ i18n.t('brandSub') }}</small></span>
+            </a>
+            <p>{{ i18n.t('footerText') }}</p>
+            <ul class="foot-badges">
+              <li>{{ i18n.t('pointHalal') }}</li>
+              <li>{{ i18n.t('pointCut') }}</li>
+              <li>{{ i18n.t('pointDelivery') }}</li>
+            </ul>
+          </div>
+
+          <nav class="foot-col" [attr.aria-label]="i18n.t('navShop')">
+            <h4>{{ i18n.t('navShop') }}</h4>
+            <div class="foot-chips">
+              @for (c of shop.categories(); track c.id) {
+                <a routerLink="/boutique" [queryParams]="{ cat: c.id }">{{ i18n.pick(c, 'name') }}</a>
+              }
+            </div>
+          </nav>
+
+          <nav class="foot-col" [attr.aria-label]="i18n.t('footAccount')">
+            <h4>{{ i18n.t('footAccount') }}</h4>
+            <a routerLink="/mon-menu">{{ i18n.t('menuNav') }}</a>
+            @if (shop.settings().loyaltyEnabled) { <a routerLink="/fidelite">{{ i18n.t('loyaltyNav') }}</a> }
+            <a routerLink="/favoris">{{ i18n.t('favNav') }}</a>
+            @if (reservation()) { <a routerLink="/reservation">{{ i18n.t('resTitle') }}</a> }
+            @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
+            <a routerLink="/notre-boucherie">{{ i18n.t('navAbout') }}</a>
+          </nav>
+
+          <div class="foot-col foot-contact">
+            <h4>{{ i18n.t('navContact') }}</h4>
+            <p class="foot-line">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              <span>{{ i18n.pick(shop.settings(), 'address') }}</span>
+            </p>
+            @if (shop.settings().mapLink) {
+              <a class="foot-line" [href]="shop.settings().mapLink" target="_blank" rel="noopener">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L3 6.5v13.5L9 17.5l6 2.5 6-2.5V4l-6 2.5zM9 4v13.5M15 6.5V20" /></svg>
+                <span>{{ i18n.t('mapLink') }}</span>
+              </a>
+            }
+            @if (realPhone()) {
+              <a class="foot-line" [href]="phoneHref()" dir="ltr">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" /></svg>
+                <bdi>{{ shop.settings().phone }}</bdi>
+              </a>
+            }
+          </div>
         </div>
-        <div>
-          <h4>{{ i18n.t('navContact') }}</h4>
-          <p>{{ i18n.pick(shop.settings(), 'address') }}</p>
-          <a [href]="shop.settings().mapLink" target="_blank" rel="noopener">{{ i18n.t('mapLink') }}</a>
-          @if (shop.settings().loyaltyEnabled) { <a routerLink="/fidelite">{{ i18n.t('loyaltyNav') }}</a> }
-          <a routerLink="/favoris">{{ i18n.t('favNav') }}</a>
-          @if (reservation()) { <a routerLink="/reservation">{{ i18n.t('resTitle') }}</a> }
-          @if (shop.lastOrder()) { <a [routerLink]="['/suivi', shop.lastOrder()]">{{ i18n.t('trackLink') }}</a> }
-          <p dir="ltr"><a [href]="phoneHref()">{{ shop.settings().phone }}</a></p>
+
+        <div class="foot-bottom">
+          <span>© {{ year }} {{ i18n.pick(shop.settings(), 'name') }} · {{ shop.settings().company }} · {{ i18n.t('footer') }}</span>
+          <span>{{ i18n.t('madeBy') }} <bdi dir="ltr">Samia Medine</bdi> · {{ i18n.t('rights') }}</span>
         </div>
       </div>
-      <div class="copy"><div class="wrap">© {{ year }} {{ i18n.pick(shop.settings(), 'name') }} · {{ shop.settings().company }} · {{ i18n.t('footer') }}<br>© {{ year }} {{ i18n.t('madeBy') }} <bdi dir="ltr">Samia Medine</bdi> · {{ i18n.t('rights') }}</div></div>
     </footer>
 
     <!-- Panier -->
@@ -299,6 +347,12 @@ export class ShopLayout implements OnInit, OnDestroy {
   protected closePopup(a: Announcement) {
     this.closed.update(all => new Set(all).add(a.id));
     this.markSeen([a.id]);
+  }
+
+  /** Le numéro d'exemple (0X XX…) n'est pas affiché aux clients */
+  protected realPhone() {
+    const phone = this.shop.settings().phone ?? '';
+    return /\d{6}/.test(phone.replace(/\D/g, '')) && !/x/i.test(phone);
   }
 
   protected phoneHref() {

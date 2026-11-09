@@ -503,12 +503,6 @@ app-shop-layout {
   .map { width: 100%; min-height: 400px; height: 100%; border: 0; border-radius: var(--r); }
 
   /* Pied de page */
-  footer { background: var(--ink); color: #b5a79f; }
-  .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; padding-top: 64px; padding-bottom: 46px; }
-  footer p { margin-top: 14px; font-size: .93rem; }
-  footer h4 { color: #fff; font-family: var(--font-title); font-size: 1.05rem; margin-bottom: 12px; }
-  .footer-grid > div:not(:first-child) a { display: block; padding: 4px 0; transition: color .2s, padding .2s; }
-  .footer-grid > div:not(:first-child) a:hover { color: #fff; padding-inline-start: 6px; }
   .copy { border-top: 1px solid rgba(255, 255, 255, .1); padding: 18px 0; font-size: .85rem; text-align: center; }
 
   .closed-bar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; background: #fbeaea; color: #8f1020; border-bottom: 1px solid #f2c6cc; }
@@ -563,7 +557,7 @@ app-shop-layout {
     .htile, [dir="rtl"] & .htile { --glass-r: 20px; flex-direction: column; gap: 8px; padding: 8px 6px 10px; font-size: .86rem; text-align: center; }
     .htile img { width: 100%; height: 76px; border-radius: 14px; }
     .htile .round { display: none; }
-    .about-grid, .contact-grid, .footer-grid, .detail-grid, .checkout-grid { grid-template-columns: 1fr; }
+    .about-grid, .contact-grid, .detail-grid, .checkout-grid { grid-template-columns: 1fr; }
     .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 170px; gap: 12px; }
     .tile:nth-child(6) { grid-column: auto; }
     .tile:nth-child(1) { grid-column: span 2; grid-row: auto; }
@@ -653,17 +647,16 @@ app-shop-layout {
   .tile-text { inset-inline: 10px; bottom: 10px; padding: 10px 14px; border-radius: 16px; background: rgba(255, 255, 255, .16); -webkit-backdrop-filter: blur(16px) saturate(170%) brightness(.72); backdrop-filter: blur(16px) saturate(170%) brightness(.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55); }
 
   /* Grands blocs sombres : plaques de verre fumé, avec un bord de lumière */
-  .steps, .page-head, .aid, footer { margin-inline: 14px; border-radius: 34px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), inset 0 0 0 1px rgba(255, 255, 255, .08), 0 30px 60px -36px rgba(40, 15, 8, .7); }
-  .steps, .page-head, footer { background: radial-gradient(70% 120% at 85% 0%, rgba(208, 16, 42, .34), transparent 70%), linear-gradient(160deg, #2f2420, #17110e); }
+  .steps, .page-head, .aid { margin-inline: 14px; border-radius: 34px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), inset 0 0 0 1px rgba(255, 255, 255, .08), 0 30px 60px -36px rgba(40, 15, 8, .7); }
+  .steps, .page-head { background: radial-gradient(70% 120% at 85% 0%, rgba(208, 16, 42, .34), transparent 70%), linear-gradient(160deg, #2f2420, #17110e); }
   .page-head { margin-top: 14px; }
   .aid { background: linear-gradient(120deg, #aa0c20, #e8223e); }
-  footer { margin-bottom: 14px; }
   .step-icon { background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28); }
   .offer.featured { background: linear-gradient(160deg, rgba(232, 34, 62, .95), rgba(150, 10, 28, .95)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 30px 50px -26px rgba(208, 16, 42, .75); }
 
   @media (max-width: 960px) {
     .menu { background: var(--g-strong); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); }
-    .steps, .page-head, .aid, footer { margin-inline: 8px; border-radius: 26px; }
+    .steps, .page-head, .aid { margin-inline: 8px; border-radius: 26px; }
   }
 
   /* Carte produit : la photo occupe toute la carte, le verre glisse par-dessus */
@@ -922,4 +915,45 @@ app-shop-layout {
   .ask-price { display: grid; gap: 10px; margin-top: 16px; padding: 16px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px #efe4d8; }
   .ask-price p { margin: 0; color: var(--text); font-size: .92rem; }
   .ask-price .btn, .plan-body .btn-wa-soft { text-align: center; }
+
+  /* Pied de page : même style que le site (crème, carte blanche, pastilles rouges) */
+  .site-foot { padding: 30px 0 22px; }
+  .foot-cta { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; padding: 26px 30px; border-radius: 28px; background: radial-gradient(60% 140% at 90% 0%, rgba(234, 164, 43, .35), transparent 60%), linear-gradient(120deg, #aa0c20, #e8223e); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 26px 44px -26px rgba(208, 16, 42, .8); }
+  .foot-cta b { display: block; font-family: var(--font-title); font-size: clamp(1.25rem, 2.6vw, 1.6rem); }
+  .foot-cta span { opacity: .92; }
+  .foot-cta-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+  .foot-cta .btn { padding: 12px 24px; }
+  .foot-wa { display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .7); color: #fff; }
+  .foot-wa svg { width: 20px; height: 20px; fill: currentColor; }
+  .foot-wa:hover { background: #fff; color: #128c4a; }
+  .foot-card { display: grid; grid-template-columns: 1.4fr 1.2fr .9fr 1fr; gap: 34px; margin-top: 16px; padding: 34px; border-radius: 28px; background: #fff; box-shadow: 0 0 0 1px var(--border), var(--shadow); }
+  .foot-brand .logo { color: var(--ink); }
+  .foot-brand p { margin-top: 14px; color: var(--text); font-size: .93rem; line-height: 1.6; }
+  .foot-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 0; padding: 0; list-style: none; }
+  .foot-badges li { padding: 5px 11px; border-radius: 999px; background: rgba(208, 16, 42, .08); color: var(--red-dark); font-size: .78rem; font-weight: 700; }
+  .foot-col h4 { position: relative; margin-bottom: 14px; padding-bottom: 10px; color: var(--ink); font-family: var(--font-title); font-size: 1.02rem; }
+  .foot-col h4::after { content: ""; position: absolute; inset-inline-start: 0; bottom: 0; width: 28px; height: 3px; border-radius: 3px; background: var(--red); }
+  .foot-col > a { display: block; padding: 5px 0; color: var(--text); transition: color .2s, padding .2s; }
+  .foot-col > a:hover { color: var(--red); padding-inline-start: 5px; }
+  .foot-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .foot-chips a { padding: 7px 13px; border-radius: 999px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--border); color: var(--ink); font-size: .86rem; font-weight: 600; transition: background .2s, color .2s, transform .2s; }
+  .foot-chips a:hover { background: var(--red); color: #fff; transform: translateY(-2px); }
+  .foot-line { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 10px; padding: 0; color: var(--text); font-size: .92rem; }
+  .foot-line .ico { flex: none; width: 34px; height: 34px; padding: 7px; border-radius: 50%; background: rgba(208, 16, 42, .08); color: var(--red); }
+  .foot-line span, .foot-line bdi { padding-top: 7px; }
+  .foot-col > a.foot-line { display: flex; padding: 0; }
+  .foot-col > a.foot-line:hover { color: var(--red); padding: 0; }
+  .foot-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; padding: 18px 6px 0; padding-inline-end: 84px; color: var(--text); font-size: .8rem; }
+  @media (max-width: 960px) {
+    .foot-card { grid-template-columns: 1fr 1fr; gap: 26px; padding: 26px 22px; }
+    .foot-brand { grid-column: 1 / -1; }
+  }
+  @media (max-width: 560px) {
+    .site-foot { padding-top: 20px; }
+    .foot-cta { padding: 22px 20px; border-radius: 24px; }
+    .foot-cta-btns, .foot-cta .btn { width: 100%; }
+    .foot-cta .btn { justify-content: center; }
+    .foot-card { grid-template-columns: 1fr; border-radius: 24px; }
+    .foot-bottom { flex-direction: column; text-align: center; padding-inline: 6px; padding-bottom: 70px; }
+  }
 }
