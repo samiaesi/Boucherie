@@ -1013,7 +1013,8 @@ app-shop-layout {
   .hero-points li { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px 7px 9px; border-radius: 999px; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); font-weight: 500; }
   [dir="rtl"] & .hero-points li { padding: 7px 9px 7px 13px; }
   .hero-points li::before { content: none; }
-  .hero-points svg { width: 18px; height: 18px; fill: none; stroke: #ffc46b; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .hero-points li { line-height: 1; }
+  .hero-points svg { flex: none; display: block; width: 17px; height: 17px; fill: none; stroke: #ffc46b; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .htile-text { flex: 1; min-width: 0; display: grid; gap: 3px; }
   .htile-text b { font-size: 1.12rem; }
   .htile-text small { color: rgba(255, 255, 255, .72); font-size: .8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

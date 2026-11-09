@@ -46,7 +46,7 @@ const STEP_MS = 2200;
           </div>
           <ul class="hero-points">
             @for (k of heroPoints; track k.key) {
-              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="k.icon" /></svg>{{ i18n.t(k.key) }}</li>
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="k.icon" [attr.transform]="k.tilt ?? null" /></svg>{{ i18n.t(k.key) }}</li>
             }
           </ul>
         </div>
@@ -360,10 +360,10 @@ export class Home implements OnInit, OnDestroy {
   private stepTimer?: ReturnType<typeof setInterval>;
 
   /** Points forts du haut de page, chacun avec son pictogramme */
-  protected readonly heroPoints: { key: TKey; icon: string }[] = [
+  protected readonly heroPoints: { key: TKey; icon: string; tilt?: string }[] = [
     { key: 'pointHalal', icon: 'M12 3l7 3v5.5c0 4.4-3 8.2-7 9.5-4-1.3-7-5.1-7-9.5V6zM8.5 12l2.5 2.5 4.5-5' },
-    { key: 'pointCut', icon: 'M4 20l9.5-9.5M14.5 3.5l6 6-3 3-6-6zM6 18l1.5 1.5' },
-    { key: 'pointDelivery', icon: 'M2.5 7h11v9.5h-11zM13.5 10H18l3.5 3.5v3h-8M6.5 19.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 19.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z' },
+    { key: 'pointCut', icon: 'M2.5 7.5h11v6.8c0 .9-.7 1.7-1.7 1.7H5.2a2.7 2.7 0 0 1-2.7-2.7zM13.5 10h6.8a1.6 1.6 0 0 1 0 3.2h-6.8M6 10.2h.01', tilt: 'rotate(-28 12 12)' },
+    { key: 'pointDelivery', icon: 'M2.5 6.5h11v9h-11zM13.5 9.5h4l3.5 3.5v2.5h-7.5M6.5 18.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zM17 18.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z' },
   ];
 
   /** Le grand bloc montre le bœuf, ou la photo choisie dans l'admin. */
