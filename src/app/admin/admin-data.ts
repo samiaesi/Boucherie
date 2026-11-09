@@ -682,7 +682,7 @@ export class AdminData {
       tx.set(doc(db, 'settings', 'fridge'), {
         list: fridge.map(f => (f.id !== reserve.id ? f : withCarcasses(f, [...current.filter(x => !chosen.some(c => c.id === x.id)), ...rest]))),
       });
-      input.cuts.forEach((c, i) => this.moveCut(tx, products[i], c.kg, input.origin, true));
+      input.cuts.forEach((c, i) => this.moveCut(tx, products[i], c.kg, input.origin, true, input.date));
       return matricule;
     }));
     this.audit('cut.created', created, `${input.reserve.name} · ${input.beasts} bête(s) · ${input.kg} kg${input.origin ? ` · ${input.origin}` : ''} → ${input.cuts.map(c => `${c.name} ${c.kg} kg`).join(', ')} · os ${Math.max(0, waste)} kg`);
@@ -748,13 +748,13 @@ export class AdminData {
   }
 
   /** Ajoute (kg > 0) ou retire les kilos d'une coupe, dans son pays ; tous les pays deviennent comptés. */
-  private moveCut(tx: Transaction, p: Product | undefined, kg: number, origin: string | undefined, arrival: boolean) {
+  private moveCut(tx: Transaction, p: Product | undefined, kg: number, origin: string | undefined, arrival: boolean, date?: string) {
     if (!p || !kg) return;
     const origins = originsOf(p);
     let next = origins.map(o => ({ ...o, stock: Math.max(0, roundStock((o.stock ?? 0) + (o.country === origin ? kg : 0))) }));
     if (origin && !origins.some(o => o.country === origin)) next = [...next, { country: origin, price: p.price, stock: Math.max(0, kg) }];
     tx.update(doc(db, 'products', p.id), {
-      stock: increment(kg), trackStock: true, ...(arrival ? { restockDate: '' } : {}), ...(next.length ? { origins: next } : {}),
+      stock: increment(kg), trackStock: true, ...(arrival ? { restockDate: '' } : {}), ...(arrival && date ? { lastArrival: date } : {}), ...(next.length ? { origins: next } : {}),
     });
   }
 
@@ -795,6 +795,14 @@ export class AdminData {
     await this.guarded(setDoc(doc(db, 'settings', 'lotCounter'), {}));
     this.audit('register.cleared', 'Arrivages et sorties', `${snap.docs.length} ligne(s) effacée(s), matricules remis à 0001`);
     return snap.docs.length;
+  }
+
+  /** Promotion du jour pour écouler une viande qui attend */
+  async promoteToday(products: Product[], percent: number, today: string) {
+    const batch = writeBatch(db);
+    products.forEach(p => batch.update(doc(db, 'products', p.id), { promoPercent: percent, promoUntil: today }));
+    await this.guarded(batch.commit());
+    this.audit('product.updated', products.map(p => p.name_fr).join(', '), `Promotion -${percent} % jusqu'au ${today} pour écouler le stock`);
   }
 
   /** Met un produit en rayon (visible sur le site) ou l'en retire. */

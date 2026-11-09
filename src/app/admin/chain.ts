@@ -4,6 +4,7 @@ import { Category, Product, byOrder } from '../core/data';
 import { IconPipe } from '../core/icon';
 import { Lot } from '../core/lots';
 import { localDay } from '../core/stats';
+import { STALE_DAYS, StaleItem, staleItems } from '../core/stale';
 import { Amount, CutRecord, SHELF_LABELS, ShelfState, StockExit, chainSummary, exitLabel, shelfAlerts, shelfLines } from '../core/stock-chain';
 import { AdminData } from './admin-data';
 import { ChainSteps } from './chain-steps';
@@ -62,6 +63,36 @@ const DAYS = 7;
       @if (s.exits.byReason.length) {
         <p class="reasons">Sorties : @for (r of s.exits.byReason; track r.reason) { <span>{{ reason(r.reason) }} {{ amount(r) }}</span> }</p>
       }
+    }
+
+    @if (stale().length) {
+      <section class="stale">
+        <div class="head list-head">
+          <h3>À écouler en priorité</h3>
+          <span class="legend">Au frigo depuis {{ staleDays }} jours ou plus</span>
+        </div>
+        <div class="items">
+          @for (s of stale(); track s.key) {
+            <div class="item">
+              <span class="age" [class.old]="s.age >= staleDays + 3">{{ s.age }} j</span>
+              <div class="info">
+                <b>{{ s.name }}</b>
+                <small>{{ s.detail }}{{ s.products.length ? ' · en vente : ' + names(s) : '' }}</small>
+              </div>
+              @if (s.products.length) {
+                <div class="promo-actions">
+                  <select [attr.aria-label]="'Réduction pour ' + s.name" #pct>
+                    @for (v of [10, 15, 20, 30]; track v) { <option [value]="v" [selected]="v === 15">-{{ v }} %</option> }
+                  </select>
+                  <button class="btn small" [disabled]="busy() === s.key" (click)="promote(s, +pct.value)">Promo aujourd'hui</button>
+                </div>
+              } @else {
+                <a class="btn light small" routerLink="/admin/decoupe">Découper</a>
+              }
+            </div>
+          }
+        </div>
+      </section>
     }
 
     <section id="rayons">
@@ -160,6 +191,10 @@ const DAYS = 7;
     .what b { display: -webkit-box; font-size: .9rem; line-height: 1.25; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
     .what small { color: var(--c); font-size: .78rem; font-weight: 600; }
     .acts { display: flex; gap: 6px; }
+    .stale .age { flex: none; display: grid; place-items: center; min-width: 46px; height: 32px; margin-inline-end: 12px; padding: 0 8px; border-radius: 999px; background: #fff3dd; color: #9a5b00; font-weight: 700; }
+    .stale .age.old { background: #fdecef; color: #a3122a; }
+    .promo-actions { display: flex; gap: 6px; align-items: center; }
+    .promo-actions select { width: auto; padding: 6px 8px; }
     .sign { flex: none; display: grid; place-items: center; width: 30px; height: 30px; margin-inline-end: 10px; border-radius: 50%; background: #e3f1e8; color: #2f7d4f; font-weight: 700; }
     .sign.out { background: #f8e1e4; color: #a10c20; }
     .item { align-items: center; }
@@ -187,6 +222,26 @@ export class Chain implements OnInit {
   }));
   protected readonly tabs = computed(() => shelfAlerts(this.data.products(), this.data.fridge(), this.categories()));
   protected readonly totalAlerts = computed(() => this.tabs().reduce((sum, t) => sum + t.alerts, 0));
+  protected readonly staleDays = STALE_DAYS;
+  protected readonly stale = computed(() => staleItems(this.data.products(), this.data.fridge(), localDay(new Date())));
+
+  protected names(s: StaleItem) {
+    return s.products.map(p => p.name_fr).join(', ');
+  }
+
+  protected async promote(s: StaleItem, percent: number) {
+    this.busy.set(s.key);
+    this.error.set('');
+    try {
+      await this.data.promoteToday(s.products, percent, localDay(new Date()));
+      this.data.notify(`Promotion -${percent} % aujourd'hui : ${this.names(s)}`);
+    } catch (e) {
+      this.error.set((e as Error).message);
+    } finally {
+      this.busy.set('');
+    }
+  }
+
   protected readonly shelf = computed(() => shelfLines([...this.data.products()].sort(byOrder), this.data.fridge(), this.rayon()));
 
   /** Arrivages et sorties mêlés, du plus récent au plus ancien */

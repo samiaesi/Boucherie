@@ -1,3 +1,5 @@
+import { staleItems } from '../core/stale';
+import { algeriaClock } from '../core/ordering';
 import {
   DEFAULT_SETTINGS, FridgeItem, Order, Product, Settings, animals, isLowStock, isOutOfStock, isOverStock, orderRef, ownStock, reorderQty,
   roundStock, stockUnit,
@@ -145,11 +147,23 @@ function systemNotices({ products, fridge, settings, ordersPaused, online, error
 const RANK: Record<NoticeLevel, number> = { danger: 0, warn: 1, info: 2 };
 
 /** Toutes les notifications du moment, les plus urgentes d'abord. */
+/** Viandes au frigo depuis plusieurs jours : à mettre en avant ou en promotion */
+function staleNotices(input: NoticeInput): Notice[] {
+  const items = staleItems(input.products, input.fridge, algeriaClock(input.now).date);
+  if (!items.length) return [];
+  return [{
+    id: 'stale', kind: 'stock', level: 'warn', link: '/admin/chaine',
+    title: `${items.length} viande(s) à écouler`,
+    text: `${items.slice(0, 3).map(i => `${i.name} (${i.age} j)`).join(', ')}${items.length > 3 ? '…' : ''}. Mettez-les en promotion du jour.`,
+  }];
+}
+
 export function buildNotices(input: NoticeInput): Notice[] {
   return [
     ...orderNotices(input.orders, input.now),
     ...stockNotices(ownStock(input.products, input.fridge)),
     ...fridgeNotices(input.fridge),
+    ...staleNotices(input),
     ...systemNotices(input),
   ].sort((a, b) => RANK[a.level] - RANK[b.level]);
 }
