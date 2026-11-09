@@ -20,6 +20,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://boucherie-hallem.web.app/recettes</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://boucherie-hallem.web.app/notre-boucherie</loc>
     <lastmod>2026-11-09</lastmod>
     <changefreq>monthly</changefreq>

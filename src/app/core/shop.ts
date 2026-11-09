@@ -3,6 +3,7 @@ import { algeriaClock } from './ordering';
 import { applyPromos } from './promo';
 import { normalizeTel, validTel } from './loyalty';
 import type { Campaign } from './campaigns';
+import { DEFAULT_RECIPES, Recipe } from './recipes';
 import { rebuildBasket } from './basket';
 import type { Cart } from './cart';
 import type { I18n } from './i18n';
@@ -75,6 +76,20 @@ export class Shop {
   /** Produits en promotion aujourd'hui */
   readonly promos = computed(() => this.products().filter(p => p.oldPrice !== undefined));
   readonly campaigns = signal<Campaign[]>([]);
+  readonly recipes = signal<Recipe[]>(DEFAULT_RECIPES);
+  private recipesLoaded = false;
+
+  /** Recettes enregistrées dans l'admin, sinon celles de départ */
+  async loadRecipes() {
+    if (this.recipesLoaded) return;
+    this.recipesLoaded = true;
+    try {
+      const snap = await getDoc(doc(db, 'settings', 'recipes'));
+      if (snap.exists()) this.recipes.set(snap.data()['list'] as Recipe[]);
+    } catch {
+      this.recipesLoaded = false;
+    }
+  }
   readonly settings = signal<Settings>(DEFAULT_SETTINGS);
   /** Le message d'accroche suit le paramétrage de la livraison */
   readonly pickupKey = computed<TKey>(() => (this.settings().deliveryEnabled ? 'pickupBoth' : 'pickup'));

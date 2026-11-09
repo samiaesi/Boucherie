@@ -1,3 +1,4 @@
+import { recipesWith } from '../core/recipes';
 import { arrivalAge } from '../core/delivery-slots';
 import { algeriaClock } from '../core/ordering';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
@@ -177,6 +178,22 @@ const MIN_GRAMS = 100;
         </div>
       </section>
 
+      @if (recipes().length) {
+        <section class="recipe-strip">
+          <div class="wrap">
+            <h2>{{ i18n.t('recipeFor') }}</h2>
+            <div class="recipe-links">
+              @for (r of recipes(); track r.id) {
+                <a routerLink="/recettes" [fragment]="r.id" class="recipe-link">
+                  <b>{{ i18n.pick(r, 'name') }}</b>
+                  <small>⏱ {{ i18n.t('recipeMinutes').replace('{n}', '' + r.minutes) }} · 👥 {{ i18n.t('recipeServes').replace('{n}', '' + r.serves) }}</small>
+                </a>
+              }
+            </div>
+          </div>
+        </section>
+      }
+
       @if (related().length) {
         <section class="products related">
           <div class="wrap">
@@ -196,6 +213,7 @@ const MIN_GRAMS = 100;
 export class ProductPage {
   protected readonly i18n = inject(I18n);
   protected readonly shop = inject(Shop);
+  private readonly loadRecipes = this.shop.loadRecipes();
   private readonly cart = inject(Cart);
   protected readonly favorites = inject(Favorites);
   /** Paramètre de route :id */
@@ -232,6 +250,11 @@ export class ProductPage {
     const list = this.i18n.lang() === 'ar' ? p.options_ar : p.options_fr;
     return (list?.length ? list : p.options_fr) ?? [];
   });
+  protected readonly recipes = computed(() => {
+    const p = this.product();
+    return p ? recipesWith(this.shop.recipes(), p.id) : [];
+  });
+
   protected readonly related = computed(() => {
     const p = this.product();
     return this.shop.products().filter(x => x.category === p?.category && x.id !== p?.id).slice(0, 4);

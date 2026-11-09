@@ -22,6 +22,7 @@ PAGES = [
     ('/', 'daily', '1.0'),
     ('/boutique', 'daily', '0.9'),
     ('/mon-menu', 'weekly', '0.7'),
+    ('/recettes', 'weekly', '0.7'),
     ('/notre-boucherie', 'monthly', '0.6'),
     ('/fidelite', 'monthly', '0.4'),
 ]

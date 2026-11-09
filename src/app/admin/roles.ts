@@ -65,6 +65,8 @@ export const PAGES: Page[] = [
     icon: 'M3 12V4h8l10 10-8 8zM7.5 7.5v.01' },
   { path: 'menus', label: 'Menus proposés', group: 'Stock et catalogue', roles: ADMINS,
     icon: 'M6 3v8a2 2 0 0 0 4 0V3M8 3v18M17 3c-2 2-3 5-3 8h3zM17 3v18' },
+  { path: 'recettes', label: 'Recettes', group: 'Stock et catalogue', roles: ADMINS,
+    icon: 'M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11M9 8h6' },
   { path: 'rayons', label: 'Rayons', group: 'Stock et catalogue', roles: ADMINS,
     icon: 'M4 5h7v6H4zM13 5h7v6h-7zM4 13h7v6H4zM13 13h7v6h-7z' },
   { path: 'notre-boucherie', label: 'Notre boucherie', group: 'Administration', roles: ADMINS,

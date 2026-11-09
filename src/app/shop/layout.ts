@@ -123,6 +123,7 @@ function savedSeen(): Set<string> {
           <nav class="foot-col" [attr.aria-label]="i18n.t('footAccount')">
             <h4>{{ i18n.t('footAccount') }}</h4>
             <a routerLink="/mon-menu">{{ i18n.t('menuNav') }}</a>
+            <a routerLink="/recettes">{{ i18n.t('recipesNav') }}</a>
             @if (shop.settings().loyaltyEnabled) { <a routerLink="/fidelite">{{ i18n.t('loyaltyNav') }}</a> }
             <a routerLink="/favoris">{{ i18n.t('favNav') }}</a>
             @if (reservation()) { <a routerLink="/reservation">{{ i18n.t('resTitle') }}</a> }

@@ -26,7 +26,7 @@ async function renderProduct(item: Product) {
   TestBed.configureTestingModule({
     providers: [provideRouter([]), {
       provide: Shop,
-      useValue: { products: signal([item]), category: () => undefined, pickupKey: () => 'pickup', settings: signal({ whatsapp: '' }), clock: () => new Date() },
+      useValue: { recipes: signal([]), loadRecipes: () => Promise.resolve(), products: signal([item]), category: () => undefined, pickupKey: () => 'pickup', settings: signal({ whatsapp: '' }), clock: () => new Date() },
     }],
   });
   const fixture = TestBed.createComponent(ProductPage);

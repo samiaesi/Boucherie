@@ -1,3 +1,4 @@
+import { DEFAULT_RECIPES, Recipe } from '../core/recipes';
 import { slotInLabel, slotKey } from '../core/delivery-slots';
 import type { Campaign } from '../core/campaigns';
 import { LoyaltyCard, normalizeTel, pointsFor, validTel } from '../core/loyalty';
@@ -577,6 +578,16 @@ export class AdminData {
   async saveMenus(list: MenuRecipe[]) {
     await this.guarded(setDoc(doc(db, 'settings', 'menus'), { list }));
     this.audit('menus.updated', 'Menus', `${list.length} menus`);
+  }
+
+  async getRecipes(): Promise<Recipe[]> {
+    const snap = await getDoc(doc(db, 'settings', 'recipes'));
+    return structuredClone(snap.exists() ? (snap.data()['list'] as Recipe[]) : DEFAULT_RECIPES);
+  }
+
+  async saveRecipes(list: Recipe[]) {
+    await this.guarded(setDoc(doc(db, 'settings', 'recipes'), { list }));
+    this.audit('recipes.updated', 'Recettes', `${list.length} recette(s)`);
   }
 
   async saveFridge(list: FridgeItem[]) {
